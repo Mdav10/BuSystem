@@ -12,7 +12,5 @@ services:
         value: postgresql://neondb_owner:npg_ijc8mWwoCz2D@ep-noisy-frost-ato3kdpv-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require
       - key: SECRET_KEY
         generateValue: true
-      - key: PYTHON_VERSION
-        value: 3.11.0
     autoDeploy: true
     plan: free

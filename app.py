@@ -588,7 +588,6 @@ def get_decisions():
     recommendations = []
     today = datetime.now()
     
-    # Livestock recommendation
     best_type = db.session.query(
         Livestock.type, func.avg(Livestock.profit).label('avg_profit')
     ).filter(Livestock.user_id == current_user.id, Livestock.status == 'Sold').group_by(Livestock.type).order_by(func.avg(Livestock.profit).desc()).first()
@@ -599,7 +598,6 @@ def get_decisions():
             'type': 'opportunity'
         })
     
-    # Budget warnings
     over_budget = Budget.query.filter(
         Budget.user_id == current_user.id, Budget.month == today.month,
         Budget.year == today.year, Budget.actual_amount > Budget.expected_amount
