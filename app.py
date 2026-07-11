@@ -258,29 +258,56 @@ class FinancialRule(db.Model):
     triggered_at = db.Column(db.DateTime)
 
 # ============================
-# FORCE DATABASE CREATION
+# FORCE DATABASE SETUP
 # ============================
 
-def init_db():
-    """Force create all tables"""
-    with app.app_context():
-        db.create_all()
-        db.session.commit()
-        print("✅ All tables created")
-        
-        # Check if user exists
-        user_exists = User.query.filter_by(username='MCM').first()
-        if not user_exists:
-            user = User(username='MCM', currency='FCFA')
-            user.set_password('0880Mcm+_+')
-            db.session.add(user)
+def fix_database():
+    """Fix database schema by adding missing columns"""
+    try:
+        with app.app_context():
+            # Try to add currency column if it doesn't exist
+            try:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'FCFA'"))
+                db.session.commit()
+                print("✅ currency column added")
+            except Exception as e:
+                print(f"currency column already exists: {e}")
+            
+            # Try to add email column if it doesn't exist
+            try:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(120)"))
+                db.session.commit()
+                print("✅ email column added")
+            except Exception as e:
+                print(f"email column already exists: {e}")
+            
+            # Remove full_name if it exists
+            try:
+                db.session.execute(text("ALTER TABLE users DROP COLUMN IF EXISTS full_name"))
+                db.session.commit()
+                print("✅ full_name column removed")
+            except Exception as e:
+                print(f"full_name column not found: {e}")
+            
+            # Create all tables
+            db.create_all()
             db.session.commit()
-            print("✅ User MCM created")
-        else:
-            print("✅ User MCM already exists")
+            print("✅ All tables verified")
+            
+            # Create default user if not exists
+            if not User.query.filter_by(username='MCM').first():
+                user = User(username='MCM', currency='FCFA')
+                user.set_password('0880Mcm+_+')
+                db.session.add(user)
+                db.session.commit()
+                print("✅ User MCM created")
+            
+            print("🎉 Database setup complete!")
+    except Exception as e:
+        print(f"⚠️ Database setup warning: {e}")
 
-# Initialize database on startup
-init_db()
+# Run database fix on startup
+fix_database()
 
 # ============================
 # AUTHENTICATION
@@ -400,7 +427,7 @@ def dashboard():
     )
 
 # ============================
-# API ENDPOINTS
+# API ENDPOINTS (All modules)
 # ============================
 
 @app.route('/api/transactions', methods=['GET'])
