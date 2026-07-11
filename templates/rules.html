@@ -17,6 +17,8 @@
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
         .btn { background: #00d4ff; color: #0a0e17; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .btn:hover { background: #00ff88; transform: scale(1.03); }
+        .btn-danger { background: #ff4757; color: #fff; }
+        .btn-danger:hover { background: #ff6b81; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a2a3f; padding: 12px; text-align: left; color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
@@ -26,6 +28,8 @@
         @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
         .badge { display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 12px; background: #1a3a2a; color: #2ecc71; }
         h2 { color: #00d4ff; margin: 20px 0; }
+        .action-buttons { display: flex; gap: 5px; flex-wrap: wrap; }
+        .action-buttons .btn { padding: 4px 12px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -92,10 +96,11 @@
                     <th>Condition</th>
                     <th>Message</th>
                     <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody id="rulesList">
-                <tr><td colspan="5" style="text-align:center; color:#4a5a6f;">No rules set.</td></tr>
+                <tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No rules set.</td></tr>
             </tbody>
         </table>
     </div>
@@ -119,7 +124,7 @@
             .then(data => {
                 const tbody = document.getElementById('rulesList');
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#4a5a6f;">No rules set.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No rules set.</td></tr>';
                     return;
                 }
                 tbody.innerHTML = data.map(r => `
@@ -129,6 +134,9 @@
                         <td>${r.condition_type} ${r.condition_operator} ${r.condition_value}</td>
                         <td>${r.action_message || '-'}</td>
                         <td><span class="badge">Active</span></td>
+                        <td>
+                            <button class="btn btn-danger" style="padding:4px 12px; font-size:12px;" onclick="deleteRule(${r.id})">Delete</button>
+                        </td>
                     </tr>
                 `).join('');
             });
@@ -158,6 +166,12 @@
             document.getElementById('ruleMessage').value = '';
             loadRules();
         });
+    }
+    
+    function deleteRule(id) {
+        if (!confirm('Delete this rule permanently?')) return;
+        fetch(`/api/rules/${id}`, { method: 'DELETE' })
+            .then(() => loadRules());
     }
     
     function checkRules() {

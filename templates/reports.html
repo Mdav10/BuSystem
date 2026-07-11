@@ -19,14 +19,16 @@
         .btn-success:hover { background: #27ae60; }
         .btn-warning { background: #f39c12; color: #fff; }
         .btn-warning:hover { background: #e67e22; }
-        .btn-danger { background: #ff4757; color: #fff; }
-        .btn-danger:hover { background: #ff6b81; }
+        .btn-pdf { background: #ff4757; color: #fff; }
+        .btn-pdf:hover { background: #ff6b81; }
         h2 { color: #00d4ff; margin: 20px 0; }
         .stat-box { background: #0f1a2b; padding: 15px; border-radius: 12px; border-left: 4px solid #00d4ff; margin: 10px 0; }
         .stat-box .label { color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
         .stat-box .value { font-size: 24px; font-weight: bold; margin-top: 5px; }
         .stat-box .value.green { color: #2ecc71; }
         .stat-box .value.red { color: #ff4757; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .btn-group .btn { flex: 1; min-width: 140px; }
     </style>
 </head>
 <body>
@@ -60,12 +62,21 @@
     </div>
     
     <div class="card">
-        <h3 style="color: #fff;">Export Reports</h3>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
-            <a href="/api/reports/export/transactions/pdf" class="btn btn-warning">📄 PDF Report</a>
+        <h3 style="color: #fff;">📥 Export Full Report</h3>
+        <p style="color:#7a8ba3; margin-bottom:15px;">Download a complete PDF report with ALL your data: Transactions, Investments, Livestock, Assets, Goals, and Budget</p>
+        <div class="btn-group">
+            <a href="/api/reports/export/transactions/pdf" class="btn btn-pdf">📄 Full PDF Report</a>
             <a href="/api/reports/export/transactions/excel" class="btn btn-success">📊 Excel Report</a>
-            <a href="/api/reports/income_statement" class="btn" target="_blank">📋 View Income Statement (JSON)</a>
-            <a href="/api/reports/balance_sheet" class="btn" target="_blank">📊 View Balance Sheet (JSON)</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h3 style="color: #fff;">📋 View Data (JSON)</h3>
+        <div class="btn-group" style="margin-top:10px;">
+            <a href="/api/reports/income_statement" class="btn" target="_blank">📋 Income Statement</a>
+            <a href="/api/reports/balance_sheet" class="btn" target="_blank">📊 Balance Sheet</a>
+            <a href="/api/transactions" class="btn" target="_blank">💰 Transactions</a>
+            <a href="/api/investments" class="btn" target="_blank">📈 Investments</a>
         </div>
     </div>
     

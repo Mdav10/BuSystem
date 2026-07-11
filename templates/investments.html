@@ -39,6 +39,11 @@
         .stat-card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; }
         .stat-card .value { font-size: 20px; font-weight: bold; margin-top: 5px; }
         .stat-card .value.green { color: #2ecc71; }
+        h2 { color: #00d4ff; margin: 20px 0; }
+        .amount-positive { color: #2ecc71; }
+        .amount-negative { color: #ff4757; }
+        .action-buttons { display: flex; gap: 5px; flex-wrap: wrap; }
+        .action-buttons .btn { padding: 4px 12px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -48,7 +53,7 @@
         <a href="/dashboard" class="back">← Dashboard</a>
     </div>
     
-    <h2 style="color:#00d4ff; margin: 20px 0;">📈 Investment Manager</h2>
+    <h2>📈 Investment Manager</h2>
     
     <div class="stats" id="stats">
         <div class="stat-card"><div class="label">Total Invested</div><div class="value green" id="totalInvested">0</div></div>
@@ -103,7 +108,7 @@
                     <th>Status</th>
                     <th>Profit</th>
                     <th>ROI</th>
-                    <th>Action</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="investmentsList">
@@ -139,7 +144,12 @@
                         <td><span class="badge ${i.status.toLowerCase()}">${i.status}</span></td>
                         <td class="${i.profit >= 0 ? 'amount-positive' : 'amount-negative'}">${Number(i.profit).toLocaleString()} FCFA</td>
                         <td>${i.roi_actual ? Number(i.roi_actual).toFixed(1) + '%' : '-'}</td>
-                        <td>${i.status === 'Running' ? `<button class="btn btn-success" style="padding:4px 12px; font-size:12px;" onclick="sellInvestment(${i.id})">Sell</button>` : '-'}</td>
+                        <td>
+                            <div class="action-buttons">
+                                ${i.status === 'Running' ? `<button class="btn btn-success" onclick="sellInvestment(${i.id})">Sell</button>` : ''}
+                                <button class="btn btn-danger" onclick="deleteInvestment(${i.id})">Delete</button>
+                            </div>
+                        </td>
                     </tr>
                 `).join('');
                 updateStats(data);
@@ -188,12 +198,19 @@
     function sellInvestment(id) {
         const price = prompt('Enter sell price (FCFA):');
         if (!price || price <= 0) return;
+        if (!confirm('Confirm selling this investment?')) return;
         fetch(`/api/investments/${id}/sell`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sell_price: parseFloat(price) })
         })
         .then(() => loadInvestments());
+    }
+    
+    function deleteInvestment(id) {
+        if (!confirm('Delete this investment permanently?')) return;
+        fetch(`/api/investments/${id}`, { method: 'DELETE' })
+            .then(() => loadInvestments());
     }
 </script>
 </body>
