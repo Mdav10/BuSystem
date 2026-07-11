@@ -258,21 +258,15 @@ class FinancialRule(db.Model):
     triggered_at = db.Column(db.DateTime)
 
 # ============================
-# DATABASE INITIALIZATION FIX
+# DATABASE INITIALIZATION
 # ============================
 
 def init_database():
     """Initialize database with all tables and default data"""
     try:
-        # Check if users table exists
-        db.session.execute(text("SELECT 1 FROM users LIMIT 1"))
-        print("✅ Database already initialized")
-        return
-    except Exception as e:
-        print("🔄 Creating database tables...")
         db.create_all()
         db.session.commit()
-        print("✅ Tables created")
+        print("✅ Tables created/verified")
         
         # Create default user
         if not User.query.filter_by(username='MCM').first():
@@ -303,7 +297,7 @@ def init_database():
                     condition_value=3,
                     condition_operator='<',
                     action_type='warn',
-                    action_message='Keep at least 3 months of expenses as emergency fund'
+                    action_message='Keep at least 3 months of expenses'
                 ),
                 FinancialRule(
                     user_id=1,
@@ -313,7 +307,7 @@ def init_database():
                     condition_value=80,
                     condition_operator='>',
                     action_type='warn',
-                    action_message='Do not spend more than 80% of monthly income'
+                    action_message='Do not spend more than 80% of income'
                 )
             ]
             for rule in rules:
@@ -321,9 +315,11 @@ def init_database():
             db.session.commit()
             print("✅ Default rules created")
         
-        print("🎉 Database setup complete!")
+        print("🎉 Database ready!")
+    except Exception as e:
+        print(f"⚠️ Database init warning: {e}")
 
-# Initialize database on startup
+# Initialize on startup
 with app.app_context():
     init_database()
 
@@ -445,7 +441,7 @@ def dashboard():
     )
 
 # ============================
-# API ENDPOINTS (All Modules)
+# API ENDPOINTS
 # ============================
 
 @app.route('/api/transactions', methods=['GET'])
@@ -779,7 +775,8 @@ def get_report_data(report_type):
             'expenses': [{'category': i[1], 'total': i[0]} for i in expenses]
         })
     elif report_type == 'balance_sheet':
-        total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0        total_income = db.session.query(func.sum(Transaction.amount)).filter(Transaction.user_id == user_id, Transaction.type == 'income').scalar() or 0
+        total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
+        total_income = db.session.query(func.sum(Transaction.amount)).filter(Transaction.user_id == user_id, Transaction.type == 'income').scalar() or 0
         total_expenses = db.session.query(func.sum(Transaction.amount)).filter(Transaction.user_id == user_id, Transaction.type == 'expense').scalar() or 0
         return jsonify({'total_assets': total_assets, 'total_income': total_income, 'total_expenses': total_expenses, 'net_worth': total_assets + total_income - total_expenses})
     return jsonify({'error': 'Invalid report type'}), 400
