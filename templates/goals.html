@@ -17,6 +17,10 @@
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
         .btn { background: #00d4ff; color: #0a0e17; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .btn:hover { background: #00ff88; transform: scale(1.03); }
+        .btn-success { background: #2ecc71; color: #fff; }
+        .btn-success:hover { background: #27ae60; }
+        .btn-warning { background: #f39c12; color: #fff; }
+        .btn-warning:hover { background: #e67e22; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a2a3f; padding: 12px; text-align: left; color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
@@ -29,6 +33,18 @@
         .badge { display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 12px; }
         .badge.active { background: #1a3a2a; color: #2ecc71; }
         .badge.completed { background: #1a2a3f; color: #3498db; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #111a2b; padding: 30px; border-radius: 16px; max-width: 500px; width: 90%; border: 1px solid #1a2a3f; }
+        .modal-content h3 { color: #00d4ff; margin-bottom: 20px; }
+        .modal-content .form-group { margin-bottom: 15px; }
+        .modal-content .form-group label { display: block; margin-bottom: 5px; color: #7a8ba3; font-size: 13px; }
+        .modal-content .form-group input { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .close { float: right; color: #7a8ba3; font-size: 28px; cursor: pointer; }
+        .close:hover { color: #fff; }
+        h2 { color: #00d4ff; margin: 20px 0; }
+        .clickable-row { cursor: pointer; }
+        .clickable-row:hover { background: #1a2a3f; }
     </style>
 </head>
 <body>
@@ -38,7 +54,7 @@
         <a href="/dashboard" class="back">← Dashboard</a>
     </div>
     
-    <h2 style="color:#00d4ff; margin: 20px 0;">🎯 Goal Planner</h2>
+    <h2>🎯 Goal Planner</h2>
     
     <div class="form-card">
         <h3 style="color: #fff; margin-bottom: 15px;">Set a Goal</h3>
@@ -83,7 +99,7 @@
     </div>
     
     <div class="table-wrap">
-        <h3 style="color: #fff; margin-bottom: 10px;">Your Goals</h3>
+        <h3 style="color: #fff; margin-bottom: 10px;">Your Goals <span style="color:#7a8ba3; font-size:12px; font-weight:normal;">(Click any goal to update progress)</span></h3>
         <table>
             <thead>
                 <tr>
@@ -93,10 +109,11 @@
                     <th>Current</th>
                     <th>Progress</th>
                     <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody id="goalsList">
-                <tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No goals set yet.</td></tr>
+                <tr><td colspan="7" style="text-align:center; color:#4a5a6f;">No goals set yet.</td></tr>
             </tbody>
         </table>
     </div>
@@ -106,7 +123,28 @@
     </div>
 </div>
 
+<!-- Update Modal -->
+<div id="updateModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3>✏️ Update Goal Progress</h3>
+        <div class="form-group">
+            <label>Goal</label>
+            <input type="text" id="updateGoalName" disabled style="color:#7a8ba3;">
+        </div>
+        <div class="form-group">
+            <label>Current Amount (FCFA)</label>
+            <input type="number" id="updateGoalAmount" step="0.01">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-success" onclick="updateGoal()">✅ Update Progress</button>
+            <button class="btn" onclick="closeModal()" style="background:#1a2a3f; color:#fff;">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    let currentGoalId = null;
     document.getElementById('goalDeadline').value = new Date().toISOString().split('T')[0];
     loadGoals();
     
@@ -116,11 +154,11 @@
             .then(data => {
                 const tbody = document.getElementById('goalsList');
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No goals set yet.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#4a5a6f;">No goals set yet.</td></tr>';
                     return;
                 }
                 tbody.innerHTML = data.map(g => `
-                    <tr>
+                    <tr class="clickable-row" onclick="openUpdateModal(${g.id}, '${g.name}', ${g.current_amount})">
                         <td><strong>${g.name}</strong></td>
                         <td>${g.category || '-'}</td>
                         <td>${Number(g.target_amount).toLocaleString()} FCFA</td>
@@ -132,9 +170,43 @@
                             </div>
                         </td>
                         <td><span class="badge ${g.status.toLowerCase()}">${g.status}</span></td>
+                        <td>
+                            <button class="btn btn-warning" style="padding:4px 12px; font-size:12px;" onclick="event.stopPropagation();openUpdateModal(${g.id}, '${g.name}', ${g.current_amount})">✏️ Update</button>
+                        </td>
                     </tr>
                 `).join('');
             });
+    }
+    
+    function openUpdateModal(id, name, current) {
+        currentGoalId = id;
+        document.getElementById('updateGoalName').value = name;
+        document.getElementById('updateGoalAmount').value = current;
+        document.getElementById('updateModal').style.display = 'flex';
+    }
+    
+    function closeModal() {
+        document.getElementById('updateModal').style.display = 'none';
+        currentGoalId = null;
+    }
+    
+    function updateGoal() {
+        const amount = document.getElementById('updateGoalAmount').value;
+        if (!amount || amount < 0) {
+            alert('Please enter a valid amount');
+            return;
+        }
+        
+        fetch('/api/goals', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: currentGoalId, current_amount: parseFloat(amount) })
+        })
+        .then(res => res.json())
+        .then(() => {
+            closeModal();
+            loadGoals();
+        });
     }
     
     function addGoal() {
