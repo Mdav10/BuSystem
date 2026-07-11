@@ -97,8 +97,6 @@
     <div class="reports">
         <a href="{{ url_for('export_report', report_type='transactions', format='pdf') }}" class="btn btn-secondary">📄 Daily Report (PDF)</a>
         <a href="{{ url_for('export_report', report_type='transactions', format='excel') }}" class="btn btn-secondary">📊 Excel Export</a>
-        <a href="{{ url_for('get_report_data', report_type='income_statement') }}" class="btn btn-secondary" target="_blank">📋 Income Statement</a>
-        <a href="{{ url_for('get_report_data', report_type='balance_sheet') }}" class="btn btn-secondary" target="_blank">📊 Balance Sheet</a>
     </div>
     
     <div class="footer">BuSystem v1.0 • Every Franc Must Have a Job • {{ user.currency }}</div>
