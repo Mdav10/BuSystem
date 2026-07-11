@@ -21,11 +21,6 @@
         .card .value.red { color: #e74c3c; }
         .card .value.purple { color: #9b59b6; }
         .card .value.cyan { color: #00d4ff; }
-        .progress-bar { width: 100%; height: 6px; background: #1a2332; border-radius: 3px; margin-top: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 3px; transition: width 0.8s; }
-        .alerts { background: #1a0e0e; border-left: 4px solid #ff4757; padding: 12px 18px; border-radius: 8px; margin: 15px 0; }
-        .alerts h3 { color: #ff4757; margin-bottom: 8px; font-size: 14px; }
-        .alerts li { list-style: none; padding: 4px 0; color: #ffb3b3; font-size: 13px; }
         .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 15px 0; padding: 12px; background: #0f1a2b; border-radius: 10px; }
         .nav a { color: #7a8ba3; text-decoration: none; padding: 6px 14px; border-radius: 6px; transition: 0.3s; font-size: 13px; }
         .nav a:hover { background: #1a2a3f; color: #fff; }
@@ -36,7 +31,6 @@
         .btn-secondary:hover { background: #2a3f5f; }
         .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
         .user-info { color: #7a8ba3; font-size: 13px; }
-        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } .card .value { font-size: 17px; } }
     </style>
 </head>
 <body>
@@ -75,28 +69,13 @@
         <div class="card"><div class="label">📊 Net Worth</div><div class="value purple">{{ "%.0f"|format(net_worth) }}</div></div>
         <div class="card"><div class="label">📈 Monthly Income</div><div class="value green">{{ "%.0f"|format(monthly_income) }}</div></div>
         <div class="card"><div class="label">📉 Monthly Expenses</div><div class="value red">{{ "%.0f"|format(monthly_expenses) }}</div></div>
-        <div class="card"><div class="label">📊 Total Investments</div><div class="value cyan">{{ "%.0f"|format(total_investments) }}</div></div>
+        <div class="card"><div class="label">📊 Investments</div><div class="value cyan">{{ "%.0f"|format(total_investments) }}</div></div>
         <div class="card"><div class="label">🐄 Active Livestock</div><div class="value orange">{{ active_livestock }}</div></div>
-        <div class="card"><div class="label">📈 ROI</div><div class="value green">{{ "%.1f"|format(roi) }}%</div></div>
-        <div class="card">
-            <div class="label">🎯 Goal Progress</div>
-            <div class="value blue">{{ "%.0f"|format(goal_progress) }}%</div>
-            <div class="progress-bar"><div class="progress-fill" style="width: {{ goal_progress }}%;"></div></div>
-        </div>
-        <div class="card">
-            <div class="label">🛡️ Emergency Fund</div>
-            <div class="value orange">{{ "%.0f"|format(emergency_fund) }}%</div>
-            <div class="progress-bar"><div class="progress-fill" style="width: {{ emergency_fund }}%;"></div></div>
-        </div>
     </div>
     
-    {% if alerts %}
-    <div class="alerts"><h3>⚠️ Alerts</h3><ul>{% for alert in alerts %}<li>• {{ alert }}</li>{% endfor %}</ul></div>
-    {% endif %}
-    
     <div class="reports">
-        <a href="{{ url_for('export_report', report_type='transactions', format='pdf') }}" class="btn btn-secondary">📄 PDF Report</a>
-        <a href="{{ url_for('export_report', report_type='transactions', format='excel') }}" class="btn btn-secondary">📊 Excel Export</a>
+        <a href="{{ url_for('export_report', format='pdf') }}" class="btn btn-secondary">📄 PDF Report</a>
+        <a href="{{ url_for('export_report', format='excel') }}" class="btn btn-secondary">📊 Excel Export</a>
     </div>
     
     <div class="footer">BuSystem v1.0 • Every Franc Must Have a Job • {{ user.currency }}</div>
