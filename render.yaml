@@ -6,10 +6,11 @@ services:
       pip install --upgrade pip
       pip install -r requirements.txt
       flask init-db
+      python fix_db.py || true
     startCommand: gunicorn app:app
     envVars:
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_ijc8mWwoCz2D@ep-noisy-frost-ato3kdpv-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require
+        value: postgresql://neondb_owner:npg_ijc8mWwoCz2D@ep-noisy-flame-ato3kdpv-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require
       - key: SECRET_KEY
         generateValue: true
     autoDeploy: true

@@ -9,7 +9,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, text
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -36,7 +36,7 @@ login_manager.login_view = 'login'
 CORS(app)
 
 # ============================
-# DATABASE MODELS
+# DATABASE MODELS (Fixed - no full_name)
 # ============================
 
 class User(UserMixin, db.Model):
@@ -44,7 +44,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120))
-    full_name = db.Column(db.String(100))
+    password_hash = db.Column(db.String(200), nullable=False)
     currency = db.Column(db.String(10), default='FCFA')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
@@ -340,7 +340,6 @@ def dashboard():
             total_roi = (total_profit / total_capital) * 100
     
     active_livestock = Livestock.query.filter_by(user_id=user_id, status='Active').count()
-    ready_livestock = Livestock.query.filter(Livestock.user_id == user_id, Livestock.status == 'Active', Livestock.expected_sell_date <= today).count()
     
     active_goals = Goal.query.filter_by(user_id=user_id, status='Active').all()
     avg_goal_progress = sum(g.progress for g in active_goals) / len(active_goals) if active_goals else 0
@@ -368,7 +367,6 @@ def dashboard():
         monthly_expenses=monthly_expenses,
         total_investments=total_investments,
         active_livestock=active_livestock,
-        ready_livestock=ready_livestock,
         roi=total_roi,
         goal_progress=avg_goal_progress,
         emergency_fund=emergency_fund_ratio,
@@ -860,7 +858,7 @@ def rules():
 def init_db():
     db.create_all()
     if not User.query.filter_by(username='MCM').first():
-        user = User(username='MCM', full_name='System Administrator', currency='FCFA')
+        user = User(username='MCM', currency='FCFA')
         user.set_password('0880Mcm+_+')
         db.session.add(user)
         db.session.commit()
