@@ -21,6 +21,8 @@
         .btn-success:hover { background: #27ae60; }
         .btn-warning { background: #f39c12; color: #fff; }
         .btn-warning:hover { background: #e67e22; }
+        .btn-danger { background: #ff4757; color: #fff; }
+        .btn-danger:hover { background: #ff6b81; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a2a3f; padding: 12px; text-align: left; color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
@@ -45,6 +47,8 @@
         h2 { color: #00d4ff; margin: 20px 0; }
         .clickable-row { cursor: pointer; }
         .clickable-row:hover { background: #1a2a3f; }
+        .action-buttons { display: flex; gap: 5px; flex-wrap: wrap; }
+        .action-buttons .btn { padding: 4px 12px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -109,7 +113,7 @@
                     <th>Current</th>
                     <th>Progress</th>
                     <th>Status</th>
-                    <th>Action</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="goalsList">
@@ -171,7 +175,10 @@
                         </td>
                         <td><span class="badge ${g.status.toLowerCase()}">${g.status}</span></td>
                         <td>
-                            <button class="btn btn-warning" style="padding:4px 12px; font-size:12px;" onclick="event.stopPropagation();openUpdateModal(${g.id}, '${g.name}', ${g.current_amount})">✏️ Update</button>
+                            <div class="action-buttons">
+                                <button class="btn btn-warning" onclick="event.stopPropagation();openUpdateModal(${g.id}, '${g.name}', ${g.current_amount})">✏️ Update</button>
+                                <button class="btn btn-danger" onclick="event.stopPropagation();deleteGoal(${g.id})">🗑️ Delete</button>
+                            </div>
                         </td>
                     </tr>
                 `).join('');
@@ -207,6 +214,12 @@
             closeModal();
             loadGoals();
         });
+    }
+    
+    function deleteGoal(id) {
+        if (!confirm('Delete this goal permanently?')) return;
+        fetch(`/api/goals/${id}`, { method: 'DELETE' })
+            .then(() => loadGoals());
     }
     
     function addGoal() {

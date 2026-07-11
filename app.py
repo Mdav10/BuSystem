@@ -219,7 +219,9 @@ class Budget(db.Model):
             'type': self.type,
             'expected_amount': self.expected_amount,
             'actual_amount': self.actual_amount,
-            'difference': self.difference
+            'difference': self.difference,
+            'month': self.month,
+            'year': self.year
         }
 
 class Notification(db.Model):
@@ -478,7 +480,7 @@ def dashboard():
     )
 
 # ============================
-# API ENDPOINTS
+# TRANSACTIONS API
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST'])
@@ -543,7 +545,7 @@ def delete_transaction(id):
     return jsonify({'status': 'success'})
 
 # ============================
-# INVESTMENTS (with DELETE)
+# INVESTMENTS API (with DELETE)
 # ============================
 
 @app.route('/api/investments', methods=['GET', 'POST'])
@@ -603,7 +605,7 @@ def delete_investment(id):
     return jsonify({'status': 'success'})
 
 # ============================
-# LIVESTOCK (with DELETE)
+# LIVESTOCK API (with DELETE)
 # ============================
 
 @app.route('/api/livestock', methods=['GET', 'POST'])
@@ -643,7 +645,7 @@ def delete_livestock(id):
     return jsonify({'status': 'success'})
 
 # ============================
-# ASSETS (with DELETE)
+# ASSETS API (with DELETE)
 # ============================
 
 @app.route('/api/assets', methods=['GET', 'POST'])
@@ -682,7 +684,7 @@ def delete_asset(id):
     return jsonify({'status': 'success'})
 
 # ============================
-# GOALS
+# GOALS API (with DELETE)
 # ============================
 
 @app.route('/api/goals', methods=['GET', 'POST', 'PUT'])
@@ -722,15 +724,25 @@ def api_goals():
         
         return jsonify({'error': 'No update data'}), 400
 
+@app.route('/api/goals/<int:id>', methods=['DELETE'])
+@login_required
+def delete_goal(id):
+    goal = Goal.query.get_or_404(id)
+    if goal.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    db.session.delete(goal)
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
 # ============================
-# BUDGET
+# BUDGET API (with DELETE + Monthly Summary)
 # ============================
 
 @app.route('/api/budget', methods=['GET', 'POST'])
 @login_required
 def api_budget():
-    today = datetime.now()
     if request.method == 'GET':
+        today = datetime.now()
         budgets = Budget.query.filter_by(
             user_id=current_user.id,
             month=today.month,
@@ -743,8 +755,8 @@ def api_budget():
         budget = Budget.query.filter_by(
             user_id=current_user.id,
             category=data.get('category'),
-            month=today.month,
-            year=today.year
+            month=data.get('month'),
+            year=data.get('year')
         ).first()
         
         if budget:
@@ -755,15 +767,13 @@ def api_budget():
                 category=data.get('category'),
                 type=data.get('type'),
                 expected_amount=float(data.get('expected_amount')),
-                month=today.month,
-                year=today.year
+                month=data.get('month'),
+                year=data.get('year')
             )
             db.session.add(budget)
         
         db.session.commit()
         return jsonify({'status': 'success'})
-
-
 
 @app.route('/api/budget/monthly')
 @login_required
@@ -771,7 +781,6 @@ def get_monthly_budget_summary():
     """Get monthly budget summary for all months"""
     user_id = current_user.id
     
-    # Get all budgets grouped by month/year
     results = db.session.query(
         Budget.month,
         Budget.year,
@@ -802,7 +811,7 @@ def delete_budget(id):
     return jsonify({'status': 'success'})
 
 # ============================
-# RULES (with DELETE)
+# RULES API (with DELETE)
 # ============================
 
 @app.route('/api/rules', methods=['GET', 'POST'])
@@ -887,7 +896,7 @@ def check_rules():
     return jsonify(alerts)
 
 # ============================
-# RATIOS
+# RATIOS API
 # ============================
 
 @app.route('/api/ratios')
@@ -922,7 +931,7 @@ def calculate_ratios():
     })
 
 # ============================
-# ANALYTICS
+# ANALYTICS API
 # ============================
 
 @app.route('/api/analytics/<chart_type>')
@@ -951,7 +960,7 @@ def get_analytics(chart_type):
     return jsonify([])
 
 # ============================
-# DECISIONS
+# DECISIONS API
 # ============================
 
 @app.route('/api/decisions')
@@ -1033,7 +1042,7 @@ def get_decisions():
     return jsonify(recommendations[:8])
 
 # ============================
-# RISK
+# RISK API
 # ============================
 
 @app.route('/api/risk')
@@ -1066,7 +1075,7 @@ def get_risk_analysis():
     })
 
 # ============================
-# TIMELINE
+# TIMELINE API
 # ============================
 
 @app.route('/api/timeline')
@@ -1115,7 +1124,20 @@ def get_timeline():
     return jsonify(events[:100])
 
 # ============================
-# REPORTS (FULL PDF WITH ALL DATA)
+# NOTIFICATIONS API
+# ============================
+
+@app.route('/api/notifications')
+@login_required
+def get_notifications():
+    notifications = Notification.query.filter_by(
+        user_id=current_user.id,
+        is_read=False
+    ).order_by(Notification.created_at.desc()).limit(20).all()
+    return jsonify([n.to_dict() for n in notifications])
+
+# ============================
+# REPORTS API (FULL PDF WITH ALL DATA)
 # ============================
 
 @app.route('/api/reports/<report_type>')
@@ -1169,7 +1191,7 @@ def export_report(report_type, format):
     user_id = current_user.id
     
     if format == 'pdf':
-        from reportlab.lib.pagesizes import A4, letter
+        from reportlab.lib.pagesizes import A4
         from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib import colors
@@ -1200,6 +1222,8 @@ def export_report(report_type, format):
         total_investments = db.session.query(func.sum(Investment.capital)).filter(
             Investment.user_id == user_id, Investment.status == 'Running'
         ).scalar() or 0
+        total_livestock = Livestock.query.filter_by(user_id=user_id).count()
+        active_goals = Goal.query.filter_by(user_id=user_id, status='Active').count()
         
         summary_data = [
             ['Metric', 'Amount (FCFA)'],
@@ -1208,7 +1232,9 @@ def export_report(report_type, format):
             ['Net Cash', f"{total_income - total_expenses:,.0f}"],
             ['Total Assets', f"{total_assets:,.0f}"],
             ['Total Investments', f"{total_investments:,.0f}"],
-            ['Net Worth', f"{total_assets + total_income - total_expenses:,.0f}"]
+            ['Net Worth', f"{total_assets + total_income - total_expenses:,.0f}"],
+            ['Total Livestock', f"{total_livestock}"],
+            ['Active Goals', f"{active_goals}"]
         ]
         summary_table = Table(summary_data, colWidths=[3*inch, 3*inch])
         summary_table.setStyle(TableStyle([
@@ -1492,24 +1518,30 @@ def export_report(report_type, format):
             worksheet5.write(row, 3, g.progress)
             worksheet5.write(row, 4, g.status)
         
+        # Budget sheet
+        worksheet6 = workbook.add_worksheet('Budget')
+        headers6 = ['Category', 'Type', 'Expected', 'Actual', 'Difference']
+        for col, header in enumerate(headers6):
+            worksheet6.write(0, col, header)
+        
+        today = datetime.now()
+        budgets = Budget.query.filter_by(
+            user_id=user_id,
+            month=today.month,
+            year=today.year
+        ).all()
+        for row, b in enumerate(budgets, 1):
+            worksheet6.write(row, 0, b.category)
+            worksheet6.write(row, 1, b.type)
+            worksheet6.write(row, 2, b.expected_amount)
+            worksheet6.write(row, 3, b.actual_amount)
+            worksheet6.write(row, 4, b.difference)
+        
         workbook.close()
         output.seek(0)
         return send_file(output, as_attachment=True, download_name=f"BuSystem_Full_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx")
     
     return jsonify({'error': 'Invalid format'}), 400
-
-# ============================
-# NOTIFICATIONS
-# ============================
-
-@app.route('/api/notifications')
-@login_required
-def get_notifications():
-    notifications = Notification.query.filter_by(
-        user_id=current_user.id,
-        is_read=False
-    ).order_by(Notification.created_at.desc()).limit(20).all()
-    return jsonify([n.to_dict() for n in notifications])
 
 # ============================
 # PAGE ROUTES
