@@ -37,7 +37,7 @@ class User(UserMixin, db.Model):
     currency = db.Column(db.String(10), default='FCFA')
     email = db.Column(db.String(120), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_login = db.Column(db.DateTime)
+ 
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
