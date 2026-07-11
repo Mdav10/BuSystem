@@ -1,6 +1,149 @@
 <!DOCTYPE html>
 <html>
-<head><title>BuSystem - Budget</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#0a0e17;color:#e0e6ed;padding:20px}.container{max-width:1400px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:center;padding:20px 0;border-bottom:1px solid #1a2332}.logo{font-size:28px;font-weight:bold;color:#00d4ff}.back{color:#7a8ba3;text-decoration:none;padding:8px 16px;background:#1a2a3f;border-radius:8px}.content{margin-top:30px;padding:30px;background:#111a2b;border-radius:16px;border:1px solid #1a2a3f;min-height:300px}.footer{margin-top:30px;text-align:center;color:#4a5a6f;border-top:1px solid #1a2332;padding-top:15px;font-size:12px}h2{color:#00d4ff;margin-bottom:15px}.sub{color:#7a8ba3}</style></head>
-<body><div class="container"><div class="header"><div class="logo">💰 BuSystem</div><a href="/dashboard" class="back">← Dashboard</a></div><div class="content"><h2>📋 Budget</h2><p class="sub">Module ready. Use API endpoints.</p><p style="color:#4a5a6f;margin-top:10px;">GET /api/budget</p></div><div class="footer">Every Franc Must Have a Job</div></div></body></html>
+<head>
+    <title>BuSystem - Budget</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
+        .logo { font-size: 28px; font-weight: bold; color: #00d4ff; }
+        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
+        .form-card { background: #111a2b; border-radius: 16px; padding: 24px; border: 1px solid #1a2a3f; margin: 20px 0; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #7a8ba3; font-size: 13px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
+        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn:hover { background: #00ff88; transform: scale(1.03); }
+        .table-wrap { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1a2a3f; padding: 12px; text-align: left; color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
+        td { padding: 10px 12px; border-bottom: 1px solid #1a2332; font-size: 14px; }
+        tr:hover { background: #0f1a2b; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+        .over { color: #ff4757; }
+        .under { color: #2ecc71; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo">💰 BuSystem</div>
+        <a href="/dashboard" class="back">← Dashboard</a>
+    </div>
+    
+    <h2 style="color:#00d4ff; margin: 20px 0;">📋 Budget Manager</h2>
+    
+    <div class="form-card">
+        <h3 style="color: #fff; margin-bottom: 15px;">Set Monthly Budget</h3>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Category</label>
+                <select id="budgetCategory">
+                    <option value="Food">Food</option>
+                    <option value="Internet">Internet</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Family">Family</option>
+                    <option value="Investment">Investment</option>
+                    <option value="Emergency">Emergency</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <select id="budgetType">
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                    <option value="investment">Investment</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Expected Amount (FCFA)</label>
+                <input type="number" id="budgetExpected" placeholder="Enter amount" step="0.01">
+            </div>
+        </div>
+        <button class="btn" onclick="setBudget()">💰 Set Budget</button>
+    </div>
+    
+    <div class="table-wrap">
+        <h3 style="color: #fff; margin-bottom: 10px;">Monthly Budget</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Type</th>
+                    <th>Expected</th>
+                    <th>Actual</th>
+                    <th>Difference</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="budgetList">
+                <tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No budgets set.</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="footer" style="margin-top:30px; text-align:center; color:#4a5a6f; border-top:1px solid #1a2332; padding-top:15px;">
+        Every Franc Must Have a Job
+    </div>
+</div>
+
+<script>
+    loadBudget();
+    
+    function loadBudget() {
+        fetch('/api/budget')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('budgetList');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No budgets set.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(b => {
+                    const diff = b.actual_amount - b.expected_amount;
+                    const status = diff > 0 ? 'Over' : diff < 0 ? 'Under' : 'On Track';
+                    const cls = diff > 0 ? 'over' : diff < 0 ? 'under' : '';
+                    return `
+                        <tr>
+                            <td><strong>${b.category}</strong></td>
+                            <td>${b.type}</td>
+                            <td>${Number(b.expected_amount).toLocaleString()} FCFA</td>
+                            <td>${Number(b.actual_amount).toLocaleString()} FCFA</td>
+                            <td class="${cls}">${diff > 0 ? '+' : ''}${Number(diff).toLocaleString()} FCFA</td>
+                            <td><span class="${cls}">${status}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            });
+    }
+    
+    function setBudget() {
+        const category = document.getElementById('budgetCategory').value;
+        const type = document.getElementById('budgetType').value;
+        const expected_amount = document.getElementById('budgetExpected').value;
+        
+        if (!expected_amount || expected_amount <= 0) {
+            alert('Please enter a valid amount');
+            return;
+        }
+        
+        fetch('/api/budget', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category, type, expected_amount: parseFloat(expected_amount) })
+        })
+        .then(() => {
+            document.getElementById('budgetExpected').value = '';
+            loadBudget();
+        });
+    }
+</script>
+</body>
+</html>

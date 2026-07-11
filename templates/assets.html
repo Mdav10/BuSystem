@@ -1,6 +1,185 @@
 <!DOCTYPE html>
 <html>
-<head><title>BuSystem - Assets</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#0a0e17;color:#e0e6ed;padding:20px}.container{max-width:1400px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:center;padding:20px 0;border-bottom:1px solid #1a2332}.logo{font-size:28px;font-weight:bold;color:#00d4ff}.back{color:#7a8ba3;text-decoration:none;padding:8px 16px;background:#1a2a3f;border-radius:8px}.content{margin-top:30px;padding:30px;background:#111a2b;border-radius:16px;border:1px solid #1a2a3f;min-height:300px}.footer{margin-top:30px;text-align:center;color:#4a5a6f;border-top:1px solid #1a2332;padding-top:15px;font-size:12px}h2{color:#00d4ff;margin-bottom:15px}.sub{color:#7a8ba3}</style></head>
-<body><div class="container"><div class="header"><div class="logo">💰 BuSystem</div><a href="/dashboard" class="back">← Dashboard</a></div><div class="content"><h2>📋 Assets</h2><p class="sub">Module ready. Use API endpoints.</p><p style="color:#4a5a6f;margin-top:10px;">GET /api/assets</p></div><div class="footer">Every Franc Must Have a Job</div></div></body></html>
+<head>
+    <title>BuSystem - Assets</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
+        .logo { font-size: 28px; font-weight: bold; color: #00d4ff; }
+        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
+        .form-card { background: #111a2b; border-radius: 16px; padding: 24px; border: 1px solid #1a2a3f; margin: 20px 0; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #7a8ba3; font-size: 13px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
+        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn:hover { background: #00ff88; transform: scale(1.03); }
+        .table-wrap { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1a2a3f; padding: 12px; text-align: left; color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
+        td { padding: 10px 12px; border-bottom: 1px solid #1a2332; font-size: 14px; }
+        tr:hover { background: #0f1a2b; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: #111a2b; padding: 15px; border-radius: 12px; border: 1px solid #1a2a3f; }
+        .stat-card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; }
+        .stat-card .value { font-size: 20px; font-weight: bold; margin-top: 5px; }
+        .stat-card .value.green { color: #2ecc71; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo">💰 BuSystem</div>
+        <a href="/dashboard" class="back">← Dashboard</a>
+    </div>
+    
+    <h2 style="color:#00d4ff; margin: 20px 0;">🏦 Asset Manager</h2>
+    
+    <div class="stats">
+        <div class="stat-card"><div class="label">Total Assets Value</div><div class="value green" id="totalAssets">0</div></div>
+        <div class="stat-card"><div class="label">Total Assets Count</div><div class="value" id="assetCount">0</div></div>
+    </div>
+    
+    <div class="form-card">
+        <h3 style="color: #fff; margin-bottom: 15px;">Add Asset</h3>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="assetName" placeholder="e.g., Land, Shop, Phone">
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select id="assetCategory">
+                    <option value="Cash">Cash</option>
+                    <option value="Land">Land</option>
+                    <option value="Building">Building</option>
+                    <option value="Vehicle">Vehicle</option>
+                    <option value="Livestock">Livestock</option>
+                    <option value="Equipment">Equipment</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Purchase Price (FCFA)</label>
+                <input type="number" id="assetPrice" placeholder="Enter amount" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Current Value (FCFA)</label>
+                <input type="number" id="assetValue" placeholder="Current value" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Location</label>
+                <input type="text" id="assetLocation" placeholder="Optional">
+            </div>
+            <div class="form-group">
+                <label>Condition</label>
+                <select id="assetCondition">
+                    <option value="Excellent">Excellent</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Poor">Poor</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn" onclick="addAsset()">➕ Add Asset</button>
+    </div>
+    
+    <div class="table-wrap">
+        <h3 style="color: #fff; margin-bottom: 10px;">Your Assets</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Purchase Price</th>
+                    <th>Current Value</th>
+                    <th>Location</th>
+                    <th>Condition</th>
+                </tr>
+            </thead>
+            <tbody id="assetsList">
+                <tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No assets yet.</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="footer" style="margin-top:30px; text-align:center; color:#4a5a6f; border-top:1px solid #1a2332; padding-top:15px;">
+        Every Franc Must Have a Job
+    </div>
+</div>
+
+<script>
+    loadAssets();
+    
+    function loadAssets() {
+        fetch('/api/assets')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('assetsList');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No assets yet.</td></tr>';
+                    updateStats([]);
+                    return;
+                }
+                tbody.innerHTML = data.map(a => `
+                    <tr>
+                        <td><strong>${a.name}</strong></td>
+                        <td>${a.category}</td>
+                        <td>${Number(a.purchase_price).toLocaleString()} FCFA</td>
+                        <td>${Number(a.current_value).toLocaleString()} FCFA</td>
+                        <td>${a.location || '-'}</td>
+                        <td><span class="badge">${a.condition}</span></td>
+                    </tr>
+                `).join('');
+                updateStats(data);
+            });
+    }
+    
+    function updateStats(data) {
+        let total = 0;
+        data.forEach(a => total += Number(a.current_value));
+        document.getElementById('totalAssets').textContent = total.toLocaleString() + ' FCFA';
+        document.getElementById('assetCount').textContent = data.length;
+    }
+    
+    function addAsset() {
+        const name = document.getElementById('assetName').value;
+        const category = document.getElementById('assetCategory').value;
+        const purchase_price = document.getElementById('assetPrice').value;
+        const current_value = document.getElementById('assetValue').value;
+        const location = document.getElementById('assetLocation').value;
+        const condition = document.getElementById('assetCondition').value;
+        
+        if (!name || !purchase_price || purchase_price <= 0) {
+            alert('Please enter name and valid purchase price');
+            return;
+        }
+        
+        fetch('/api/assets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                name, category, 
+                purchase_price: parseFloat(purchase_price), 
+                current_value: parseFloat(current_value) || parseFloat(purchase_price),
+                location, condition 
+            })
+        })
+        .then(res => res.json())
+        .then(() => {
+            document.getElementById('assetName').value = '';
+            document.getElementById('assetPrice').value = '';
+            document.getElementById('assetValue').value = '';
+            document.getElementById('assetLocation').value = '';
+            loadAssets();
+        });
+    }
+</script>
+</body>
+</html>

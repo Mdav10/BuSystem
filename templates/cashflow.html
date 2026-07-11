@@ -1,6 +1,204 @@
 <!DOCTYPE html>
 <html>
-<head><title>BuSystem - Cashflow</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#0a0e17;color:#e0e6ed;padding:20px}.container{max-width:1400px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:center;padding:20px 0;border-bottom:1px solid #1a2332}.logo{font-size:28px;font-weight:bold;color:#00d4ff}.back{color:#7a8ba3;text-decoration:none;padding:8px 16px;background:#1a2a3f;border-radius:8px}.content{margin-top:30px;padding:30px;background:#111a2b;border-radius:16px;border:1px solid #1a2a3f;min-height:300px}.footer{margin-top:30px;text-align:center;color:#4a5a6f;border-top:1px solid #1a2332;padding-top:15px;font-size:12px}h2{color:#00d4ff;margin-bottom:15px}.sub{color:#7a8ba3}</style></head>
-<body><div class="container"><div class="header"><div class="logo">💰 BuSystem</div><a href="/dashboard" class="back">← Dashboard</a></div><div class="content"><h2>📋 Cashflow</h2><p class="sub">Module ready. Use API endpoints.</p><p style="color:#4a5a6f;margin-top:10px;">GET /api/cashflow</p></div><div class="footer">Every Franc Must Have a Job</div></div></body></html>
+<head>
+    <title>BuSystem - Cash Flow</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
+        .logo { font-size: 28px; font-weight: bold; color: #00d4ff; }
+        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
+        .form-card { background: #111a2b; border-radius: 16px; padding: 24px; border: 1px solid #1a2a3f; margin: 20px 0; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #7a8ba3; font-size: 13px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
+        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn:hover { background: #00ff88; transform: scale(1.03); }
+        .btn-danger { background: #ff4757; color: #fff; }
+        .btn-danger:hover { background: #ff6b81; }
+        .table-wrap { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1a2a3f; padding: 12px; text-align: left; color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
+        td { padding: 10px 12px; border-bottom: 1px solid #1a2332; font-size: 14px; }
+        tr:hover { background: #0f1a2b; }
+        .status { display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 12px; }
+        .status.income { background: #1a3a2a; color: #2ecc71; }
+        .status.expense { background: #3a1a1a; color: #ff4757; }
+        .amount-positive { color: #2ecc71; }
+        .amount-negative { color: #ff4757; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: #111a2b; padding: 15px; border-radius: 12px; border: 1px solid #1a2a3f; }
+        .stat-card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; }
+        .stat-card .value { font-size: 20px; font-weight: bold; margin-top: 5px; }
+        .stat-card .value.green { color: #2ecc71; }
+        .stat-card .value.red { color: #ff4757; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo">💰 BuSystem</div>
+        <a href="/dashboard" class="back">← Dashboard</a>
+    </div>
+    
+    <h2 style="color:#00d4ff; margin: 20px 0;">💰 Cash Flow Manager</h2>
+    
+    <div class="stats" id="stats">
+        <div class="stat-card"><div class="label">Total Income</div><div class="value green" id="totalIncome">0</div></div>
+        <div class="stat-card"><div class="label">Total Expenses</div><div class="value red" id="totalExpenses">0</div></div>
+        <div class="stat-card"><div class="label">Balance</div><div class="value" id="balance">0</div></div>
+    </div>
+    
+    <div class="form-card">
+        <h3 style="color: #fff; margin-bottom: 15px;">Add Transaction</h3>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Type</label>
+                <select id="txType">
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select id="txCategory">
+                    <option value="Salary">Salary</option>
+                    <option value="Freelance">Freelance</option>
+                    <option value="Livestock">Livestock</option>
+                    <option value="Shop">Shop</option>
+                    <option value="Farming">Farming</option>
+                    <option value="Food">Food</option>
+                    <option value="Internet">Internet</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Family">Family</option>
+                    <option value="Investment">Investment</option>
+                    <option value="Emergency">Emergency</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Amount (FCFA)</label>
+                <input type="number" id="txAmount" placeholder="Enter amount" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="txDate">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Description</label>
+                <input type="text" id="txDescription" placeholder="Optional description">
+            </div>
+        </div>
+        <button class="btn" onclick="addTransaction()">➕ Add Transaction</button>
+    </div>
+    
+    <div class="table-wrap">
+        <h3 style="color: #fff; margin-bottom: 10px;">Recent Transactions</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="transactionsList">
+                <tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No transactions yet. Add one above!</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="footer" style="margin-top:30px; text-align:center; color:#4a5a6f; border-top:1px solid #1a2332; padding-top:15px;">
+        Every Franc Must Have a Job
+    </div>
+</div>
+
+<script>
+    // Set default date to today
+    document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+    
+    // Load transactions on page load
+    loadTransactions();
+    
+    function loadTransactions() {
+        fetch('/api/transactions')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('transactionsList');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No transactions yet. Add one above!</td></tr>';
+                    updateStats([]);
+                    return;
+                }
+                tbody.innerHTML = data.map(t => `
+                    <tr>
+                        <td>${t.date ? t.date.split(' ')[0] : ''}</td>
+                        <td><span class="status ${t.type}">${t.type}</span></td>
+                        <td>${t.category}</td>
+                        <td class="${t.type === 'income' ? 'amount-positive' : 'amount-negative'}">${t.type === 'income' ? '+' : '-'} ${Number(t.amount).toLocaleString()} FCFA</td>
+                        <td>${t.description || '-'}</td>
+                        <td><button class="btn btn-danger" style="padding:4px 12px; font-size:12px;" onclick="deleteTransaction(${t.id})">Delete</button></td>
+                    </tr>
+                `).join('');
+                updateStats(data);
+            })
+            .catch(err => console.error('Error:', err));
+    }
+    
+    function updateStats(data) {
+        let income = 0, expenses = 0;
+        data.forEach(t => {
+            if (t.type === 'income') income += Number(t.amount);
+            else expenses += Number(t.amount);
+        });
+        document.getElementById('totalIncome').textContent = income.toLocaleString() + ' FCFA';
+        document.getElementById('totalExpenses').textContent = expenses.toLocaleString() + ' FCFA';
+        const balance = income - expenses;
+        const el = document.getElementById('balance');
+        el.textContent = balance.toLocaleString() + ' FCFA';
+        el.className = 'value ' + (balance >= 0 ? 'green' : 'red');
+    }
+    
+    function addTransaction() {
+        const type = document.getElementById('txType').value;
+        const category = document.getElementById('txCategory').value;
+        const amount = document.getElementById('txAmount').value;
+        const date = document.getElementById('txDate').value;
+        const description = document.getElementById('txDescription').value;
+        
+        if (!amount || amount <= 0) {
+            alert('Please enter a valid amount');
+            return;
+        }
+        
+        fetch('/api/transactions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, category, amount: parseFloat(amount), date, description })
+        })
+        .then(res => res.json())
+        .then(() => {
+            document.getElementById('txAmount').value = '';
+            document.getElementById('txDescription').value = '';
+            loadTransactions();
+        })
+        .catch(err => console.error('Error:', err));
+    }
+    
+    function deleteTransaction(id) {
+        if (!confirm('Delete this transaction?')) return;
+        fetch(`/api/transactions/${id}`, { method: 'DELETE' })
+            .then(() => loadTransactions())
+            .catch(err => console.error('Error:', err));
+    }
+</script>
+</body>
+</html>

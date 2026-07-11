@@ -1088,6 +1088,16 @@ def add_rule():
     db.session.add(rule)
     db.session.commit()
     return jsonify({'status': 'success', 'id': rule.id})
+@app.route('/api/transactions/<int:id>', methods=['DELETE'])
+@login_required
+def delete_transaction(id):
+    transaction = Transaction.query.get_or_404(id)
+    if transaction.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    db.session.delete(transaction)
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
 
 # ============================
 # RUN APP

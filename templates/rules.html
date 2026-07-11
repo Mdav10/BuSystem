@@ -1,6 +1,179 @@
 <!DOCTYPE html>
 <html>
-<head><title>BuSystem - Rules</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#0a0e17;color:#e0e6ed;padding:20px}.container{max-width:1400px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:center;padding:20px 0;border-bottom:1px solid #1a2332}.logo{font-size:28px;font-weight:bold;color:#00d4ff}.back{color:#7a8ba3;text-decoration:none;padding:8px 16px;background:#1a2a3f;border-radius:8px}.content{margin-top:30px;padding:30px;background:#111a2b;border-radius:16px;border:1px solid #1a2a3f;min-height:300px}.footer{margin-top:30px;text-align:center;color:#4a5a6f;border-top:1px solid #1a2332;padding-top:15px;font-size:12px}h2{color:#00d4ff;margin-bottom:15px}.sub{color:#7a8ba3}</style></head>
-<body><div class="container"><div class="header"><div class="logo">💰 BuSystem</div><a href="/dashboard" class="back">← Dashboard</a></div><div class="content"><h2>📋 Rules</h2><p class="sub">Module ready. Use API endpoints.</p><p style="color:#4a5a6f;margin-top:10px;">GET /api/rules</p></div><div class="footer">Every Franc Must Have a Job</div></div></body></html>
+<head>
+    <title>BuSystem - Rules</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
+        .logo { font-size: 28px; font-weight: bold; color: #00d4ff; }
+        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
+        .form-card { background: #111a2b; border-radius: 16px; padding: 24px; border: 1px solid #1a2a3f; margin: 20px 0; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #7a8ba3; font-size: 13px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
+        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn:hover { background: #00ff88; transform: scale(1.03); }
+        .table-wrap { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1a2a3f; padding: 12px; text-align: left; color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
+        td { padding: 10px 12px; border-bottom: 1px solid #1a2332; font-size: 14px; }
+        tr:hover { background: #0f1a2b; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+        .badge { display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 12px; background: #1a3a2a; color: #2ecc71; }
+        h2 { color: #00d4ff; margin: 20px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo">💰 BuSystem</div>
+        <a href="/dashboard" class="back">← Dashboard</a>
+    </div>
+    
+    <h2>📏 Financial Rules Engine</h2>
+    
+    <div class="form-card">
+        <h3 style="color: #fff; margin-bottom: 15px;">Add Financial Rule</h3>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Rule Name</label>
+                <input type="text" id="ruleName" placeholder="e.g., Investment Limit">
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select id="ruleCategory">
+                    <option value="investment">Investment</option>
+                    <option value="spending">Spending</option>
+                    <option value="emergency">Emergency</option>
+                    <option value="savings">Savings</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Condition Type</label>
+                <select id="ruleConditionType">
+                    <option value="percentage">Percentage</option>
+                    <option value="amount">Amount</option>
+                    <option value="months">Months</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Condition Value</label>
+                <input type="number" id="ruleValue" placeholder="e.g., 40" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Condition Operator</label>
+                <select id="ruleOperator">
+                    <option value=">">Greater than (>)</option>
+                    <option value="<">Less than (<)</option>
+                    <option value=">=">Greater or equal (>=)</option>
+                    <option value="<=">Less or equal (<=)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Action Message</label>
+                <input type="text" id="ruleMessage" placeholder="Warning message">
+            </div>
+        </div>
+        <button class="btn" onclick="addRule()">➕ Add Rule</button>
+    </div>
+    
+    <div class="table-wrap">
+        <h3 style="color: #fff; margin-bottom: 10px;">Your Financial Rules</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Condition</th>
+                    <th>Message</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="rulesList">
+                <tr><td colspan="5" style="text-align:center; color:#4a5a6f;">No rules set.</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div style="margin-top:20px;">
+        <button class="btn" onclick="checkRules()">🔍 Check Rules</button>
+        <div id="ruleResults" style="margin-top:15px;"></div>
+    </div>
+    
+    <div class="footer" style="margin-top:30px; text-align:center; color:#4a5a6f; border-top:1px solid #1a2332; padding-top:15px;">
+        Every Franc Must Have a Job
+    </div>
+</div>
+
+<script>
+    loadRules();
+    
+    function loadRules() {
+        fetch('/api/rules')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('rulesList');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#4a5a6f;">No rules set.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(r => `
+                    <tr>
+                        <td><strong>${r.name}</strong></td>
+                        <td>${r.category}</td>
+                        <td>${r.condition_type} ${r.condition_operator} ${r.condition_value}</td>
+                        <td>${r.action_message || '-'}</td>
+                        <td><span class="badge">Active</span></td>
+                    </tr>
+                `).join('');
+            });
+    }
+    
+    function addRule() {
+        const name = document.getElementById('ruleName').value;
+        const category = document.getElementById('ruleCategory').value;
+        const condition_type = document.getElementById('ruleConditionType').value;
+        const condition_value = document.getElementById('ruleValue').value;
+        const condition_operator = document.getElementById('ruleOperator').value;
+        const action_message = document.getElementById('ruleMessage').value;
+        
+        if (!name || !condition_value) {
+            alert('Please enter rule name and condition value');
+            return;
+        }
+        
+        fetch('/api/rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, category, condition_type, condition_value: parseFloat(condition_value), condition_operator, action_message })
+        })
+        .then(() => {
+            document.getElementById('ruleName').value = '';
+            document.getElementById('ruleValue').value = '';
+            document.getElementById('ruleMessage').value = '';
+            loadRules();
+        });
+    }
+    
+    function checkRules() {
+        fetch('/api/rules/check')
+            .then(res => res.json())
+            .then(data => {
+                const container = document.getElementById('ruleResults');
+                if (data.length === 0) {
+                    container.innerHTML = '<div style="color:#2ecc71; padding:15px; background:#0f1a2b; border-radius:8px;">✅ All rules passed!</div>';
+                    return;
+                }
+                container.innerHTML = data.map(msg => `
+                    <div style="color:#ff4757; padding:10px; background:#1a0e0e; border-radius:8px; margin:5px 0;">⚠️ ${msg}</div>
+                `).join('');
+            });
+    }
+</script>
+</body>
+</html>
