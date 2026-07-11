@@ -17,6 +17,10 @@
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
         .btn { background: #00d4ff; color: #0a0e17; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .btn:hover { background: #00ff88; transform: scale(1.03); }
+        .btn-danger { background: #ff4757; color: #fff; }
+        .btn-danger:hover { background: #ff6b81; }
+        .btn-warning { background: #f39c12; color: #fff; }
+        .btn-warning:hover { background: #e67e22; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a2a3f; padding: 12px; text-align: left; color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
@@ -26,6 +30,24 @@
         @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
         .over { color: #ff4757; }
         .under { color: #2ecc71; }
+        .neutral { color: #f39c12; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: #111a2b; padding: 15px; border-radius: 12px; border: 1px solid #1a2a3f; }
+        .stat-card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; }
+        .stat-card .value { font-size: 20px; font-weight: bold; margin-top: 5px; }
+        .stat-card .value.green { color: #2ecc71; }
+        .stat-card .value.red { color: #ff4757; }
+        .stat-card .value.orange { color: #f39c12; }
+        h2 { color: #00d4ff; margin: 20px 0; }
+        h3 { color: #fff; margin-bottom: 15px; }
+        .month-tag { display: inline-block; padding: 4px 14px; border-radius: 12px; font-size: 12px; background: #1a2a3f; color: #7a8ba3; }
+        .badge { display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 12px; }
+        .badge.over { background: #3a1a1a; color: #ff4757; }
+        .badge.under { background: #1a3a2a; color: #2ecc71; }
+        .badge.on-track { background: #1a2a3f; color: #f39c12; }
+        .action-buttons { display: flex; gap: 5px; flex-wrap: wrap; }
+        .action-buttons .btn { padding: 4px 12px; font-size: 12px; }
+        .section-title { margin-top: 30px; padding-top: 20px; border-top: 1px solid #1a2332; }
     </style>
 </head>
 <body>
@@ -35,8 +57,35 @@
         <a href="/dashboard" class="back">← Dashboard</a>
     </div>
     
-    <h2 style="color:#00d4ff; margin: 20px 0;">📋 Budget Manager</h2>
+    <h2>📋 Budget Manager</h2>
     
+    <!-- Monthly Summary Stats -->
+    <div class="stats" id="summaryStats">
+        <div class="stat-card"><div class="label">Total Budgeted</div><div class="value green" id="totalBudgeted">0 FCFA</div></div>
+        <div class="stat-card"><div class="label">Total Actual</div><div class="value" id="totalActual">0 FCFA</div></div>
+        <div class="stat-card"><div class="label">Total Difference</div><div class="value" id="totalDiff">0 FCFA</div></div>
+    </div>
+    
+    <!-- Monthly Summary Table -->
+    <div class="table-wrap">
+        <h3 style="color: #fff;">📊 Monthly Budget Summary</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Total Expected</th>
+                    <th>Total Actual</th>
+                    <th>Difference</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="monthlySummary">
+                <tr><td colspan="5" style="text-align:center; color:#4a5a6f;">No budget data available</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Add Budget Form -->
     <div class="form-card">
         <h3 style="color: #fff; margin-bottom: 15px;">Set Monthly Budget</h3>
         <div class="grid-2">
@@ -51,6 +100,8 @@
                     <option value="Emergency">Emergency</option>
                     <option value="Entertainment">Entertainment</option>
                     <option value="Utilities">Utilities</option>
+                    <option value="Education">Education</option>
+                    <option value="Health">Health</option>
                     <option value="Other">Other</option>
                 </select>
             </div>
@@ -66,25 +117,50 @@
                 <label>Expected Amount (FCFA)</label>
                 <input type="number" id="budgetExpected" placeholder="Enter amount" step="0.01">
             </div>
+            <div class="form-group">
+                <label>Month</label>
+                <select id="budgetMonth">
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Year</label>
+                <input type="number" id="budgetYear" value="2026">
+            </div>
         </div>
         <button class="btn" onclick="setBudget()">💰 Set Budget</button>
     </div>
     
-    <div class="table-wrap">
-        <h3 style="color: #fff; margin-bottom: 10px;">Monthly Budget</h3>
+    <!-- Detailed Budget Table with Delete -->
+    <div class="table-wrap section-title">
+        <h3 style="color: #fff;">📋 Detailed Budget <span style="color:#7a8ba3; font-size:12px; font-weight:normal;">(Click delete to remove)</span></h3>
         <table>
             <thead>
                 <tr>
                     <th>Category</th>
                     <th>Type</th>
+                    <th>Month</th>
+                    <th>Year</th>
                     <th>Expected</th>
                     <th>Actual</th>
                     <th>Difference</th>
                     <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody id="budgetList">
-                <tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No budgets set.</td></tr>
+                <tr><td colspan="9" style="text-align:center; color:#4a5a6f;">No budgets set.</td></tr>
             </tbody>
         </table>
     </div>
@@ -95,7 +171,14 @@
 </div>
 
 <script>
+    // Set current month and year
+    const now = new Date();
+    document.getElementById('budgetMonth').value = now.getMonth() + 1;
+    document.getElementById('budgetYear').value = now.getFullYear();
+    
+    // Load all data
     loadBudget();
+    loadMonthlySummary();
     
     function loadBudget() {
         fetch('/api/budget')
@@ -103,21 +186,71 @@
             .then(data => {
                 const tbody = document.getElementById('budgetList');
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#4a5a6f;">No budgets set.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#4a5a6f;">No budgets set.</td></tr>';
+                    updateStats(data);
                     return;
                 }
                 tbody.innerHTML = data.map(b => {
                     const diff = b.actual_amount - b.expected_amount;
                     const status = diff > 0 ? 'Over' : diff < 0 ? 'Under' : 'On Track';
-                    const cls = diff > 0 ? 'over' : diff < 0 ? 'under' : '';
+                    const cls = diff > 0 ? 'over' : diff < 0 ? 'under' : 'neutral';
+                    const badgeCls = diff > 0 ? 'over' : diff < 0 ? 'under' : 'on-track';
+                    const monthName = new Date(2026, parseInt(b.month) - 1, 1).toLocaleString('default', { month: 'long' });
                     return `
                         <tr>
                             <td><strong>${b.category}</strong></td>
                             <td>${b.type}</td>
+                            <td>${monthName}</td>
+                            <td>${b.year}</td>
                             <td>${Number(b.expected_amount).toLocaleString()} FCFA</td>
                             <td>${Number(b.actual_amount).toLocaleString()} FCFA</td>
                             <td class="${cls}">${diff > 0 ? '+' : ''}${Number(diff).toLocaleString()} FCFA</td>
-                            <td><span class="${cls}">${status}</span></td>
+                            <td><span class="badge ${badgeCls}">${status}</span></td>
+                            <td>
+                                <button class="btn btn-danger" style="padding:4px 12px; font-size:12px;" onclick="deleteBudget(${b.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                updateStats(data);
+            });
+    }
+    
+    function updateStats(data) {
+        let totalExpected = 0, totalActual = 0;
+        data.forEach(b => {
+            totalExpected += Number(b.expected_amount);
+            totalActual += Number(b.actual_amount);
+        });
+        const totalDiff = totalActual - totalExpected;
+        document.getElementById('totalBudgeted').textContent = totalExpected.toLocaleString() + ' FCFA';
+        document.getElementById('totalActual').textContent = totalActual.toLocaleString() + ' FCFA';
+        const el = document.getElementById('totalDiff');
+        el.textContent = (totalDiff > 0 ? '+' : '') + totalDiff.toLocaleString() + ' FCFA';
+        el.className = 'value ' + (totalDiff > 0 ? 'red' : totalDiff < 0 ? 'green' : 'orange');
+    }
+    
+    function loadMonthlySummary() {
+        fetch('/api/budget/monthly')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('monthlySummary');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#4a5a6f;">No budget data available</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(m => {
+                    const diff = m.total_actual - m.total_expected;
+                    const status = diff > 0 ? 'Over' : diff < 0 ? 'Under' : 'On Track';
+                    const cls = diff > 0 ? 'over' : diff < 0 ? 'under' : 'neutral';
+                    const badgeCls = diff > 0 ? 'over' : diff < 0 ? 'under' : 'on-track';
+                    return `
+                        <tr>
+                            <td><strong>${m.month_name}</strong></td>
+                            <td>${Number(m.total_expected).toLocaleString()} FCFA</td>
+                            <td>${Number(m.total_actual).toLocaleString()} FCFA</td>
+                            <td class="${cls}">${diff > 0 ? '+' : ''}${Number(diff).toLocaleString()} FCFA</td>
+                            <td><span class="badge ${badgeCls}">${status}</span></td>
                         </tr>
                     `;
                 }).join('');
@@ -128,6 +261,8 @@
         const category = document.getElementById('budgetCategory').value;
         const type = document.getElementById('budgetType').value;
         const expected_amount = document.getElementById('budgetExpected').value;
+        const month = parseInt(document.getElementById('budgetMonth').value);
+        const year = parseInt(document.getElementById('budgetYear').value);
         
         if (!expected_amount || expected_amount <= 0) {
             alert('Please enter a valid amount');
@@ -137,12 +272,28 @@
         fetch('/api/budget', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ category, type, expected_amount: parseFloat(expected_amount) })
+            body: JSON.stringify({ 
+                category, 
+                type, 
+                expected_amount: parseFloat(expected_amount),
+                month,
+                year
+            })
         })
         .then(() => {
             document.getElementById('budgetExpected').value = '';
             loadBudget();
+            loadMonthlySummary();
         });
+    }
+    
+    function deleteBudget(id) {
+        if (!confirm('Delete this budget entry permanently?')) return;
+        fetch(`/api/budget/${id}`, { method: 'DELETE' })
+            .then(() => {
+                loadBudget();
+                loadMonthlySummary();
+            });
     }
 </script>
 </body>

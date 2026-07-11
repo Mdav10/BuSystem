@@ -763,6 +763,44 @@ def api_budget():
         db.session.commit()
         return jsonify({'status': 'success'})
 
+
+
+@app.route('/api/budget/monthly')
+@login_required
+def get_monthly_budget_summary():
+    """Get monthly budget summary for all months"""
+    user_id = current_user.id
+    
+    # Get all budgets grouped by month/year
+    results = db.session.query(
+        Budget.month,
+        Budget.year,
+        func.sum(Budget.expected_amount).label('total_expected'),
+        func.sum(Budget.actual_amount).label('total_actual'),
+        func.sum(Budget.difference).label('total_difference')
+    ).filter(
+        Budget.user_id == user_id
+    ).group_by(Budget.month, Budget.year).order_by(Budget.year.desc(), Budget.month.desc()).all()
+    
+    return jsonify([{
+        'month': r[0],
+        'year': r[1],
+        'month_name': datetime(r[1], r[0], 1).strftime('%B %Y'),
+        'total_expected': float(r[2]) if r[2] else 0,
+        'total_actual': float(r[3]) if r[3] else 0,
+        'total_difference': float(r[4]) if r[4] else 0
+    } for r in results])
+
+@app.route('/api/budget/<int:id>', methods=['DELETE'])
+@login_required
+def delete_budget(id):
+    budget = Budget.query.get_or_404(id)
+    if budget.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    db.session.delete(budget)
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
 # ============================
 # RULES (with DELETE)
 # ============================
