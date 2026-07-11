@@ -44,7 +44,6 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120))
-    password_hash = db.Column(db.String(200), nullable=False)
     full_name = db.Column(db.String(100))
     currency = db.Column(db.String(10), default='FCFA')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
