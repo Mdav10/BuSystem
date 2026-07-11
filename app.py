@@ -36,7 +36,7 @@ login_manager.login_view = 'login'
 CORS(app)
 
 # ============================
-# DATABASE MODELS (Fixed - no full_name)
+# DATABASE MODELS
 # ============================
 
 class User(UserMixin, db.Model):
@@ -258,6 +258,76 @@ class FinancialRule(db.Model):
     triggered_at = db.Column(db.DateTime)
 
 # ============================
+# DATABASE INITIALIZATION FIX
+# ============================
+
+def init_database():
+    """Initialize database with all tables and default data"""
+    try:
+        # Check if users table exists
+        db.session.execute(text("SELECT 1 FROM users LIMIT 1"))
+        print("✅ Database already initialized")
+        return
+    except Exception as e:
+        print("🔄 Creating database tables...")
+        db.create_all()
+        db.session.commit()
+        print("✅ Tables created")
+        
+        # Create default user
+        if not User.query.filter_by(username='MCM').first():
+            user = User(username='MCM', currency='FCFA')
+            user.set_password('0880Mcm+_+')
+            db.session.add(user)
+            db.session.commit()
+            print("✅ User MCM created")
+        
+        # Create default rules
+        if FinancialRule.query.count() == 0:
+            rules = [
+                FinancialRule(
+                    user_id=1,
+                    name='Investment Diversification',
+                    category='investment',
+                    condition_type='percentage',
+                    condition_value=40,
+                    condition_operator='>',
+                    action_type='warn',
+                    action_message='Do not invest more than 40% in one type'
+                ),
+                FinancialRule(
+                    user_id=1,
+                    name='Emergency Fund Minimum',
+                    category='emergency',
+                    condition_type='months',
+                    condition_value=3,
+                    condition_operator='<',
+                    action_type='warn',
+                    action_message='Keep at least 3 months of expenses as emergency fund'
+                ),
+                FinancialRule(
+                    user_id=1,
+                    name='Monthly Spending Limit',
+                    category='spending',
+                    condition_type='percentage',
+                    condition_value=80,
+                    condition_operator='>',
+                    action_type='warn',
+                    action_message='Do not spend more than 80% of monthly income'
+                )
+            ]
+            for rule in rules:
+                db.session.add(rule)
+            db.session.commit()
+            print("✅ Default rules created")
+        
+        print("🎉 Database setup complete!")
+
+# Initialize database on startup
+with app.app_context():
+    init_database()
+
+# ============================
 # AUTHENTICATION
 # ============================
 
@@ -375,7 +445,7 @@ def dashboard():
     )
 
 # ============================
-# API ENDPOINTS
+# API ENDPOINTS (All Modules)
 # ============================
 
 @app.route('/api/transactions', methods=['GET'])
@@ -709,8 +779,7 @@ def get_report_data(report_type):
             'expenses': [{'category': i[1], 'total': i[0]} for i in expenses]
         })
     elif report_type == 'balance_sheet':
-        total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
-        total_income = db.session.query(func.sum(Transaction.amount)).filter(Transaction.user_id == user_id, Transaction.type == 'income').scalar() or 0
+        total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0        total_income = db.session.query(func.sum(Transaction.amount)).filter(Transaction.user_id == user_id, Transaction.type == 'income').scalar() or 0
         total_expenses = db.session.query(func.sum(Transaction.amount)).filter(Transaction.user_id == user_id, Transaction.type == 'expense').scalar() or 0
         return jsonify({'total_assets': total_assets, 'total_income': total_income, 'total_expenses': total_expenses, 'net_worth': total_assets + total_income - total_expenses})
     return jsonify({'error': 'Invalid report type'}), 400
@@ -849,38 +918,6 @@ def exports():
 @login_required
 def rules():
     return render_template('rules.html', user=current_user)
-
-# ============================
-# INITIALIZE DATABASE
-# ============================
-
-@app.cli.command('init-db')
-def init_db():
-    db.create_all()
-    if not User.query.filter_by(username='MCM').first():
-        user = User(username='MCM', currency='FCFA')
-        user.set_password('0880Mcm+_+')
-        db.session.add(user)
-        db.session.commit()
-        print("✅ Default user 'MCM' created!")
-    
-    if FinancialRule.query.count() == 0:
-        rules = [
-            FinancialRule(user_id=1, name='Investment Diversification', category='investment',
-                condition_type='percentage', condition_value=40, condition_operator='>',
-                action_type='warn', action_message='Do not invest more than 40% in one type'),
-            FinancialRule(user_id=1, name='Emergency Fund Minimum', category='emergency',
-                condition_type='months', condition_value=3, condition_operator='<',
-                action_type='warn', action_message='Keep at least 3 months of expenses'),
-            FinancialRule(user_id=1, name='Monthly Spending Limit', category='spending',
-                condition_type='percentage', condition_value=80, condition_operator='>',
-                action_type='warn', action_message='Do not spend more than 80% of income')
-        ]
-        for rule in rules:
-            db.session.add(rule)
-        db.session.commit()
-        print("✅ Default financial rules created!")
-    print("🎉 Database initialized successfully!")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
