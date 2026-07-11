@@ -1,0 +1,13 @@
+/* BuSystem Global Styles */
+:root {
+    --bg-primary: #0a0e17;
+    --bg-secondary: #111a2b;
+    --bg-card: #1a2a3f;
+    --text-primary: #e0e6ed;
+    --text-secondary: #7a8ba3;
+    --accent: #00d4ff;
+    --success: #2ecc71;
+    --danger: #ff4757;
+    --warning: #f39c12;
+}
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-primary); color: var(--text-primary); }
