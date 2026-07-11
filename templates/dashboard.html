@@ -10,33 +10,33 @@
         .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
         .logo { font-size: 28px; font-weight: bold; color: #00d4ff; }
         .logout { background: #ff4757; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin: 30px 0; }
-        .card { background: #111a2b; border-radius: 16px; padding: 24px; border: 1px solid #1a2a3f; transition: 0.3s; }
-        .card:hover { transform: translateY(-4px); border-color: #00d4ff; }
-        .card .label { font-size: 12px; color: #7a8ba3; text-transform: uppercase; letter-spacing: 1px; }
-        .card .value { font-size: 24px; font-weight: bold; margin-top: 8px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 25px 0; }
+        .card { background: #111a2b; border-radius: 14px; padding: 20px; border: 1px solid #1a2a3f; transition: 0.3s; }
+        .card:hover { transform: translateY(-3px); border-color: #00d4ff; }
+        .card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; letter-spacing: 1px; }
+        .card .value { font-size: 22px; font-weight: bold; margin-top: 6px; }
         .card .value.green { color: #2ecc71; }
         .card .value.blue { color: #3498db; }
         .card .value.orange { color: #f39c12; }
         .card .value.red { color: #e74c3c; }
         .card .value.purple { color: #9b59b6; }
         .card .value.cyan { color: #00d4ff; }
-        .progress-bar { width: 100%; height: 8px; background: #1a2332; border-radius: 4px; margin-top: 12px; overflow: hidden; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 4px; transition: width 0.8s; }
-        .alerts { background: #1a0e0e; border-left: 4px solid #ff4757; padding: 15px; border-radius: 8px; margin: 20px 0; }
-        .alerts h3 { color: #ff4757; margin-bottom: 10px; }
-        .alerts li { list-style: none; padding: 6px 0; color: #ffb3b3; }
-        .nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0; padding: 15px; background: #0f1a2b; border-radius: 12px; }
-        .nav a { color: #7a8ba3; text-decoration: none; padding: 8px 16px; border-radius: 8px; transition: 0.3s; font-size: 14px; }
+        .progress-bar { width: 100%; height: 6px; background: #1a2332; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 3px; transition: width 0.8s; }
+        .alerts { background: #1a0e0e; border-left: 4px solid #ff4757; padding: 12px 18px; border-radius: 8px; margin: 15px 0; }
+        .alerts h3 { color: #ff4757; margin-bottom: 8px; font-size: 14px; }
+        .alerts li { list-style: none; padding: 4px 0; color: #ffb3b3; font-size: 13px; }
+        .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 15px 0; padding: 12px; background: #0f1a2b; border-radius: 10px; }
+        .nav a { color: #7a8ba3; text-decoration: none; padding: 6px 14px; border-radius: 6px; transition: 0.3s; font-size: 13px; }
         .nav a:hover { background: #1a2a3f; color: #fff; }
-        .reports { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
-        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; text-decoration: none; display: inline-block; }
-        .btn:hover { transform: scale(1.05); background: #00ff88; }
+        .reports { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+        .btn { background: #00d4ff; color: #0a0e17; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; text-decoration: none; display: inline-block; font-size: 13px; }
+        .btn:hover { transform: scale(1.03); background: #00ff88; }
         .btn-secondary { background: #1a2a3f; color: #fff; }
         .btn-secondary:hover { background: #2a3f5f; }
-        .footer { margin-top: 40px; text-align: center; color: #4a5a6f; font-size: 13px; border-top: 1px solid #1a2332; padding-top: 20px; }
-        .user-info { color: #7a8ba3; font-size: 14px; }
-        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } .card .value { font-size: 18px; } }
+        .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
+        .user-info { color: #7a8ba3; font-size: 13px; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } .card .value { font-size: 17px; } }
     </style>
 </head>
 <body>
@@ -95,7 +95,7 @@
     {% endif %}
     
     <div class="reports">
-        <a href="{{ url_for('export_report', report_type='transactions', format='pdf') }}" class="btn btn-secondary">📄 Daily Report (PDF)</a>
+        <a href="{{ url_for('export_report', report_type='transactions', format='pdf') }}" class="btn btn-secondary">📄 PDF Report</a>
         <a href="{{ url_for('export_report', report_type='transactions', format='excel') }}" class="btn btn-secondary">📊 Excel Export</a>
     </div>
     

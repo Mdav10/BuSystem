@@ -258,70 +258,29 @@ class FinancialRule(db.Model):
     triggered_at = db.Column(db.DateTime)
 
 # ============================
-# DATABASE INITIALIZATION
+# FORCE DATABASE CREATION
 # ============================
 
-def init_database():
-    """Initialize database with all tables and default data"""
-    try:
+def init_db():
+    """Force create all tables"""
+    with app.app_context():
         db.create_all()
         db.session.commit()
-        print("✅ Tables created/verified")
+        print("✅ All tables created")
         
-        # Create default user
-        if not User.query.filter_by(username='MCM').first():
+        # Check if user exists
+        user_exists = User.query.filter_by(username='MCM').first()
+        if not user_exists:
             user = User(username='MCM', currency='FCFA')
             user.set_password('0880Mcm+_+')
             db.session.add(user)
             db.session.commit()
             print("✅ User MCM created")
-        
-        # Create default rules
-        if FinancialRule.query.count() == 0:
-            rules = [
-                FinancialRule(
-                    user_id=1,
-                    name='Investment Diversification',
-                    category='investment',
-                    condition_type='percentage',
-                    condition_value=40,
-                    condition_operator='>',
-                    action_type='warn',
-                    action_message='Do not invest more than 40% in one type'
-                ),
-                FinancialRule(
-                    user_id=1,
-                    name='Emergency Fund Minimum',
-                    category='emergency',
-                    condition_type='months',
-                    condition_value=3,
-                    condition_operator='<',
-                    action_type='warn',
-                    action_message='Keep at least 3 months of expenses'
-                ),
-                FinancialRule(
-                    user_id=1,
-                    name='Monthly Spending Limit',
-                    category='spending',
-                    condition_type='percentage',
-                    condition_value=80,
-                    condition_operator='>',
-                    action_type='warn',
-                    action_message='Do not spend more than 80% of income'
-                )
-            ]
-            for rule in rules:
-                db.session.add(rule)
-            db.session.commit()
-            print("✅ Default rules created")
-        
-        print("🎉 Database ready!")
-    except Exception as e:
-        print(f"⚠️ Database init warning: {e}")
+        else:
+            print("✅ User MCM already exists")
 
-# Initialize on startup
-with app.app_context():
-    init_database()
+# Initialize database on startup
+init_db()
 
 # ============================
 # AUTHENTICATION
