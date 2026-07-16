@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0a0e17">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="/static/manifest.json">
+    <link rel="manifest" href="data:application/json,%7B%22name%22%3A%22BuSystem%22%2C%22short_name%22%3A%22BuSys%22%2C%22start_url%22%3A%22/dashboard%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0e17%22%2C%22theme_color%22%3A%22%2300d4ff%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data:image/svg+xml,%253Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%253E%253Crect width='512' height='512' rx='100' fill='%25230a0e17'/%253E%253Ctext x='256' y='340' font-family='Arial' font-size='180' font-weight='bold' text-anchor='middle' fill='%252300d4ff'%253E💰%253C/text%253E%253Ctext x='256' y='420' font-family='Arial' font-size='42' font-weight='bold' text-anchor='middle' fill='%252300d4ff'%253EBuSys%253C/text%253E%253C/svg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image/svg+xml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
@@ -37,7 +37,7 @@
         .alerts h3 { color: #ff4757; margin-bottom: 4px; font-size: 13px; }
         .alerts li { list-style: none; padding: 3px 0; color: #ffb3b3; font-size: 12px; }
         .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; padding: 12px; background: #0f1a2b; border-radius: 12px; }
-        .nav a { color: #7a8ba3; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: 0.2s; font-size: 12px; text-align: center; -webkit-tap-highlight-color: transparent; font-weight: 500; }
+        .nav a { color: #7a8ba3; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: 0.2s; font-size: 12px; text-align: center; font-weight: 500; }
         .nav a:active { transform: scale(0.93); }
         .nav a.active { background: #1a2a3f; color: #00d4ff; }
         .reports { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
@@ -45,7 +45,7 @@
         .btn:active { transform: scale(0.95); }
         .btn-secondary { background: #1a2a3f; color: #fff; }
         .footer { margin-top: 24px; text-align: center; color: #4a5a6f; font-size: 11px; border-top: 1px solid #1a2332; padding-top: 12px; }
-        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } .card .value { font-size: 16px; } .nav { gap: 4px; } .nav a { font-size: 10px; padding: 6px 8px; } }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } .card .value { font-size: 16px; } .nav a { font-size: 10px; padding: 6px 8px; } }
         .install-banner { display: none; background: #1a2a3f; padding: 12px 16px; border-radius: 12px; margin: 12px 0; text-align: center; font-size: 12px; color: #7a8ba3; border: 1px solid #2a3f5f; }
         .install-banner .btn-install { background: #00d4ff; color: #0a0e17; border: none; padding: 8px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 6px; font-size: 13px; }
         .app-badge { display: none; background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 10px; color: #2ecc71; border: 1px solid #2a3f5f; margin-left: 8px; }
@@ -65,13 +65,12 @@
     </div>
     
     <div id="installBanner" class="install-banner">
-        📱 Install BuSys for better experience
-        <br>
+        📱 Install BuSys<br>
         <button class="btn-install" id="installBtn">📲 Install</button>
     </div>
     
     <div class="nav">
-        <a href="/dashboard" class="active">📊 Dashboard</a>
+        <a href="/dashboard" class="active">📊 Dash</a>
         <a href="/cashflow">💰 Cash</a>
         <a href="/investments">📈 Invest</a>
         <a href="/livestock">🐄 Live</a>
@@ -80,7 +79,7 @@
         <a href="/goals">🎯 Goals</a>
         <a href="/budget">📋 Budget</a>
         <a href="/reports">📄 Reports</a>
-        <a href="/analytics">📊 Analytics</a>
+        <a href="/analytics">📊 Ana</a>
         <a href="/ratios">📐 Ratios</a>
         <a href="/risk">⚠️ Risk</a>
         <a href="/timeline">⏰ Time</a>
@@ -121,7 +120,6 @@
     
     <div class="footer">BuSystem • Every Franc Must Have a Job • {{ user.currency }}</div>
 </div>
-
 <script>
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -129,25 +127,13 @@
         deferredPrompt = e;
         document.getElementById('installBanner').style.display = 'block';
     });
-    
     document.getElementById('installBtn').addEventListener('click', async () => {
         if (deferredPrompt) {
             deferredPrompt.prompt();
-            const result = await deferredPrompt.userChoice;
-            if (result.outcome === 'accepted') {
-                document.getElementById('installBanner').style.display = 'none';
-                document.querySelector('.app-badge').style.display = 'inline-block';
-            }
+            await deferredPrompt.userChoice;
             deferredPrompt = null;
         }
     });
-    
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/static/service-worker.js')
-            .then(reg => console.log('SW registered'))
-            .catch(err => console.log('SW failed:', err));
-    }
-    
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
         document.getElementById('installBanner').style.display = 'none';
         document.querySelector('.app-badge').style.display = 'inline-block';

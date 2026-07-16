@@ -353,41 +353,6 @@ with app.app_context():
     print("🎉 Database initialized successfully!")
 
 # ============================
-# SERVE STATIC FILES
-# ============================
-
-@app.route('/static/<path:filename>')
-def serve_static(filename):
-    return send_from_directory('static', filename)
-
-# ============================
-# PWA ROUTES
-# ============================
-
-@app.route('/manifest.json')
-def serve_manifest():
-    return send_from_directory('static', 'manifest.json')
-
-@app.route('/service-worker.js')
-def serve_sw():
-    return send_from_directory('static', 'service-worker.js')
-
-@app.route('/offline')
-def offline():
-    return render_template('offline.html'), 503
-
-@app.route('/.well-known/assetlinks.json')
-def assetlinks():
-    return jsonify([{
-        "relation": ["delegate_permission/common.handle_all_urls"],
-        "target": {
-            "namespace": "android_app",
-            "package_name": "com.busystem.app",
-            "sha256_cert_fingerprints": []
-        }
-    }])
-
-# ============================
 # AUTHENTICATION
 # ============================
 
@@ -543,7 +508,7 @@ def dashboard():
     )
 
 # ============================
-# API ENDPOINTS
+# API ENDPOINTS (ALL MODULES)
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST'])
@@ -1357,7 +1322,6 @@ def export_report(report_type, format):
         story.append(summary_table)
         story.append(Spacer(1, 0.3*inch))
         
-        # Transactions
         story.append(PageBreak())
         story.append(Paragraph("<b>💰 TRANSACTIONS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1386,7 +1350,6 @@ def export_report(report_type, format):
         story.append(tx_table)
         story.append(Spacer(1, 0.2*inch))
         
-        # Investments
         story.append(PageBreak())
         story.append(Paragraph("<b>📈 INVESTMENTS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1416,7 +1379,6 @@ def export_report(report_type, format):
         story.append(inv_table)
         story.append(Spacer(1, 0.2*inch))
         
-        # Livestock
         story.append(PageBreak())
         story.append(Paragraph("<b>🐄 LIVESTOCK</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1446,7 +1408,6 @@ def export_report(report_type, format):
         story.append(ls_table)
         story.append(Spacer(1, 0.2*inch))
         
-        # Assets
         story.append(PageBreak())
         story.append(Paragraph("<b>🏦 ASSETS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1475,7 +1436,6 @@ def export_report(report_type, format):
         story.append(asset_table)
         story.append(Spacer(1, 0.2*inch))
         
-        # Goals
         story.append(PageBreak())
         story.append(Paragraph("<b>🎯 GOALS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1505,7 +1465,6 @@ def export_report(report_type, format):
         story.append(goal_table)
         story.append(Spacer(1, 0.2*inch))
         
-        # Budgets
         story.append(PageBreak())
         story.append(Paragraph("<b>📋 BUDGET VS ACTUAL</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1538,7 +1497,6 @@ def export_report(report_type, format):
         ]))
         story.append(budget_table)
         
-        # Liabilities
         story.append(PageBreak())
         story.append(Paragraph("<b>📋 LIABILITIES</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1581,7 +1539,6 @@ def export_report(report_type, format):
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output)
         
-        # Transactions sheet
         worksheet1 = workbook.add_worksheet('Transactions')
         headers = ['Date', 'Type', 'Category', 'Amount', 'Description']
         for col, header in enumerate(headers):
@@ -1595,7 +1552,6 @@ def export_report(report_type, format):
             worksheet1.write(row, 3, t.amount)
             worksheet1.write(row, 4, t.description or '')
         
-        # Investments sheet
         worksheet2 = workbook.add_worksheet('Investments')
         headers2 = ['ID', 'Type', 'Sub Type', 'Capital', 'Status', 'Profit', 'ROI']
         for col, header in enumerate(headers2):
@@ -1611,7 +1567,6 @@ def export_report(report_type, format):
             worksheet2.write(row, 5, i.profit)
             worksheet2.write(row, 6, i.roi_actual)
         
-        # Livestock sheet
         worksheet3 = workbook.add_worksheet('Livestock')
         headers3 = ['Tag', 'Type', 'Breed', 'Purchase Price', 'Status']
         for col, header in enumerate(headers3):
@@ -1625,7 +1580,6 @@ def export_report(report_type, format):
             worksheet3.write(row, 3, l.purchase_price)
             worksheet3.write(row, 4, l.status)
         
-        # Assets sheet
         worksheet4 = workbook.add_worksheet('Assets')
         headers4 = ['Name', 'Category', 'Purchase Price', 'Current Value', 'Condition']
         for col, header in enumerate(headers4):
@@ -1639,7 +1593,6 @@ def export_report(report_type, format):
             worksheet4.write(row, 3, a.current_value)
             worksheet4.write(row, 4, a.condition)
         
-        # Goals sheet
         worksheet5 = workbook.add_worksheet('Goals')
         headers5 = ['Name', 'Target', 'Current', 'Progress', 'Status']
         for col, header in enumerate(headers5):
@@ -1653,7 +1606,6 @@ def export_report(report_type, format):
             worksheet5.write(row, 3, g.progress)
             worksheet5.write(row, 4, g.status)
         
-        # Budget sheet
         worksheet6 = workbook.add_worksheet('Budget')
         headers6 = ['Category', 'Type', 'Expected', 'Actual', 'Difference']
         for col, header in enumerate(headers6):
@@ -1672,7 +1624,6 @@ def export_report(report_type, format):
             worksheet6.write(row, 3, b.actual_amount)
             worksheet6.write(row, 4, b.difference)
         
-        # Liabilities sheet
         worksheet7 = workbook.add_worksheet('Liabilities')
         headers7 = ['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']
         for col, header in enumerate(headers7):
