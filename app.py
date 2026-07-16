@@ -225,52 +225,6 @@ class Budget(db.Model):
             'year': self.year
         }
 
-class Notification(db.Model):
-    __tablename__ = 'notifications'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    title = db.Column(db.String(100), nullable=False)
-    message = db.Column(db.Text, nullable=False)
-    type = db.Column(db.String(20), default='info')
-    is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    read_at = db.Column(db.DateTime)
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'title': self.title,
-            'message': self.message,
-            'type': self.type,
-            'is_read': self.is_read,
-            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M')
-        }
-
-class FinancialRule(db.Model):
-    __tablename__ = 'financial_rules'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(50))
-    condition_type = db.Column(db.String(50))
-    condition_value = db.Column(db.Float)
-    condition_operator = db.Column(db.String(10))
-    action_type = db.Column(db.String(50), default='warn')
-    action_message = db.Column(db.Text)
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'category': self.category,
-            'condition_type': self.condition_type,
-            'condition_value': self.condition_value,
-            'condition_operator': self.condition_operator,
-            'action_message': self.action_message
-        }
-
 class Liability(db.Model):
     __tablename__ = 'liabilities'
     id = db.Column(db.Integer, primary_key=True)
@@ -297,6 +251,31 @@ class Liability(db.Model):
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M'),
             'paid_at': self.paid_at.strftime('%Y-%m-%d') if self.paid_at else None,
             'notes': self.notes
+        }
+
+class FinancialRule(db.Model):
+    __tablename__ = 'financial_rules'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    category = db.Column(db.String(50))
+    condition_type = db.Column(db.String(50))
+    condition_value = db.Column(db.Float)
+    condition_operator = db.Column(db.String(10))
+    action_type = db.Column(db.String(50), default='warn')
+    action_message = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'category': self.category,
+            'condition_type': self.condition_type,
+            'condition_value': self.condition_value,
+            'condition_operator': self.condition_operator,
+            'action_message': self.action_message
         }
 
 # ============================
@@ -333,7 +312,7 @@ with app.app_context():
                 condition_value=3,
                 condition_operator='<',
                 action_type='warn',
-                action_message='Keep at least 3 months of expenses as emergency fund'
+                action_message='Keep at least 3 months of expenses'
             ),
             FinancialRule(
                 user_id=1,
@@ -343,15 +322,15 @@ with app.app_context():
                 condition_value=80,
                 condition_operator='>',
                 action_type='warn',
-                action_message='Do not spend more than 80% of monthly income'
+                action_message='Do not spend more than 80% of income'
             )
         ]
         for rule in rules:
             db.session.add(rule)
         db.session.commit()
-        print("✅ Default financial rules created")
+        print("✅ Default rules created")
     
-    print("🎉 Database initialized successfully!")
+    print("🎉 Database ready!")
 
 # ============================
 # SERVE STATIC FILES
@@ -366,14 +345,13 @@ def serve_manifest():
     manifest = {
         "name": "BuSystem",
         "short_name": "BuSys",
-        "description": "Personal Finance Operating System",
+        "description": "Personal Finance OS",
         "start_url": "/dashboard",
         "display": "standalone",
         "background_color": "#0a0e17",
         "theme_color": "#00d4ff",
         "orientation": "portrait",
         "scope": "/",
-        "id": "/",
         "icons": [
             {
                 "src": "/static/icons/icon-192.png",
@@ -492,6 +470,7 @@ def dashboard():
     emergency_fund_ratio = (current_cash / (avg_monthly_expense * 3)) * 100 if avg_monthly_expense > 0 else 0
     emergency_fund_ratio = min(emergency_fund_ratio, 100)
     
+    # Alerts
     alerts = []
     
     ready_animals = Livestock.query.filter(
@@ -516,19 +495,7 @@ def dashboard():
         alerts.append(f"📊 Investment {inv.investment_id} ({inv.type}) is overdue!")
     
     if emergency_fund_ratio < 30:
-        alerts.append(f"🛡️ Emergency fund is low ({emergency_fund_ratio:.0f}%). Aim for 3+ months of expenses")
-    
-    upcoming_goals = Goal.query.filter(
-        Goal.user_id == user_id,
-        Goal.status == 'Active',
-        Goal.deadline <= (today + timedelta(days=30)),
-        Goal.deadline >= today
-    ).limit(3).all()
-    for goal in upcoming_goals:
-        alerts.append(f"🎯 Goal '{goal.name}' deadline is approaching ({goal.deadline.strftime('%Y-%m-%d')})")
-    
-    if monthly_expenses > monthly_income * 0.8 and monthly_income > 0:
-        alerts.append(f"⚠️ You've spent {monthly_expenses/monthly_income*100:.0f}% of your monthly income")
+        alerts.append(f"🛡️ Emergency fund is low ({emergency_fund_ratio:.0f}%)")
     
     return render_template('dashboard.html',
         current_cash=current_cash,
@@ -541,15 +508,15 @@ def dashboard():
         roi=total_roi,
         goal_progress=avg_goal_progress,
         emergency_fund=emergency_fund_ratio,
-        alerts=alerts[:15],
+        alerts=alerts[:10],
         user=current_user
     )
 
 # ============================
-# REAL API ENDPOINTS - WORKING
+# API ENDPOINTS - ALL WORKING
 # ============================
 
-@app.route('/api/transactions', methods=['GET', 'POST'])
+@app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_transactions():
     if request.method == 'GET':
@@ -570,18 +537,16 @@ def api_transactions():
         db.session.add(transaction)
         db.session.commit()
         return jsonify({'status': 'success', 'id': transaction.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        transaction = Transaction.query.get_or_404(data.get('id'))
+        if transaction.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(transaction)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/transactions/<int:id>', methods=['DELETE'])
-@login_required
-def delete_transaction(id):
-    transaction = Transaction.query.get_or_404(id)
-    if transaction.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(transaction)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/investments', methods=['GET', 'POST'])
+@app.route('/api/investments', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_investments():
     if request.method == 'GET':
@@ -608,18 +573,16 @@ def api_investments():
         db.session.add(investment)
         db.session.commit()
         return jsonify({'status': 'success', 'investment_id': investment_id})
+    elif request.method == 'DELETE':
+        data = request.json
+        investment = Investment.query.get_or_404(data.get('id'))
+        if investment.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(investment)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/investments/<int:id>', methods=['DELETE'])
-@login_required
-def delete_investment(id):
-    investment = Investment.query.get_or_404(id)
-    if investment.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(investment)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/livestock', methods=['GET', 'POST'])
+@app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_livestock():
     if request.method == 'GET':
@@ -643,18 +606,16 @@ def api_livestock():
         db.session.add(animal)
         db.session.commit()
         return jsonify({'status': 'success', 'id': animal.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        animal = Livestock.query.get_or_404(data.get('id'))
+        if animal.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(animal)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/livestock/<int:id>', methods=['DELETE'])
-@login_required
-def delete_livestock(id):
-    animal = Livestock.query.get_or_404(id)
-    if animal.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(animal)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/assets', methods=['GET', 'POST'])
+@app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_assets():
     if request.method == 'GET':
@@ -677,18 +638,16 @@ def api_assets():
         db.session.add(asset)
         db.session.commit()
         return jsonify({'status': 'success', 'id': asset.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        asset = Asset.query.get_or_404(data.get('id'))
+        if asset.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(asset)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/assets/<int:id>', methods=['DELETE'])
-@login_required
-def delete_asset(id):
-    asset = Asset.query.get_or_404(id)
-    if asset.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(asset)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/goals', methods=['GET', 'POST', 'PUT'])
+@app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
 def api_goals():
     if request.method == 'GET':
@@ -720,18 +679,16 @@ def api_goals():
             db.session.commit()
             return jsonify({'status': 'success', 'progress': goal.progress})
         return jsonify({'error': 'No update data'}), 400
+    elif request.method == 'DELETE':
+        data = request.json
+        goal = Goal.query.get_or_404(data.get('id'))
+        if goal.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(goal)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/goals/<int:id>', methods=['DELETE'])
-@login_required
-def delete_goal(id):
-    goal = Goal.query.get_or_404(id)
-    if goal.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(goal)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/budget', methods=['GET', 'POST'])
+@app.route('/api/budget', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_budget():
     if request.method == 'GET':
@@ -764,18 +721,16 @@ def api_budget():
             db.session.add(budget)
         db.session.commit()
         return jsonify({'status': 'success'})
+    elif request.method == 'DELETE':
+        data = request.json
+        budget = Budget.query.get_or_404(data.get('id'))
+        if budget.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(budget)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/budget/<int:id>', methods=['DELETE'])
-@login_required
-def delete_budget(id):
-    budget = Budget.query.get_or_404(id)
-    if budget.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(budget)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/liabilities', methods=['GET', 'POST'])
+@app.route('/api/liabilities', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_liabilities():
     if request.method == 'GET':
@@ -798,18 +753,16 @@ def api_liabilities():
         db.session.add(liability)
         db.session.commit()
         return jsonify({'status': 'success', 'id': liability.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        liability = Liability.query.get_or_404(data.get('id'))
+        if liability.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(liability)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/liabilities/<int:id>', methods=['DELETE'])
-@login_required
-def delete_liability(id):
-    liability = Liability.query.get_or_404(id)
-    if liability.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(liability)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/rules', methods=['GET', 'POST'])
+@app.route('/api/rules', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_rules():
     if request.method == 'GET':
@@ -833,16 +786,14 @@ def api_rules():
         db.session.add(rule)
         db.session.commit()
         return jsonify({'status': 'success', 'id': rule.id})
-
-@app.route('/api/rules/<int:id>', methods=['DELETE'])
-@login_required
-def delete_rule(id):
-    rule = FinancialRule.query.get_or_404(id)
-    if rule.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(rule)
-    db.session.commit()
-    return jsonify({'status': 'success'})
+    elif request.method == 'DELETE':
+        data = request.json
+        rule = FinancialRule.query.get_or_404(data.get('id'))
+        if rule.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(rule)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
 @app.route('/api/ratios')
 @login_required
@@ -948,7 +899,7 @@ def get_decisions():
     if best_type and best_type[1] > 0:
         recommendations.append({
             'title': f'📈 Focus on {best_type[0]}',
-            'message': f'Your {best_type[0]} investments show the highest average profit of {best_type[1]:,.0f} FCFA.',
+            'message': f'Your {best_type[0]} investments show the highest average profit.',
             'type': 'opportunity'
         })
     over_budget = Budget.query.filter(
@@ -969,7 +920,7 @@ def get_decisions():
     if total_cash > 500000:
         recommendations.append({
             'title': '💰 Investment Opportunity',
-            'message': f'You have {total_cash:,.0f} FCFA in cash. Consider investing.',
+            'message': f'You have {total_cash:,.0f} FCFA in cash.',
             'type': 'opportunity'
         })
     return jsonify(recommendations[:5])
@@ -1074,7 +1025,7 @@ def export_report(report_type, format):
     return jsonify({'error': 'Invalid format'}), 400
 
 # ============================
-# PAGE ROUTES - REAL WORKING PAGES
+# PAGE ROUTES - ALL 16 WORKING
 # ============================
 
 @app.route('/cashflow')
@@ -1107,6 +1058,16 @@ def goals():
 def budget():
     return render_template('budget.html', user=current_user)
 
+@app.route('/liability')
+@login_required
+def liability():
+    return render_template('liability.html', user=current_user)
+
+@app.route('/rules')
+@login_required
+def rules():
+    return render_template('rules.html', user=current_user)
+
 @app.route('/reports')
 @login_required
 def reports():
@@ -1122,16 +1083,6 @@ def ratios():
 def analytics():
     return render_template('analytics.html', user=current_user)
 
-@app.route('/notifications')
-@login_required
-def notifications():
-    return render_template('notifications.html', user=current_user)
-
-@app.route('/decisions')
-@login_required
-def decisions():
-    return render_template('decisions.html', user=current_user)
-
 @app.route('/risk')
 @login_required
 def risk():
@@ -1142,20 +1093,20 @@ def risk():
 def timeline():
     return render_template('timeline.html', user=current_user)
 
+@app.route('/decisions')
+@login_required
+def decisions():
+    return render_template('decisions.html', user=current_user)
+
 @app.route('/exports')
 @login_required
 def exports():
     return render_template('exports.html', user=current_user)
 
-@app.route('/rules')
+@app.route('/notifications')
 @login_required
-def rules():
-    return render_template('rules.html', user=current_user)
-
-@app.route('/liability')
-@login_required
-def liability():
-    return render_template('liability.html', user=current_user)
+def notifications():
+    return render_template('notifications.html', user=current_user)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
