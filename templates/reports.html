@@ -13,16 +13,22 @@
         .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #222; flex-wrap: wrap; gap: 10px; }
         .logo { font-size: 24px; font-weight: bold; color: #00d4ff; }
         .back { color: #888; text-decoration: none; padding: 8px 16px; background: #111; border-radius: 8px; }
-        .content { background: #111; border-radius: 16px; padding: 24px; border: 1px solid #222; margin: 20px 0; min-height: 200px; }
+        .content { background: #111; border-radius: 16px; padding: 24px; border: 1px solid #222; margin: 20px 0; }
         .footer { margin-top: 30px; text-align: center; color: #555; font-size: 12px; border-top: 1px solid #222; padding-top: 16px; }
         h2 { color: #00d4ff; margin-bottom: 5px; }
         .sub { color: #888; font-size: 13px; }
-        .btn { background: #00d4ff; color: #000; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .data-item { background: #0a0e17; padding: 10px 14px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #1a1a1a; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
-        .data-item .key { color: #888; font-size: 11px; }
-        .data-item .value { color: #00d4ff; font-weight: bold; font-size: 13px; }
-        .empty { color: #555; text-align: center; padding: 30px 0; }
-        .api { background: #0a0e17; padding: 10px; border-radius: 8px; font-family: monospace; color: #00d4ff; border: 1px solid #1a1a1a; font-size: 12px; margin-top: 10px; }
+        .btn { background: #00d4ff; color: #000; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; margin: 5px; }
+        .btn-pdf { background: #ff4757; color: #fff; }
+        .btn-excel { background: #2ecc71; color: #fff; }
+        .btn-json { background: #3498db; color: #fff; }
+        .stat-box { background: #0a0e17; padding: 12px 16px; border-radius: 8px; margin: 8px 0; border-left: 3px solid #00d4ff; }
+        .stat-box .label { color: #888; font-size: 11px; text-transform: uppercase; }
+        .stat-box .value { font-size: 20px; font-weight: bold; margin-top: 4px; }
+        .stat-box .value.green { color: #2ecc71; }
+        .stat-box .value.red { color: #ff4757; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 15px 0; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -31,38 +37,70 @@
         <div class="logo">💰 BuSystem</div>
         <a href="/dashboard" class="back">← Dashboard</a>
     </div>
-    <h2>📋 Reports</h2>
-    <p class="sub">View your reports data</p>
+    
+    <h2>📄 Reports</h2>
+    <p class="sub">View and export your financial reports</p>
+    
     <div class="content">
-        <div class="api">📡 API: GET /api/reports</div>
-        <div id="dataContainer"><div class="empty">Loading data...</div></div>
-        <button class="btn" onclick="loadData()">🔄 Refresh</button>
+        <h3 style="color: #fff; margin-bottom: 12px; font-size: 16px;">📊 Income Statement</h3>
+        <div id="incomeData">
+            <div class="stat-box"><div class="label">Total Income</div><div class="value green" id="repIncome">0 FCFA</div></div>
+            <div class="stat-box"><div class="label">Total Expenses</div><div class="value red" id="repExpenses">0 FCFA</div></div>
+            <div class="stat-box"><div class="label">Net Income</div><div class="value" id="repNet">0 FCFA</div></div>
+        </div>
+        <button class="btn" onclick="loadIncomeStatement()" style="margin-top:10px;">🔄 Refresh</button>
     </div>
+    
+    <div class="content">
+        <h3 style="color: #fff; margin-bottom: 12px; font-size: 16px;">📊 Balance Sheet</h3>
+        <div id="balanceData">
+            <div class="stat-box"><div class="label">Total Assets</div><div class="value green" id="repAssets">0 FCFA</div></div>
+            <div class="stat-box"><div class="label">Net Worth</div><div class="value" id="repNetWorth">0 FCFA</div></div>
+        </div>
+        <button class="btn" onclick="loadBalanceSheet()" style="margin-top:10px;">🔄 Refresh</button>
+    </div>
+    
+    <div class="content">
+        <h3 style="color: #fff; margin-bottom: 12px; font-size: 16px;">📥 Export Reports</h3>
+        <div class="btn-group">
+            <a href="/api/reports/export/transactions/pdf" class="btn btn-pdf">📄 PDF Report</a>
+            <a href="/api/reports/export/transactions/excel" class="btn btn-excel">📊 Excel Report</a>
+            <a href="/api/reports/income_statement" class="btn btn-json" target="_blank">📋 Income Statement (JSON)</a>
+            <a href="/api/reports/balance_sheet" class="btn btn-json" target="_blank">📊 Balance Sheet (JSON)</a>
+        </div>
+    </div>
+    
     <div class="footer">Every Franc Must Have a Job</div>
 </div>
+
 <script>
-    function loadData() {
-        const container = document.getElementById('dataContainer');
-        container.innerHTML = '<div class="empty">Loading...</div>';
-        fetch('/api/reports')
+    loadIncomeStatement();
+    loadBalanceSheet();
+    
+    function loadIncomeStatement() {
+        fetch('/api/reports/income_statement')
             .then(res => res.json())
             .then(data => {
-                if (data.length === 0) {
-                    container.innerHTML = '<div class="empty">No data found</div>';
-                    return;
-                }
-                container.innerHTML = data.map(item => {
-                    const fields = Object.keys(item);
-                    return '<div class="data-item">' + 
-                        fields.map(f => '<span><span class="key">' + f + ':</span> <span class="value">' + (item[f] !== null && item[f] !== undefined ? item[f] : '-') + '</span></span>').join('') +
-                        '</div>';
-                }).join('');
-            })
-            .catch(() => {
-                container.innerHTML = '<div class="empty">Error loading data</div>';
+                let totalIncome = 0, totalExpenses = 0;
+                data.income.forEach(i => totalIncome += i.total);
+                data.expenses.forEach(e => totalExpenses += e.total);
+                document.getElementById('repIncome').textContent = totalIncome.toLocaleString() + ' FCFA';
+                document.getElementById('repExpenses').textContent = totalExpenses.toLocaleString() + ' FCFA';
+                const net = totalIncome - totalExpenses;
+                const el = document.getElementById('repNet');
+                el.textContent = net.toLocaleString() + ' FCFA';
+                el.className = 'value ' + (net >= 0 ? 'green' : 'red');
             });
     }
-    loadData();
+    
+    function loadBalanceSheet() {
+        fetch('/api/reports/balance_sheet')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('repAssets').textContent = data.total_assets.toLocaleString() + ' FCFA';
+                document.getElementById('repNetWorth').textContent = data.net_worth.toLocaleString() + ' FCFA';
+            });
+    }
 </script>
 </body>
 </html>

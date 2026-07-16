@@ -13,16 +13,22 @@
         .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #222; flex-wrap: wrap; gap: 10px; }
         .logo { font-size: 24px; font-weight: bold; color: #00d4ff; }
         .back { color: #888; text-decoration: none; padding: 8px 16px; background: #111; border-radius: 8px; }
-        .content { background: #111; border-radius: 16px; padding: 24px; border: 1px solid #222; margin: 20px 0; min-height: 200px; }
+        .content { background: #111; border-radius: 16px; padding: 20px; border: 1px solid #222; margin: 20px 0; }
         .footer { margin-top: 30px; text-align: center; color: #555; font-size: 12px; border-top: 1px solid #222; padding-top: 16px; }
         h2 { color: #00d4ff; margin-bottom: 5px; }
         .sub { color: #888; font-size: 13px; }
         .btn { background: #00d4ff; color: #000; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .data-item { background: #0a0e17; padding: 10px 14px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #1a1a1a; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
-        .data-item .key { color: #888; font-size: 11px; }
-        .data-item .value { color: #00d4ff; font-weight: bold; font-size: 13px; }
-        .empty { color: #555; text-align: center; padding: 30px 0; }
-        .api { background: #0a0e17; padding: 10px; border-radius: 8px; font-family: monospace; color: #00d4ff; border: 1px solid #1a1a1a; font-size: 12px; margin-top: 10px; }
+        .chart-container { margin: 10px 0; }
+        .bar { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+        .bar-label { min-width: 70px; color: #888; font-size: 12px; }
+        .bar-track { flex: 1; height: 20px; background: #1a1a1a; border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 4px; transition: width 0.8s; }
+        .bar-value { min-width: 60px; text-align: right; font-size: 12px; color: #888; }
+        .bar-fill.income { background: linear-gradient(90deg, #2ecc71, #27ae60); }
+        .bar-fill.expense { background: linear-gradient(90deg, #ff4757, #ff6b81); }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+        .empty { color: #555; text-align: center; padding: 20px 0; }
     </style>
 </head>
 <body>
@@ -31,38 +37,112 @@
         <div class="logo">💰 BuSystem</div>
         <a href="/dashboard" class="back">← Dashboard</a>
     </div>
-    <h2>📋 Analytics</h2>
-    <p class="sub">View your analytics data</p>
-    <div class="content">
-        <div class="api">📡 API: GET /api/analytics</div>
-        <div id="dataContainer"><div class="empty">Loading data...</div></div>
-        <button class="btn" onclick="loadData()">🔄 Refresh</button>
+    
+    <h2>📊 Analytics</h2>
+    <p class="sub">Visualize your financial data</p>
+    
+    <div class="grid-2">
+        <div class="content">
+            <h3 style="color: #fff; margin-bottom: 10px; font-size: 15px;">📈 Monthly Income</h3>
+            <div id="monthlyIncomeChart" class="chart-container">
+                <div class="empty">Loading...</div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <h3 style="color: #fff; margin-bottom: 10px; font-size: 15px;">🏦 Asset Distribution</h3>
+            <div id="assetDistribution" class="chart-container">
+                <div class="empty">Loading...</div>
+            </div>
+        </div>
     </div>
+    
+    <div class="content">
+        <h3 style="color: #fff; margin-bottom: 10px; font-size: 15px;">🎯 Goal Progress</h3>
+        <div id="goalProgress" class="chart-container">
+            <div class="empty">No goals set</div>
+        </div>
+    </div>
+    
+    <button class="btn" onclick="loadAllAnalytics()">🔄 Refresh All</button>
+    
     <div class="footer">Every Franc Must Have a Job</div>
 </div>
+
 <script>
-    function loadData() {
-        const container = document.getElementById('dataContainer');
-        container.innerHTML = '<div class="empty">Loading...</div>';
-        fetch('/api/analytics')
+    loadAllAnalytics();
+    
+    function loadAllAnalytics() {
+        loadMonthlyIncome();
+        loadAssetDistribution();
+        loadGoalProgress();
+    }
+    
+    function loadMonthlyIncome() {
+        fetch('/api/analytics/monthly_income')
             .then(res => res.json())
             .then(data => {
+                const container = document.getElementById('monthlyIncomeChart');
                 if (data.length === 0) {
-                    container.innerHTML = '<div class="empty">No data found</div>';
+                    container.innerHTML = '<div class="empty">No income data for this year</div>';
                     return;
                 }
-                container.innerHTML = data.map(item => {
-                    const fields = Object.keys(item);
-                    return '<div class="data-item">' + 
-                        fields.map(f => '<span><span class="key">' + f + ':</span> <span class="value">' + (item[f] !== null && item[f] !== undefined ? item[f] : '-') + '</span></span>').join('') +
-                        '</div>';
-                }).join('');
-            })
-            .catch(() => {
-                container.innerHTML = '<div class="empty">Error loading data</div>';
+                const maxVal = Math.max(...data.map(d => d.total), 1);
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                container.innerHTML = data.map(d => `
+                    <div class="bar">
+                        <span class="bar-label">${monthNames[d.month-1]}</span>
+                        <div class="bar-track">
+                            <div class="bar-fill income" style="width: ${(d.total / maxVal) * 100}%;"></div>
+                        </div>
+                        <span class="bar-value">${d.total.toLocaleString()}</span>
+                    </div>
+                `).join('');
             });
     }
-    loadData();
+    
+    function loadAssetDistribution() {
+        fetch('/api/analytics/asset_distribution')
+            .then(res => res.json())
+            .then(data => {
+                const container = document.getElementById('assetDistribution');
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="empty">No assets yet</div>';
+                    return;
+                }
+                const maxVal = Math.max(...data.map(d => d.total), 1);
+                container.innerHTML = data.map(d => `
+                    <div class="bar">
+                        <span class="bar-label">${d.category}</span>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: ${(d.total / maxVal) * 100}%;"></div>
+                        </div>
+                        <span class="bar-value">${d.total.toLocaleString()}</span>
+                    </div>
+                `).join('');
+            });
+    }
+    
+    function loadGoalProgress() {
+        fetch('/api/goals')
+            .then(res => res.json())
+            .then(data => {
+                const container = document.getElementById('goalProgress');
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="empty">No goals set</div>';
+                    return;
+                }
+                container.innerHTML = data.map(g => `
+                    <div class="bar">
+                        <span class="bar-label">${g.name}</span>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: ${g.progress}%;"></div>
+                        </div>
+                        <span class="bar-value">${g.progress.toFixed(0)}%</span>
+                    </div>
+                `).join('');
+            });
+    }
 </script>
 </body>
 </html>

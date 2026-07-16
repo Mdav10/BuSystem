@@ -13,16 +13,20 @@
         .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #222; flex-wrap: wrap; gap: 10px; }
         .logo { font-size: 24px; font-weight: bold; color: #00d4ff; }
         .back { color: #888; text-decoration: none; padding: 8px 16px; background: #111; border-radius: 8px; }
-        .content { background: #111; border-radius: 16px; padding: 24px; border: 1px solid #222; margin: 20px 0; min-height: 200px; }
+        .content { background: #111; border-radius: 16px; padding: 24px; border: 1px solid #222; margin: 20px 0; }
         .footer { margin-top: 30px; text-align: center; color: #555; font-size: 12px; border-top: 1px solid #222; padding-top: 16px; }
         h2 { color: #00d4ff; margin-bottom: 5px; }
         .sub { color: #888; font-size: 13px; }
         .btn { background: #00d4ff; color: #000; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .data-item { background: #0a0e17; padding: 10px 14px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #1a1a1a; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
-        .data-item .key { color: #888; font-size: 11px; }
-        .data-item .value { color: #00d4ff; font-weight: bold; font-size: 13px; }
-        .empty { color: #555; text-align: center; padding: 30px 0; }
-        .api { background: #0a0e17; padding: 10px; border-radius: 8px; font-family: monospace; color: #00d4ff; border: 1px solid #1a1a1a; font-size: 12px; margin-top: 10px; }
+        .ratio-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin: 10px 0; }
+        .ratio-card { background: #0a0e17; padding: 16px; border-radius: 12px; text-align: center; border: 1px solid #1a1a1a; }
+        .ratio-card .label { color: #888; font-size: 11px; text-transform: uppercase; }
+        .ratio-card .value { font-size: 24px; font-weight: bold; margin-top: 6px; }
+        .ratio-card .value.green { color: #2ecc71; }
+        .ratio-card .value.red { color: #ff4757; }
+        .ratio-card .value.orange { color: #f39c12; }
+        .ratio-card .value.blue { color: #3498db; }
+        @media (max-width: 600px) { .ratio-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
@@ -31,38 +35,42 @@
         <div class="logo">💰 BuSystem</div>
         <a href="/dashboard" class="back">← Dashboard</a>
     </div>
-    <h2>📋 Ratios</h2>
-    <p class="sub">View your ratios data</p>
+    
+    <h2>📐 Financial Ratios</h2>
+    <p class="sub">Key financial metrics</p>
+    
     <div class="content">
-        <div class="api">📡 API: GET /api/ratios</div>
-        <div id="dataContainer"><div class="empty">Loading data...</div></div>
-        <button class="btn" onclick="loadData()">🔄 Refresh</button>
+        <div class="ratio-grid" id="ratiosContainer">
+            <div class="ratio-card"><div class="label">Loading...</div><div class="value">-</div></div>
+        </div>
+        <button class="btn" onclick="loadRatios()">🔄 Refresh</button>
     </div>
+    
     <div class="footer">Every Franc Must Have a Job</div>
 </div>
+
 <script>
-    function loadData() {
-        const container = document.getElementById('dataContainer');
-        container.innerHTML = '<div class="empty">Loading...</div>';
+    loadRatios();
+    
+    function loadRatios() {
         fetch('/api/ratios')
             .then(res => res.json())
             .then(data => {
-                if (data.length === 0) {
-                    container.innerHTML = '<div class="empty">No data found</div>';
-                    return;
-                }
-                container.innerHTML = data.map(item => {
-                    const fields = Object.keys(item);
-                    return '<div class="data-item">' + 
-                        fields.map(f => '<span><span class="key">' + f + ':</span> <span class="value">' + (item[f] !== null && item[f] !== undefined ? item[f] : '-') + '</span></span>').join('') +
-                        '</div>';
-                }).join('');
-            })
-            .catch(() => {
-                container.innerHTML = '<div class="empty">Error loading data</div>';
+                const container = document.getElementById('ratiosContainer');
+                const items = [
+                    { label: 'ROI', value: data.roi + '%', cls: data.roi > 30 ? 'green' : data.roi > 10 ? 'orange' : 'red' },
+                    { label: 'Profit Margin', value: data.profit_margin + '%', cls: data.profit_margin > 20 ? 'green' : data.profit_margin > 5 ? 'orange' : 'red' },
+                    { label: 'Savings Ratio', value: data.savings_ratio + '%', cls: data.savings_ratio > 20 ? 'green' : data.savings_ratio > 5 ? 'orange' : 'red' },
+                    { label: 'Capital Turnover', value: data.capital_turnover.toFixed(2), cls: data.capital_turnover > 1 ? 'green' : 'orange' }
+                ];
+                container.innerHTML = items.map(item => `
+                    <div class="ratio-card">
+                        <div class="label">${item.label}</div>
+                        <div class="value ${item.cls}">${item.value}</div>
+                    </div>
+                `).join('');
             });
     }
-    loadData();
 </script>
 </body>
 </html>
