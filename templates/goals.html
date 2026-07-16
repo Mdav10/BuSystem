@@ -1,181 +1,228 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>BuSystem - goals</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>BuSystem - Goals</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#00d4ff">
     <link rel="manifest" href="/static/manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
-    <link rel="apple-touch-icon" href="/static/icons/icon-512.png">
+    <link rel="icon" href="/static/icons/icon-192.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; min-height: 100vh; }
+        body { font-family: Arial, sans-serif; background: #0a0e17; color: #fff; padding: 16px; }
         .container { max-width: 800px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; animation: fadeInDown 0.5s ease-out; }
-        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .logo { font-size: 24px; font-weight: bold; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
-        .logo-icon { width: 32px; height: 32px; border-radius: 8px; }
-        .back {
-            color: #7a8ba3;
-            text-decoration: none;
-            padding: 8px 16px;
-            background: #1a2a3f;
-            border-radius: 8px;
-            transition: 0.3s;
-            position: relative;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .back:active { transform: scale(0.95); }
-        .back::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(0, 212, 255, 0.2);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-            pointer-events: none;
-        }
-        .back:active::before { width: 300px; height: 300px; }
-        .content { margin-top: 30px; padding: 30px; background: #111a2b; border-radius: 16px; border: 1px solid #1a2a3f; min-height: 300px; animation: fadeInUp 0.6s ease-out 0.1s both; }
-        .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 11px; border-top: 1px solid #1a2332; padding-top: 12px; animation: fadeInUp 0.6s ease-out 0.3s both; }
-        h2 { color: #00d4ff; margin-bottom: 5px; font-size: 22px; }
-        .sub { color: #7a8ba3; font-size: 13px; }
-        .btn {
-            background: #00d4ff;
-            color: #0a0e17;
-            padding: 10px 24px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-            position: relative;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-            font-size: 14px;
-        }
-        .btn:active { transform: scale(0.95); }
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-            pointer-events: none;
-        }
-        .btn:active::before { width: 400px; height: 400px; }
-        .btn:hover { background: #00ff88; transform: scale(1.02); }
-        .btn-danger { background: #ff4757; color: #fff; }
-        .btn-danger:hover { background: #ff6b81; }
-        .btn-success { background: #2ecc71; color: #fff; }
-        .btn-success:hover { background: #27ae60; }
-        .data-list { margin-top: 15px; }
-        .data-item {
-            background: #0f1a2b;
-            padding: 10px 14px;
-            border-radius: 8px;
-            margin-bottom: 6px;
-            border: 1px solid #1a2332;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 6px;
-            animation: fadeInUp 0.4s ease-out both;
-        }
-        .data-item .key { color: #7a8ba3; font-size: 11px; }
-        .data-item .value { color: #00d4ff; font-weight: bold; font-size: 13px; }
-        .empty-state { color: #4a5a6f; text-align: center; padding: 30px 0; }
-        .form-card { background: #111a2b; border-radius: 16px; padding: 20px; border: 1px solid #1a2a3f; margin: 20px 0; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #222; flex-wrap: wrap; gap: 10px; }
+        .logo { font-size: 24px; font-weight: bold; color: #00d4ff; }
+        .back { color: #888; text-decoration: none; padding: 8px 16px; background: #111; border-radius: 8px; }
+        .form-card { background: #111; border-radius: 16px; padding: 20px; border: 1px solid #222; margin: 20px 0; }
         .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; margin-bottom: 4px; color: #7a8ba3; font-size: 12px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
+        .form-group label { display: block; margin-bottom: 4px; color: #888; font-size: 12px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0a0e17; border: 1px solid #222; border-radius: 8px; color: #fff; font-size: 14px; }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
-        .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
-        .badge.income { background: #1a3a2a; color: #2ecc71; }
-        .badge.expense { background: #3a1a1a; color: #ff4757; }
-        .badge.running { background: #1a3a2a; color: #2ecc71; }
-        .badge.sold { background: #1a2a3f; color: #3498db; }
-        .badge.active { background: #1a3a2a; color: #2ecc71; }
-        .badge.pending { background: #3a3a1a; color: #f39c12; }
-        .badge.paid { background: #1a2a3f; color: #3498db; }
-        .badge.over { background: #3a1a1a; color: #ff4757; }
-        .badge.under { background: #1a3a2a; color: #2ecc71; }
-        .badge.on-track { background: #1a2a3f; color: #f39c12; }
-        .amount-positive { color: #2ecc71; }
-        .amount-negative { color: #ff4757; }
-        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 15px 0; }
-        .stat-card { background: #111a2b; padding: 12px; border-radius: 10px; border: 1px solid #1a2a3f; text-align: center; }
-        .stat-card .label { font-size: 10px; color: #7a8ba3; text-transform: uppercase; }
-        .stat-card .value { font-size: 18px; font-weight: bold; margin-top: 4px; }
-        .stat-card .value.green { color: #2ecc71; }
-        .stat-card .value.red { color: #ff4757; }
+        .btn { background: #00d4ff; color: #000; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-danger { background: #ff4757; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .btn-warning { background: #f39c12; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
-        th { background: #1a2a3f; padding: 10px; text-align: left; color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
-        td { padding: 8px 10px; border-bottom: 1px solid #1a2332; font-size: 13px; }
-        .api-endpoint { background: #0f1a2b; padding: 10px 14px; border-radius: 8px; font-family: monospace; color: #00d4ff; border: 1px solid #1a2a3f; font-size: 12px; margin-top: 10px; }
+        th { background: #111; padding: 10px; text-align: left; color: #888; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #222; }
+        td { padding: 8px 10px; border-bottom: 1px solid #1a1a1a; font-size: 13px; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
+        .badge.active { background: #1a3a2a; color: #2ecc71; }
+        .badge.completed { background: #1a2a3f; color: #3498db; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .footer { margin-top: 30px; text-align: center; color: #555; font-size: 12px; border-top: 1px solid #222; padding-top: 16px; }
+        h2 { color: #00d4ff; margin-bottom: 5px; }
+        .sub { color: #888; font-size: 13px; }
+        .progress-bar { width: 100%; height: 6px; background: #1a1a1a; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 3px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #111; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; border: 1px solid #222; }
+        .modal-content h3 { color: #00d4ff; margin-bottom: 15px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .close { float: right; color: #888; font-size: 28px; cursor: pointer; }
+        .close:hover { color: #fff; }
+        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSystem</div>
+        <div class="logo">💰 BuSystem</div>
         <a href="/dashboard" class="back">← Dashboard</a>
     </div>
-    <div class="content">
-        <h2>📋 goals</h2>
-        <p class="sub">Manage your goals here</p>
-        
-        <div class="api-endpoint">📡 API: GET /api/goals</div>
-        
-        <div id="dataContainer">
-            <div class="empty-state">Loading data...</div>
+    
+    <h2>🎯 Goals</h2>
+    <p class="sub">Set and track your financial goals</p>
+    
+    <div class="form-card">
+        <h3 style="color: #fff; margin-bottom: 12px; font-size: 16px;">Set a Goal</h3>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Goal Name</label>
+                <input type="text" id="goalName" placeholder="e.g., Buy Shop">
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select id="goalCategory">
+                    <option value="Property">Property</option>
+                    <option value="Business">Business</option>
+                    <option value="Livestock">Livestock</option>
+                    <option value="Savings">Savings</option>
+                    <option value="Education">Education</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Target Amount (FCFA)</label>
+                <input type="number" id="goalTarget" placeholder="Enter target amount" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Current Amount (FCFA)</label>
+                <input type="number" id="goalCurrent" placeholder="Current saved" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Deadline</label>
+                <input type="date" id="goalDeadline">
+            </div>
+            <div class="form-group">
+                <label>Priority</label>
+                <select id="goalPriority">
+                    <option value="1">High</option>
+                    <option value="2">Medium</option>
+                    <option value="3">Low</option>
+                </select>
+            </div>
         </div>
-        
-        <button class="btn" onclick="loadData()" style="margin-top:15px;">🔄 Refresh Data</button>
+        <button class="btn" onclick="addGoal()">🎯 Set Goal</button>
     </div>
+    
+    <div class="table-wrap">
+        <h3 style="color: #fff; margin-bottom: 10px; font-size: 16px;">Your Goals</h3>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Category</th><th>Target</th><th>Current</th><th>Progress</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="goalsList">
+                <tr><td colspan="7" style="text-align:center; color:#555; padding:20px;">No goals set</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
     <div class="footer">Every Franc Must Have a Job</div>
 </div>
 
+<!-- Update Modal -->
+<div id="updateModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3>✏️ Update Goal Progress</h3>
+        <div class="form-group">
+            <label>Goal</label>
+            <input type="text" id="updateGoalName" disabled style="color:#888;">
+        </div>
+        <div class="form-group">
+            <label>Current Amount (FCFA)</label>
+            <input type="number" id="updateGoalAmount" step="0.01">
+        </div>
+        <div class="modal-actions">
+            <button class="btn" onclick="updateGoal()">✅ Update</button>
+            <button class="btn" onclick="closeModal()" style="background:#222; color:#fff;">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    function loadData() {
-        const container = document.getElementById('dataContainer');
-        container.innerHTML = '<div class="empty-state">Loading...</div>';
+    let currentGoalId = null;
+    document.getElementById('goalDeadline').value = new Date().toISOString().split('T')[0];
+    loadGoals();
+    
+    function loadGoals() {
         fetch('/api/goals')
             .then(res => res.json())
             .then(data => {
+                const tbody = document.getElementById('goalsList');
                 if (data.length === 0) {
-                    container.innerHTML = '<div class="empty-state">No data found. Start adding your goals!</div>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#555; padding:20px;">No goals set</td></tr>';
                     return;
                 }
-                container.innerHTML = data.map(item => {
-                    const fields = Object.keys(item);
-                    return '<div class="data-item">' + 
-                        fields.map(f => '<span><span class="key">' + f + ':</span> <span class="value">' + (item[f] !== null && item[f] !== undefined ? item[f] : '-') + '</span></span>').join('') +
-                        '</div>';
-                }).join('');
-            })
-            .catch(err => {
-                container.innerHTML = '<div class="empty-state">Error loading data</div>';
+                tbody.innerHTML = data.map(g => `
+                    <tr>
+                        <td><strong>${g.name}</strong></td>
+                        <td>${g.category || '-'}</td>
+                        <td>${Number(g.target_amount).toLocaleString()} FCFA</td>
+                        <td>${Number(g.current_amount).toLocaleString()} FCFA</td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div class="progress-bar" style="flex:1;"><div class="progress-fill" style="width:${g.progress}%;"></div></div>
+                                <span>${g.progress.toFixed(0)}%</span>
+                            </div>
+                        </td>
+                        <td><span class="badge ${g.status.toLowerCase()}">${g.status}</span></td>
+                        <td>
+                            <button class="btn-warning" onclick="openUpdateModal(${g.id}, '${g.name}', ${g.current_amount})">✏️</button>
+                            <button class="btn-danger" onclick="deleteGoal(${g.id})">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
             });
     }
-    loadData();
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-        document.querySelector('.footer').textContent = 'BuSystem • Installed as App';
+    
+    function openUpdateModal(id, name, current) {
+        currentGoalId = id;
+        document.getElementById('updateGoalName').value = name;
+        document.getElementById('updateGoalAmount').value = current;
+        document.getElementById('updateModal').style.display = 'flex';
+    }
+    
+    function closeModal() {
+        document.getElementById('updateModal').style.display = 'none';
+        currentGoalId = null;
+    }
+    
+    function updateGoal() {
+        const amount = document.getElementById('updateGoalAmount').value;
+        if (!amount || amount < 0) { alert('Please enter a valid amount'); return; }
+        fetch('/api/goals', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: currentGoalId, current_amount: parseFloat(amount) })
+        })
+        .then(res => res.json())
+        .then(() => {
+            closeModal();
+            loadGoals();
+        });
+    }
+    
+    function addGoal() {
+        const name = document.getElementById('goalName').value;
+        const category = document.getElementById('goalCategory').value;
+        const target_amount = document.getElementById('goalTarget').value;
+        const current_amount = document.getElementById('goalCurrent').value || 0;
+        const deadline = document.getElementById('goalDeadline').value;
+        const priority = document.getElementById('goalPriority').value;
+        if (!name || !target_amount || target_amount <= 0) { alert('Please enter goal name and valid target amount'); return; }
+        fetch('/api/goals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, category, target_amount: parseFloat(target_amount), current_amount: parseFloat(current_amount), deadline, priority: parseInt(priority) })
+        })
+        .then(res => res.json())
+        .then(() => {
+            document.getElementById('goalName').value = '';
+            document.getElementById('goalTarget').value = '';
+            document.getElementById('goalCurrent').value = '';
+            loadGoals();
+        });
+    }
+    
+    function deleteGoal(id) {
+        if (!confirm('Delete this goal?')) return;
+        fetch('/api/goals', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        })
+        .then(() => loadGoals());
     }
 </script>
 </body>

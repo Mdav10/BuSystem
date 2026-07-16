@@ -53,11 +53,13 @@
         .btn-login:hover { background: #00ff88; }
         .error { color: #ff4757; text-align: center; margin-bottom: 16px; }
         .footer { text-align: center; margin-top: 16px; color: #555; font-size: 12px; }
+        .icon { text-align: center; font-size: 60px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 <div class="login-box">
-    <div class="logo">💰 BuSys</div>
+    <div class="icon">💰</div>
+    <div class="logo">BuSys</div>
     <div class="subtitle">Personal Finance OS</div>
     {% with messages = get_flashed_messages() %}
         {% if messages %}<div class="error">{{ messages[0] }}</div>{% endif %}
