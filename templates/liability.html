@@ -41,6 +41,8 @@
         .stat-card .value { font-size: 18px; font-weight: bold; margin-top: 4px; }
         .green { color: #2ecc71; }
         .red { color: #ff4757; }
+        .action-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
+        .action-buttons button { padding: 3px 10px; font-size: 10px; border: none; border-radius: 4px; cursor: pointer; }
         @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
@@ -55,9 +57,9 @@
     <p class="sub">Track who owes you and who you owe</p>
     
     <div class="stats" id="stats">
-        <div class="stat-card"><div class="label">Owed to Me</div><div class="value green" id="statOwedToMe">0 FCFA</div></div>
-        <div class="stat-card"><div class="label">I Owe</div><div class="value red" id="statIOwe">0 FCFA</div></div>
-        <div class="stat-card"><div class="label">Net Position</div><div class="value" id="statNet">0 FCFA</div></div>
+        <div class="stat-card"><div class="label">📤 Owed to Me</div><div class="value green" id="statOwedToMe">0 BIF</div></div>
+        <div class="stat-card"><div class="label">📥 I Owe</div><div class="value red" id="statIOwe">0 BIF</div></div>
+        <div class="stat-card"><div class="label">⚖️ Net Position</div><div class="value" id="statNet">0 BIF</div></div>
     </div>
     
     <div class="form-card">
@@ -66,8 +68,8 @@
             <div class="form-group">
                 <label>Type</label>
                 <select id="liabilityType">
-                    <option value="owes_me">💰 Owed to Me</option>
-                    <option value="i_owe">💸 I Owe</option>
+                    <option value="owes_me">💰 Owed to Me (Someone owes me)</option>
+                    <option value="i_owe">💸 I Owe (Debt)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -79,7 +81,7 @@
                 <input type="text" id="liabilityDescription" placeholder="What is this for?">
             </div>
             <div class="form-group">
-                <label>Amount (FCFA)</label>
+                <label>Amount (BIF)</label>
                 <input type="number" id="liabilityAmount" placeholder="Enter amount" step="0.01">
             </div>
             <div class="form-group">
@@ -134,17 +136,21 @@
                 tbody.innerHTML = data.map(l => {
                     const typeLabel = l.type === 'owes_me' ? '💰 Owed to Me' : '💸 I Owe';
                     const typeClass = l.type === 'owes_me' ? 'owes_me' : 'i_owe';
+                    const statusClass = l.status ? l.status.toLowerCase() : 'pending';
+                    const amountColor = l.type === 'owes_me' ? '#2ecc71' : '#ff4757';
                     return `
                         <tr>
                             <td><span class="badge ${typeClass}">${typeLabel}</span></td>
                             <td><strong>${l.name}</strong></td>
                             <td>${l.description || '-'}</td>
-                            <td style="color:${l.type === 'owes_me' ? '#2ecc71' : '#ff4757'}">${Number(l.amount).toLocaleString()} FCFA</td>
+                            <td style="color:${amountColor}">${Number(l.amount).toLocaleString()} FCFA</td>
                             <td>${l.due_date || '-'}</td>
-                            <td><span class="badge ${l.status.toLowerCase()}">${l.status}</span></td>
+                            <td><span class="badge ${statusClass}">${l.status || 'Pending'}</span></td>
                             <td>
-                                ${l.status !== 'Paid' ? `<button class="btn-success" onclick="markPaid(${l.id})">✅</button>` : ''}
-                                <button class="btn-danger" onclick="deleteLiability(${l.id})">Delete</button>
+                                <div class="action-buttons">
+                                    ${l.status !== 'Paid' ? `<button class="btn-success" onclick="markPaid(${l.id})">✅ Paid</button>` : ''}
+                                    <button class="btn-danger" onclick="deleteLiability(${l.id})">Delete</button>
+                                </div>
                             </td>
                         </tr>
                     `;
@@ -192,15 +198,26 @@
     
     function markPaid(id) {
         if (!confirm('Mark this as paid?')) return;
-        fetch(`/api/liabilities/${id}/paid`, { method: 'POST' })
-            .then(() => {
+        fetch(`/api/liabilities/${id}/paid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('✅ Marked as paid successfully!');
                 loadLiabilities();
                 loadSummary();
-            });
+            }
+        })
+        .catch(err => {
+            alert('❌ Error marking as paid');
+            console.error(err);
+        });
     }
     
     function deleteLiability(id) {
-        if (!confirm('Delete this liability?')) return;
+        if (!confirm('Delete this liability permanently?')) return;
         fetch('/api/liabilities', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },

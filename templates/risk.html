@@ -69,7 +69,7 @@
                     { label: 'High Risk', value: data.high_risk_investments, cls: data.high_risk_investments > 2 ? 'high' : 'low' },
                     { label: 'Medium Risk', value: data.medium_risk_investments, cls: 'medium' },
                     { label: 'Low Risk', value: data.low_risk_investments, cls: 'low' },
-                    { label: 'Cash Reserve', value: data.cash_reserve.toLocaleString() + ' FCFA', cls: 'blue' },
+                    { label: 'Cash Reserve', value: data.cash_reserve.toLocaleString() + ' BIF', cls: 'blue' },
                     { label: 'Diversification', value: data.diversification_score.toFixed(0) + '%', cls: data.diversification_score > 70 ? 'low' : data.diversification_score > 40 ? 'medium' : 'high' }
                 ];
                 container.innerHTML = items.map(item => `
