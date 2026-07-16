@@ -1201,7 +1201,7 @@ def get_timeline():
             'date': i.purchase_date.strftime('%Y-%m-%d'),
             'type': 'investment',
             'title': f"Investment: {i.investment_id}",
-            'description': f"{i.capital:,.0f} FCFA - {i.type}",
+            'description': f"{i.capital:,.0f} BIF - {i.type}",
             'icon': '📊'
         })
     for l in Livestock.query.filter_by(user_id=user_id).order_by(Livestock.purchase_date.desc()).limit(30).all():
@@ -1255,7 +1255,7 @@ def get_decisions():
     for b in over_budget[:3]:
         recommendations.append({
             'title': f'⚠️ Reduce {b.category} spending',
-            'message': f'Exceeded by {b.actual_amount - b.expected_amount:,.0f} FCFA.',
+            'message': f'Exceeded by {b.actual_amount - b.expected_amount:,.0f} BIF.',
             'type': 'warning'
         })
     total_cash = db.session.query(func.sum(Transaction.amount)).filter(
@@ -1264,7 +1264,7 @@ def get_decisions():
     if total_cash > 500000:
         recommendations.append({
             'title': '💰 Investment Opportunity',
-            'message': f'You have {total_cash:,.0f} FCFA in cash.',
+            'message': f'You have {total_cash:,.0f} BIF in cash.',
             'type': 'opportunity'
         })
     return jsonify(recommendations[:5])
@@ -1377,7 +1377,7 @@ def export_report(report_type, format):
         ).scalar() or 0
         
         summary_data = [
-            ['Metric', 'Amount (FCFA)'],
+            ['Metric', 'Amount (BIF)'],
             ['Total Income', f"{total_income:,.0f}"],
             ['Total Expenses', f"{total_expenses:,.0f}"],
             ['Net Cash', f"{total_income - total_expenses:,.0f}"],
@@ -1666,7 +1666,7 @@ def export_report(report_type, format):
         # ===== FOOTER =====
         story.append(Spacer(1, 0.5*inch))
         footer_style = ParagraphStyle('Footer', fontSize=10, alignment=1, textColor=colors.HexColor('#4a5a6f'))
-        story.append(Paragraph("BuSystem v1.0 • Every Franc Must Have a Job", footer_style))
+        story.append(Paragraph("BuSystem v10 • Every Franc Must Have a Job", footer_style))
         story.append(Paragraph(f"Report generated on {datetime.now().strftime('%Y-%m-%d at %H:%M')}", footer_style))
         story.append(Paragraph(f"User: {current_user.username} • Currency: {current_user.currency}", footer_style))
         

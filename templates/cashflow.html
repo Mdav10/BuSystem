@@ -152,7 +152,7 @@
         document.getElementById('totalExpenses').textContent = expenses.toLocaleString() + ' FCFA';
         const balance = income - expenses;
         const el = document.getElementById('balance');
-        el.textContent = balance.toLocaleString() + ' FCFA';
+        el.textContent = balance.toLocaleString() + ' BIF';
         el.className = 'value ' + (balance >= 0 ? 'green' : 'red');
     }
     
