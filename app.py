@@ -270,6 +270,34 @@ class FinancialRule(db.Model):
             'action_message': self.action_message
         }
 
+class Liability(db.Model):
+    __tablename__ = 'liabilities'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    type = db.Column(db.String(20), nullable=False)  # 'owes_me' or 'i_owe'
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(200))
+    amount = db.Column(db.Float, nullable=False)
+    due_date = db.Column(db.DateTime)
+    status = db.Column(db.String(20), default='Pending')  # Pending, Paid, Overdue
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    paid_at = db.Column(db.DateTime)
+    notes = db.Column(db.Text)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'type': self.type,
+            'name': self.name,
+            'description': self.description,
+            'amount': self.amount,
+            'due_date': self.due_date.strftime('%Y-%m-%d') if self.due_date else None,
+            'status': self.status,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M'),
+            'paid_at': self.paid_at.strftime('%Y-%m-%d') if self.paid_at else None,
+            'notes': self.notes
+        }
+
 # ============================
 # INITIALIZE DATABASE
 # ============================
@@ -811,6 +839,103 @@ def delete_budget(id):
     return jsonify({'status': 'success'})
 
 # ============================
+# LIABILITY API (with DELETE)
+# ============================
+
+@app.route('/api/liabilities', methods=['GET', 'POST'])
+@login_required
+def api_liabilities():
+    if request.method == 'GET':
+        liabilities = Liability.query.filter_by(
+            user_id=current_user.id
+        ).order_by(Liability.created_at.desc()).all()
+        return jsonify([l.to_dict() for l in liabilities])
+    
+    elif request.method == 'POST':
+        data = request.json
+        liability = Liability(
+            user_id=current_user.id,
+            type=data.get('type'),
+            name=data.get('name'),
+            description=data.get('description'),
+            amount=float(data.get('amount')),
+            due_date=datetime.strptime(data.get('due_date'), '%Y-%m-%d') if data.get('due_date') else None,
+            status=data.get('status', 'Pending'),
+            notes=data.get('notes')
+        )
+        db.session.add(liability)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': liability.id})
+
+@app.route('/api/liabilities/<int:id>/paid', methods=['POST'])
+@login_required
+def mark_liability_paid(id):
+    liability = Liability.query.get_or_404(id)
+    if liability.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    liability.status = 'Paid'
+    liability.paid_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+@app.route('/api/liabilities/<int:id>', methods=['DELETE'])
+@login_required
+def delete_liability(id):
+    liability = Liability.query.get_or_404(id)
+    if liability.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    db.session.delete(liability)
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+@app.route('/api/liabilities/summary')
+@login_required
+def get_liability_summary():
+    user_id = current_user.id
+    
+    # Total owed to me (people who owe me)
+    total_owed_to_me = db.session.query(func.sum(Liability.amount)).filter(
+        Liability.user_id == user_id,
+        Liability.type == 'owes_me',
+        Liability.status != 'Paid'
+    ).scalar() or 0
+    
+    # Total I owe (debts)
+    total_i_owe = db.session.query(func.sum(Liability.amount)).filter(
+        Liability.user_id == user_id,
+        Liability.type == 'i_owe',
+        Liability.status != 'Paid'
+    ).scalar() or 0
+    
+    # Total assets
+    total_assets = db.session.query(func.sum(Asset.current_value)).filter(
+        Asset.user_id == user_id
+    ).scalar() or 0
+    
+    # Total cash
+    total_income = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == 'income'
+    ).scalar() or 0
+    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == 'expense'
+    ).scalar() or 0
+    total_cash = total_income - total_expenses
+    
+    total_equity = total_assets + total_cash - total_i_owe + total_owed_to_me
+    
+    return jsonify({
+        'total_owed_to_me': total_owed_to_me,
+        'total_i_owe': total_i_owe,
+        'total_assets': total_assets,
+        'total_cash': total_cash,
+        'total_equity': total_equity,
+        'net_position': total_owed_to_me - total_i_owe
+    })
+
+# ============================
 # RULES API (with DELETE)
 # ============================
 
@@ -1225,6 +1350,18 @@ def export_report(report_type, format):
         total_livestock = Livestock.query.filter_by(user_id=user_id).count()
         active_goals = Goal.query.filter_by(user_id=user_id, status='Active').count()
         
+        # Liability summary
+        total_owed_to_me = db.session.query(func.sum(Liability.amount)).filter(
+            Liability.user_id == user_id,
+            Liability.type == 'owes_me',
+            Liability.status != 'Paid'
+        ).scalar() or 0
+        total_i_owe = db.session.query(func.sum(Liability.amount)).filter(
+            Liability.user_id == user_id,
+            Liability.type == 'i_owe',
+            Liability.status != 'Paid'
+        ).scalar() or 0
+        
         summary_data = [
             ['Metric', 'Amount (FCFA)'],
             ['Total Income', f"{total_income:,.0f}"],
@@ -1232,6 +1369,8 @@ def export_report(report_type, format):
             ['Net Cash', f"{total_income - total_expenses:,.0f}"],
             ['Total Assets', f"{total_assets:,.0f}"],
             ['Total Investments', f"{total_investments:,.0f}"],
+            ['Owed to Me', f"{total_owed_to_me:,.0f}"],
+            ['I Owe', f"{total_i_owe:,.0f}"],
             ['Net Worth', f"{total_assets + total_income - total_expenses:,.0f}"],
             ['Total Livestock', f"{total_livestock}"],
             ['Active Goals', f"{active_goals}"]
@@ -1431,6 +1570,35 @@ def export_report(report_type, format):
         ]))
         story.append(budget_table)
         
+        # ===== 8. LIABILITIES =====
+        story.append(PageBreak())
+        story.append(Paragraph("<b>📋 LIABILITIES</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        liabilities = Liability.query.filter_by(user_id=user_id).all()
+        liability_data = [['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']]
+        for l in liabilities:
+            liability_data.append([
+                'Owed to Me' if l.type == 'owes_me' else 'I Owe',
+                l.name,
+                l.description or '-',
+                f"{l.amount:,.0f}",
+                l.due_date.strftime('%Y-%m-%d') if l.due_date else '-',
+                l.status
+            ])
+        liability_table = Table(liability_data, colWidths=[1.2*inch, 1.2*inch, 1.5*inch, 1.2*inch, 1.2*inch, 1*inch])
+        liability_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+        ]))
+        story.append(liability_table)
+        
         # Footer
         story.append(Spacer(1, 0.5*inch))
         footer_style = ParagraphStyle('Footer', fontSize=10, alignment=1, textColor=colors.HexColor('#4a5a6f'))
@@ -1537,6 +1705,21 @@ def export_report(report_type, format):
             worksheet6.write(row, 3, b.actual_amount)
             worksheet6.write(row, 4, b.difference)
         
+        # Liabilities sheet
+        worksheet7 = workbook.add_worksheet('Liabilities')
+        headers7 = ['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']
+        for col, header in enumerate(headers7):
+            worksheet7.write(0, col, header)
+        
+        liabilities = Liability.query.filter_by(user_id=user_id).all()
+        for row, l in enumerate(liabilities, 1):
+            worksheet7.write(row, 0, 'Owed to Me' if l.type == 'owes_me' else 'I Owe')
+            worksheet7.write(row, 1, l.name)
+            worksheet7.write(row, 2, l.description or '')
+            worksheet7.write(row, 3, l.amount)
+            worksheet7.write(row, 4, l.due_date.strftime('%Y-%m-%d') if l.due_date else '')
+            worksheet7.write(row, 5, l.status)
+        
         workbook.close()
         output.seek(0)
         return send_file(output, as_attachment=True, download_name=f"BuSystem_Full_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx")
@@ -1621,6 +1804,11 @@ def exports():
 @login_required
 def rules():
     return render_template('rules.html', user=current_user)
+
+@app.route('/liability')
+@login_required
+def liability():
+    return render_template('liability.html', user=current_user)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
