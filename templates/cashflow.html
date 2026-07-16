@@ -148,8 +148,8 @@
             if (t.type === 'income') income += Number(t.amount);
             else expenses += Number(t.amount);
         });
-        document.getElementById('totalIncome').textContent = income.toLocaleString() + ' FCFA';
-        document.getElementById('totalExpenses').textContent = expenses.toLocaleString() + ' FCFA';
+        document.getElementById('totalIncome').textContent = income.toLocaleString() + ' BIF';
+        document.getElementById('totalExpenses').textContent = expenses.toLocaleString() + ' BIF';
         const balance = income - expenses;
         const el = document.getElementById('balance');
         el.textContent = balance.toLocaleString() + ' BIF';
