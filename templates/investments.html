@@ -2,48 +2,31 @@
 <html>
 <head>
     <title>BuSystem - Investments</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/static/manifest.json">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 20px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; }
         .container { max-width: 1200px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
-        .logo { font-size: 28px; font-weight: bold; color: #00d4ff; }
-        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
-        .form-card { background: #111a2b; border-radius: 16px; padding: 24px; border: 1px solid #1a2a3f; margin: 20px 0; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #7a8ba3; font-size: 13px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
-        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; animation: fadeInDown 0.5s ease-out; }
+        .logo { font-size: 28px; font-weight: bold; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
+        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; transition: 0.3s; position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+        .back:active::before { width: 300px; height: 300px; }
+        .back::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(0, 212, 255, 0.2); transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s; pointer-events: none; }
+        .content { margin-top: 30px; padding: 30px; background: #111a2b; border-radius: 16px; border: 1px solid #1a2a3f; min-height: 300px; animation: fadeInUp 0.6s ease-out 0.1s both; }
+        .footer { margin-top: 30px; text-align: center; color: #4a5a6f; border-top: 1px solid #1a2332; padding-top: 15px; font-size: 12px; animation: fadeInUp 0.6s ease-out 0.3s both; }
+        h2 { color: #00d4ff; margin-bottom: 15px; }
+        .sub { color: #7a8ba3; }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; -webkit-tap-highlight-color: transparent; position: relative; overflow: hidden; }
+        .btn:active::before { width: 300px; height: 300px; }
+        .btn::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.3); transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s; pointer-events: none; }
         .btn:hover { background: #00ff88; transform: scale(1.03); }
-        .btn-success { background: #2ecc71; color: #fff; }
-        .btn-success:hover { background: #27ae60; }
-        .btn-danger { background: #ff4757; color: #fff; }
-        .btn-danger:hover { background: #ff6b81; }
-        .btn-warning { background: #f39c12; color: #fff; }
-        .btn-warning:hover { background: #e67e22; }
-        .table-wrap { overflow-x: auto; margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: #1a2a3f; padding: 12px; text-align: left; color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
-        td { padding: 10px 12px; border-bottom: 1px solid #1a2332; font-size: 14px; }
-        tr:hover { background: #0f1a2b; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
-        .badge { display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 12px; }
-        .badge.running { background: #1a3a2a; color: #2ecc71; }
-        .badge.sold { background: #1a2a3f; color: #3498db; }
-        .badge.lost { background: #3a1a1a; color: #ff4757; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
-        .stat-card { background: #111a2b; padding: 15px; border-radius: 12px; border: 1px solid #1a2a3f; }
-        .stat-card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; }
-        .stat-card .value { font-size: 20px; font-weight: bold; margin-top: 5px; }
-        .stat-card .value.green { color: #2ecc71; }
-        h2 { color: #00d4ff; margin: 20px 0; }
-        .amount-positive { color: #2ecc71; }
-        .amount-negative { color: #ff4757; }
-        .action-buttons { display: flex; gap: 5px; flex-wrap: wrap; }
-        .action-buttons .btn { padding: 4px 12px; font-size: 12px; }
+        .btn:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -52,165 +35,18 @@
         <div class="logo">💰 BuSystem</div>
         <a href="/dashboard" class="back">← Dashboard</a>
     </div>
-    
-    <h2>📈 Investment Manager</h2>
-    
-    <div class="stats" id="stats">
-        <div class="stat-card"><div class="label">Total Invested</div><div class="value green" id="totalInvested">0</div></div>
-        <div class="stat-card"><div class="label">Active Investments</div><div class="value" id="activeCount">0</div></div>
-        <div class="stat-card"><div class="label">Total Profit</div><div class="value green" id="totalProfit">0</div></div>
+    <div class="content">
+        <h2>📋 Investments</h2>
+        <p class="sub">Module ready. Use API endpoints.</p>
+        <p style="color:#4a5a6f;margin-top:10px;">GET /api/investments</p>
     </div>
-    
-    <div class="form-card">
-        <h3 style="color: #fff; margin-bottom: 15px;">Add Investment</h3>
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Type</label>
-                <select id="invType">
-                    <option value="Animal">Animal</option>
-                    <option value="Crop">Crop</option>
-                    <option value="Business">Business</option>
-                    <option value="Stock">Stock</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Sub Type</label>
-                <input type="text" id="invSubType" placeholder="e.g., Turkey, Goat">
-            </div>
-            <div class="form-group">
-                <label>Capital (FCFA)</label>
-                <input type="number" id="invCapital" placeholder="Enter amount" step="0.01">
-            </div>
-            <div class="form-group">
-                <label>Expected ROI (%)</label>
-                <input type="number" id="invROI" placeholder="e.g., 50" step="0.01">
-            </div>
-            <div class="form-group">
-                <label>Purchase Date</label>
-                <input type="date" id="invDate">
-            </div>
-            <div class="form-group">
-                <label>Expected Exit Date</label>
-                <input type="date" id="invExitDate">
-            </div>
-        </div>
-        <button class="btn" onclick="addInvestment()">➕ Add Investment</button>
-    </div>
-    
-    <div class="table-wrap">
-        <h3 style="color: #fff; margin-bottom: 10px;">Your Investments</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Type</th>
-                    <th>Capital</th>
-                    <th>Status</th>
-                    <th>Profit</th>
-                    <th>ROI</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="investmentsList">
-                <tr><td colspan="7" style="text-align:center; color:#4a5a6f;">No investments yet.</td></tr>
-            </tbody>
-        </table>
-    </div>
-    
-    <div class="footer" style="margin-top:30px; text-align:center; color:#4a5a6f; border-top:1px solid #1a2332; padding-top:15px;">
-        Every Franc Must Have a Job
-    </div>
+    <div class="footer">Every Franc Must Have a Job</div>
 </div>
-
 <script>
-    document.getElementById('invDate').value = new Date().toISOString().split('T')[0];
-    loadInvestments();
-    
-    function loadInvestments() {
-        fetch('/api/investments')
-            .then(res => res.json())
-            .then(data => {
-                const tbody = document.getElementById('investmentsList');
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#4a5a6f;">No investments yet.</td></tr>';
-                    updateStats([]);
-                    return;
-                }
-                tbody.innerHTML = data.map(i => `
-                    <tr>
-                        <td><strong>${i.investment_id}</strong></td>
-                        <td>${i.type}${i.sub_type ? ' ('+i.sub_type+')' : ''}</td>
-                        <td>${Number(i.capital).toLocaleString()} FCFA</td>
-                        <td><span class="badge ${i.status.toLowerCase()}">${i.status}</span></td>
-                        <td class="${i.profit >= 0 ? 'amount-positive' : 'amount-negative'}">${Number(i.profit).toLocaleString()} FCFA</td>
-                        <td>${i.roi_actual ? Number(i.roi_actual).toFixed(1) + '%' : '-'}</td>
-                        <td>
-                            <div class="action-buttons">
-                                ${i.status === 'Running' ? `<button class="btn btn-success" onclick="sellInvestment(${i.id})">Sell</button>` : ''}
-                                <button class="btn btn-danger" onclick="deleteInvestment(${i.id})">Delete</button>
-                            </div>
-                        </td>
-                    </tr>
-                `).join('');
-                updateStats(data);
-            });
-    }
-    
-    function updateStats(data) {
-        let total = 0, active = 0, profit = 0;
-        data.forEach(i => {
-            total += Number(i.capital);
-            if (i.status === 'Running') active++;
-            profit += Number(i.profit);
-        });
-        document.getElementById('totalInvested').textContent = total.toLocaleString() + ' FCFA';
-        document.getElementById('activeCount').textContent = active;
-        document.getElementById('totalProfit').textContent = profit.toLocaleString() + ' FCFA';
-    }
-    
-    function addInvestment() {
-        const type = document.getElementById('invType').value;
-        const sub_type = document.getElementById('invSubType').value;
-        const capital = document.getElementById('invCapital').value;
-        const expected_roi = document.getElementById('invROI').value;
-        const purchase_date = document.getElementById('invDate').value;
-        const expected_exit_date = document.getElementById('invExitDate').value;
-        
-        if (!capital || capital <= 0) {
-            alert('Please enter a valid capital amount');
-            return;
-        }
-        
-        fetch('/api/investments', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type, sub_type, capital: parseFloat(capital), expected_roi: parseFloat(expected_roi) || 0, purchase_date, expected_exit_date })
-        })
-        .then(res => res.json())
-        .then(() => {
-            document.getElementById('invCapital').value = '';
-            document.getElementById('invSubType').value = '';
-            document.getElementById('invROI').value = '';
-            loadInvestments();
-        });
-    }
-    
-    function sellInvestment(id) {
-        const price = prompt('Enter sell price (FCFA):');
-        if (!price || price <= 0) return;
-        if (!confirm('Confirm selling this investment?')) return;
-        fetch(`/api/investments/${id}/sell`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sell_price: parseFloat(price) })
-        })
-        .then(() => loadInvestments());
-    }
-    
-    function deleteInvestment(id) {
-        if (!confirm('Delete this investment permanently?')) return;
-        fetch(`/api/investments/${id}`, { method: 'DELETE' })
-            .then(() => loadInvestments());
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/service-worker.js')
+            .then(reg => console.log('✅ SW registered'))
+            .catch(err => console.log('⚠️ SW failed:', err));
     }
 </script>
 </body>

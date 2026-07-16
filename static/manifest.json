@@ -1,5 +1,5 @@
 {
-  "name": "BuSystem",
+  "name": "BuSystem - My Finance Os",
   "short_name": "BuSys",
   "description": "Every Franc Must Have a Job",
   "start_url": "/",
@@ -7,7 +7,16 @@
   "background_color": "#0a0e17",
   "theme_color": "#00d4ff",
   "orientation": "portrait",
+  "scope": "/",
+  "id": "busystem-app",
   "categories": ["finance", "business", "productivity"],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1080 1920'%3E%3Crect width='1080' height='1920' fill='%230a0e17'/%3E%3Ctext x='540' y='900' font-family='Arial' font-size='120' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='540' y='1050' font-family='Arial' font-size='48' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSystem%3C/text%3E%3Ctext x='540' y='1120' font-family='Arial' font-size='24' text-anchor='middle' fill='%237a8ba3'%3EEvery Franc Must Have a Job%3C/text%3E%3C/svg%3E",
+      "type": "image/svg+xml",
+      "sizes": "1080x1920"
+    }
+  ],
   "icons": [
     {
       "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E",
@@ -30,6 +39,24 @@
     {
       "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E",
       "sizes": "64x64",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E",
+      "sizes": "144x144",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E",
+      "sizes": "96x96",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E",
+      "sizes": "72x72",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
