@@ -2,16 +2,23 @@
 <html>
 <head>
     <title>BuSystem - Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 20px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 20px; -webkit-tap-highlight-color: transparent; }
         .container { max-width: 1400px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
-        .logo { font-size: 28px; font-weight: bold; color: #00d4ff; }
-        .logout { background: #ff4757; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+        .logo { font-size: 28px; font-weight: bold; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
+        .logo-icon { font-size: 32px; }
+        .logout { background: #ff4757; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 25px 0; }
-        .card { background: #111a2b; border-radius: 14px; padding: 20px; border: 1px solid #1a2a3f; transition: 0.3s; }
+        .card { background: #111a2b; border-radius: 14px; padding: 20px; border: 1px solid #1a2a3f; transition: 0.3s; cursor: default; }
         .card:hover { transform: translateY(-3px); border-color: #00d4ff; }
         .card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; letter-spacing: 1px; }
         .card .value { font-size: 22px; font-weight: bold; margin-top: 6px; }
@@ -27,29 +34,58 @@
         .alerts h3 { color: #ff4757; margin-bottom: 8px; font-size: 14px; }
         .alerts li { list-style: none; padding: 4px 0; color: #ffb3b3; font-size: 13px; }
         .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 15px 0; padding: 12px; background: #0f1a2b; border-radius: 10px; }
-        .nav a { color: #7a8ba3; text-decoration: none; padding: 6px 14px; border-radius: 6px; transition: 0.3s; font-size: 13px; }
+        .nav a { color: #7a8ba3; text-decoration: none; padding: 6px 14px; border-radius: 6px; transition: 0.3s; font-size: 13px; -webkit-tap-highlight-color: transparent; }
         .nav a:hover { background: #1a2a3f; color: #fff; }
+        .nav a:active { transform: scale(0.95); }
         .nav a.active { background: #1a2a3f; color: #00d4ff; }
         .reports { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
-        .btn { background: #00d4ff; color: #0a0e17; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; text-decoration: none; display: inline-block; font-size: 13px; }
+        .btn { background: #00d4ff; color: #0a0e17; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; text-decoration: none; display: inline-block; font-size: 13px; -webkit-tap-highlight-color: transparent; }
         .btn:hover { transform: scale(1.03); background: #00ff88; }
+        .btn:active { transform: scale(0.95); }
         .btn-secondary { background: #1a2a3f; color: #fff; }
         .btn-secondary:hover { background: #2a3f5f; }
         .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
         .user-info { color: #7a8ba3; font-size: 13px; }
         @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } .card .value { font-size: 17px; } }
+        .install-banner {
+            display: none;
+            background: #1a2a3f;
+            padding: 12px 18px;
+            border-radius: 12px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 13px;
+            color: #7a8ba3;
+            border: 1px solid #2a3f5f;
+        }
+        .install-banner .btn-install {
+            background: #00d4ff;
+            color: #0a0e17;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <div class="logo">💰 BuSystem</div>
+        <div class="logo"><span class="logo-icon">💰</span> BuSys</div>
         <div>
             <span class="user-info">👤 {{ user.username }}</span>
             <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
                 <button class="logout">Logout</button>
             </form>
         </div>
+    </div>
+    
+    <div id="installBanner" class="install-banner">
+        📱 Install BuSys on your device for offline access
+        <br>
+        <button class="btn-install" id="installBtn">Install App</button>
     </div>
     
     <div class="nav">
@@ -103,5 +139,33 @@
     
     <div class="footer">BuSystem v1.0 • Every Franc Must Have a Job • {{ user.currency }}</div>
 </div>
+
+<script>
+    // PWA Install Prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('installBanner').style.display = 'block';
+    });
+    
+    document.getElementById('installBtn').addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+            if (result.outcome === 'accepted') {
+                document.getElementById('installBanner').style.display = 'none';
+            }
+            deferredPrompt = null;
+        }
+    });
+    
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/service-worker.js')
+            .then(reg => console.log('SW registered:', reg))
+            .catch(err => console.log('SW registration failed:', err));
+    }
+</script>
 </body>
 </html>

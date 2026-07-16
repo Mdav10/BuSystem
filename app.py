@@ -1,7 +1,7 @@
 import os
 import io
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_cors import CORS
@@ -351,6 +351,14 @@ with app.app_context():
         print("✅ Default financial rules created")
     
     print("🎉 Database initialized successfully!")
+
+# ============================
+# SERVE STATIC FILES
+# ============================
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
 
 # ============================
 # AUTHENTICATION
