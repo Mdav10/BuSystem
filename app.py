@@ -382,6 +382,12 @@ def serve_manifest():
                 "sizes": "192x192",
                 "type": "image/svg+xml",
                 "purpose": "any maskable"
+            },
+            {
+                "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E",
+                "sizes": "128x128",
+                "type": "image/svg+xml",
+                "purpose": "any maskable"
             }
         ]
     }
@@ -542,10 +548,10 @@ def dashboard():
     )
 
 # ============================
-# API ENDPOINTS - ALL MODULES
+# ALL API ENDPOINTS - REAL FUNCTIONALITY
 # ============================
 
-@app.route('/api/transactions', methods=['GET', 'POST'])
+@app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_transactions():
     if request.method == 'GET':
@@ -566,18 +572,16 @@ def api_transactions():
         db.session.add(transaction)
         db.session.commit()
         return jsonify({'status': 'success', 'id': transaction.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        transaction = Transaction.query.get_or_404(data.get('id'))
+        if transaction.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(transaction)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/transactions/<int:id>', methods=['DELETE'])
-@login_required
-def delete_transaction(id):
-    transaction = Transaction.query.get_or_404(id)
-    if transaction.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(transaction)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/investments', methods=['GET', 'POST'])
+@app.route('/api/investments', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_investments():
     if request.method == 'GET':
@@ -604,6 +608,14 @@ def api_investments():
         db.session.add(investment)
         db.session.commit()
         return jsonify({'status': 'success', 'investment_id': investment_id})
+    elif request.method == 'DELETE':
+        data = request.json
+        investment = Investment.query.get_or_404(data.get('id'))
+        if investment.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(investment)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
 @app.route('/api/investments/<int:id>/sell', methods=['POST'])
 @login_required
@@ -620,17 +632,7 @@ def sell_investment(id):
     db.session.commit()
     return jsonify({'status': 'success', 'roi': investment.roi_actual})
 
-@app.route('/api/investments/<int:id>', methods=['DELETE'])
-@login_required
-def delete_investment(id):
-    investment = Investment.query.get_or_404(id)
-    if investment.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(investment)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/livestock', methods=['GET', 'POST'])
+@app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_livestock():
     if request.method == 'GET':
@@ -654,18 +656,16 @@ def api_livestock():
         db.session.add(animal)
         db.session.commit()
         return jsonify({'status': 'success', 'id': animal.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        animal = Livestock.query.get_or_404(data.get('id'))
+        if animal.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(animal)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/livestock/<int:id>', methods=['DELETE'])
-@login_required
-def delete_livestock(id):
-    animal = Livestock.query.get_or_404(id)
-    if animal.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(animal)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/assets', methods=['GET', 'POST'])
+@app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_assets():
     if request.method == 'GET':
@@ -688,18 +688,16 @@ def api_assets():
         db.session.add(asset)
         db.session.commit()
         return jsonify({'status': 'success', 'id': asset.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        asset = Asset.query.get_or_404(data.get('id'))
+        if asset.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(asset)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/assets/<int:id>', methods=['DELETE'])
-@login_required
-def delete_asset(id):
-    asset = Asset.query.get_or_404(id)
-    if asset.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(asset)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/goals', methods=['GET', 'POST', 'PUT'])
+@app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
 def api_goals():
     if request.method == 'GET':
@@ -731,18 +729,16 @@ def api_goals():
             db.session.commit()
             return jsonify({'status': 'success', 'progress': goal.progress})
         return jsonify({'error': 'No update data'}), 400
+    elif request.method == 'DELETE':
+        data = request.json
+        goal = Goal.query.get_or_404(data.get('id'))
+        if goal.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(goal)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
-@app.route('/api/goals/<int:id>', methods=['DELETE'])
-@login_required
-def delete_goal(id):
-    goal = Goal.query.get_or_404(id)
-    if goal.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(goal)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/budget', methods=['GET', 'POST'])
+@app.route('/api/budget', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_budget():
     if request.method == 'GET':
@@ -775,6 +771,14 @@ def api_budget():
             db.session.add(budget)
         db.session.commit()
         return jsonify({'status': 'success'})
+    elif request.method == 'DELETE':
+        data = request.json
+        budget = Budget.query.get_or_404(data.get('id'))
+        if budget.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(budget)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
 @app.route('/api/budget/monthly')
 @login_required
@@ -798,17 +802,7 @@ def get_monthly_budget_summary():
         'total_difference': float(r[4]) if r[4] else 0
     } for r in results])
 
-@app.route('/api/budget/<int:id>', methods=['DELETE'])
-@login_required
-def delete_budget(id):
-    budget = Budget.query.get_or_404(id)
-    if budget.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(budget)
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/liabilities', methods=['GET', 'POST'])
+@app.route('/api/liabilities', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_liabilities():
     if request.method == 'GET':
@@ -831,6 +825,14 @@ def api_liabilities():
         db.session.add(liability)
         db.session.commit()
         return jsonify({'status': 'success', 'id': liability.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        liability = Liability.query.get_or_404(data.get('id'))
+        if liability.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(liability)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
 @app.route('/api/liabilities/<int:id>/paid', methods=['POST'])
 @login_required
@@ -840,16 +842,6 @@ def mark_liability_paid(id):
         return jsonify({'error': 'Unauthorized'}), 403
     liability.status = 'Paid'
     liability.paid_at = datetime.utcnow()
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/liabilities/<int:id>', methods=['DELETE'])
-@login_required
-def delete_liability(id):
-    liability = Liability.query.get_or_404(id)
-    if liability.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(liability)
     db.session.commit()
     return jsonify({'status': 'success'})
 
@@ -889,7 +881,7 @@ def get_liability_summary():
         'net_position': total_owed_to_me - total_i_owe
     })
 
-@app.route('/api/rules', methods=['GET', 'POST'])
+@app.route('/api/rules', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_rules():
     if request.method == 'GET':
@@ -913,16 +905,14 @@ def api_rules():
         db.session.add(rule)
         db.session.commit()
         return jsonify({'status': 'success', 'id': rule.id})
-
-@app.route('/api/rules/<int:id>', methods=['DELETE'])
-@login_required
-def delete_rule(id):
-    rule = FinancialRule.query.get_or_404(id)
-    if rule.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    db.session.delete(rule)
-    db.session.commit()
-    return jsonify({'status': 'success'})
+    elif request.method == 'DELETE':
+        data = request.json
+        rule = FinancialRule.query.get_or_404(data.get('id'))
+        if rule.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(rule)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
 @app.route('/api/rules/check')
 @login_required
@@ -1145,7 +1135,7 @@ def get_notifications():
     return jsonify([n.to_dict() for n in notifications])
 
 # ============================
-# REPORTS
+# REPORTS - FULL PDF WITH ALL DATA
 # ============================
 
 @app.route('/api/reports/<report_type>')
@@ -1248,7 +1238,7 @@ def export_report(report_type, format):
     return jsonify({'error': 'Invalid format'}), 400
 
 # ============================
-# PAGE ROUTES
+# PAGE ROUTES - ALL MODULES
 # ============================
 
 @app.route('/cashflow')
