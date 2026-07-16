@@ -7,7 +7,8 @@
     <meta name="theme-color" content="#0a0e17">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="data:application/json,%7B%22name%22%3A%22BuSystem%22%2C%22short_name%22%3A%22BuSys%22%2C%22start_url%22%3A%22/dashboard%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0e17%22%2C%22theme_color%22%3A%22%2300d4ff%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data:image/svg+xml,%253Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%253E%253Crect width='512' height='512' rx='100' fill='%25230a0e17'/%253E%253Ctext x='256' y='340' font-family='Arial' font-size='180' font-weight='bold' text-anchor='middle' fill='%252300d4ff'%253E💰%253C/text%253E%253Ctext x='256' y='420' font-family='Arial' font-size='42' font-weight='bold' text-anchor='middle' fill='%252300d4ff'%253EBuSys%253C/text%253E%253C/svg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image/svg+xml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -18,6 +19,7 @@
             justify-content: center;
             align-items: center;
             color: #e0e6ed;
+            -webkit-tap-highlight-color: transparent;
         }
         .login-box {
             background: #111a2b;
@@ -27,16 +29,63 @@
             width: 400px;
             max-width: 90%;
             box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            animation: slideUp 0.6s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .logo-text { font-size: 36px; font-weight: bold; color: #00d4ff; text-align: center; margin-bottom: 8px; }
         .subtitle { text-align: center; color: #7a8ba3; margin-bottom: 30px; font-size: 14px; }
         .input-group { margin-bottom: 20px; }
         .input-group label { display: block; margin-bottom: 6px; font-size: 13px; color: #7a8ba3; }
-        .input-group input { width: 100%; padding: 14px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 10px; color: #fff; font-size: 16px; transition: 0.3s; -webkit-appearance: none; }
-        .input-group input:focus { outline: none; border-color: #00d4ff; box-shadow: 0 0 20px rgba(0,212,255,0.1); }
-        .btn-login { width: 100%; padding: 14px; background: #00d4ff; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; color: #0a0e17; cursor: pointer; transition: 0.3s; }
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            background: #0f1a2b;
+            border: 1px solid #1a2a3f;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            transition: 0.3s;
+            -webkit-appearance: none;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0,212,255,0.1);
+        }
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: #00d4ff;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #0a0e17;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-login:active { transform: scale(0.96); }
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .btn-login:active::before { width: 400px; height: 400px; }
         .btn-login:hover { background: #00ff88; transform: scale(1.02); }
-        .btn-login:active { transform: scale(0.98); }
         .error { color: #ff4757; text-align: center; margin-bottom: 15px; font-size: 14px; }
         .footer { text-align: center; margin-top: 20px; color: #4a5a6f; font-size: 12px; }
         .install-banner {
@@ -49,18 +98,37 @@
             font-size: 13px;
             color: #7a8ba3;
             border: 1px solid #2a3f5f;
+            animation: slideUp 0.5s ease-out;
         }
         .install-banner .btn-install {
             background: #00d4ff;
             color: #0a0e17;
             border: none;
-            padding: 8px 20px;
+            padding: 10px 30px;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
             margin-top: 8px;
+            font-size: 14px;
+            position: relative;
+            overflow: hidden;
         }
         .install-banner .btn-install:active { transform: scale(0.95); }
+        .install-banner .btn-install::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .install-banner .btn-install:active::before { width: 400px; height: 400px; }
+        @media (max-width: 480px) { .login-box { padding: 30px 20px; } }
     </style>
 </head>
 <body>
@@ -82,7 +150,7 @@
         <button type="submit" class="btn-login">🚀 Access</button>
     </form>
     <div id="installBanner" class="install-banner">
-        📱 Install BuSys<br>
+        📱 Install BuSys as App<br>
         <button class="btn-install" id="installBtn">📲 Install</button>
     </div>
     <div class="footer">Every Franc Must Have a Job</div>
@@ -97,7 +165,10 @@
     document.getElementById('installBtn').addEventListener('click', async () => {
         if (deferredPrompt) {
             deferredPrompt.prompt();
-            await deferredPrompt.userChoice;
+            const result = await deferredPrompt.userChoice;
+            if (result.outcome === 'accepted') {
+                document.getElementById('installBanner').style.display = 'none';
+            }
             deferredPrompt = null;
         }
     });
