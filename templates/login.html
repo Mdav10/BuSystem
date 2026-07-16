@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -34,6 +34,13 @@
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(40px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        .app-icon { 
+            width: 80px; 
+            height: 80px; 
+            display: block; 
+            margin: 0 auto 15px;
+            border-radius: 20px;
         }
         .logo-text { font-size: 36px; font-weight: bold; color: #00d4ff; text-align: center; margin-bottom: 8px; }
         .subtitle { text-align: center; color: #7a8ba3; margin-bottom: 30px; font-size: 14px; }
@@ -133,7 +140,8 @@
 </head>
 <body>
 <div class="login-box">
-    <div class="logo-text">💰 BuSys</div>
+    <img src="/static/icons/icon-192.png" alt="BuSystem" class="app-icon">
+    <div class="logo-text">BuSys</div>
     <div class="subtitle">Personal Finance OS</div>
     {% with messages = get_flashed_messages() %}
         {% if messages %}<div class="error">{{ messages[0] }}</div>{% endif %}

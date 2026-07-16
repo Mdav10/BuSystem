@@ -4,127 +4,38 @@
     <title>BuSystem - Budget</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#0a0e17">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="/manifest.json">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 20px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; animation: fadeInDown 0.5s ease-out; }
-        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .logo { font-size: 28px; font-weight: bold; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
-        .back {
-            color: #7a8ba3;
-            text-decoration: none;
-            padding: 8px 16px;
-            background: #1a2a3f;
-            border-radius: 8px;
-            transition: 0.3s;
-            position: relative;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .back:active { transform: scale(0.95); }
-        .back::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(0, 212, 255, 0.2);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-            pointer-events: none;
-        }
-        .back:active::before { width: 300px; height: 300px; }
-        .content { margin-top: 30px; padding: 30px; background: #111a2b; border-radius: 16px; border: 1px solid #1a2a3f; min-height: 300px; animation: fadeInUp 0.6s ease-out 0.1s both; }
-        .footer { margin-top: 30px; text-align: center; color: #4a5a6f; border-top: 1px solid #1a2332; padding-top: 15px; font-size: 12px; animation: fadeInUp 0.6s ease-out 0.3s both; }
-        h2 { color: #00d4ff; margin-bottom: 15px; }
-        .sub { color: #7a8ba3; }
-        .api-endpoint {
-            background: #0f1a2b;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-family: monospace;
-            color: #00d4ff;
-            border: 1px solid #1a2a3f;
-        }
-        .btn {
-            background: #00d4ff;
-            color: #0a0e17;
-            padding: 10px 24px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-            position: relative;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .btn:active { transform: scale(0.95); }
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-            pointer-events: none;
-        }
-        .btn:active::before { width: 400px; height: 400px; }
-        .btn:hover { background: #00ff88; transform: scale(1.03); }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            background: #1a3a2a;
-            color: #2ecc71;
-        }
-        .data-list {
-            margin-top: 15px;
-        }
-        .data-item {
-            background: #0f1a2b;
-            padding: 10px 14px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            border: 1px solid #1a2332;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .data-item .key { color: #7a8ba3; font-size: 12px; }
-        .data-item .value { color: #00d4ff; font-weight: bold; }
-        .empty-state { color: #4a5a6f; text-align: center; padding: 30px 0; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
-        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
+        .logo { font-size: 24px; font-weight: bold; color: #00d4ff; }
+        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
+        .form-card { background: #111a2b; border-radius: 16px; padding: 20px; border: 1px solid #1a2a3f; margin: 20px 0; }
         .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; margin-bottom: 4px; color: #7a8ba3; font-size: 13px; }
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 10px;
-            background: #0f1a2b;
-            border: 1px solid #1a2a3f;
-            border-radius: 8px;
-            color: #fff;
-            font-size: 14px;
-        }
-        .form-group input:focus, .form-group select:focus {
-            outline: none;
-            border-color: #00d4ff;
-        }
+        .form-group label { display: block; margin-bottom: 4px; color: #7a8ba3; font-size: 12px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
+        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn:active { transform: scale(0.95); }
+        .btn-danger { background: #ff4757; color: #fff; }
+        .btn-danger:active { transform: scale(0.95); }
+        .table-wrap { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1a2a3f; padding: 10px; text-align: left; color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
+        td { padding: 8px 10px; border-bottom: 1px solid #1a2332; font-size: 13px; }
+        .over { color: #ff4757; }
+        .under { color: #2ecc71; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+        .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 11px; border-top: 1px solid #1a2332; padding-top: 12px; }
+        h2 { color: #00d4ff; margin-bottom: 5px; }
+        .sub { color: #7a8ba3; font-size: 13px; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
+        .badge.over { background: #3a1a1a; color: #ff4757; }
+        .badge.under { background: #1a3a2a; color: #2ecc71; }
+        .badge.on-track { background: #1a2a3f; color: #f39c12; }
     </style>
 </head>
 <body>
@@ -133,47 +44,129 @@
         <div class="logo">💰 BuSystem</div>
         <a href="/dashboard" class="back">← Dashboard</a>
     </div>
-    <div class="content">
-        <h2>📋 Budget</h2>
-        <p class="sub">Manage your budget here.</p>
-        
-        <div class="api-endpoint">
-            📡 API: GET /api/budget
+    
+    <h2>Budget Manager</h2>
+    <p class="sub">Plan your monthly spending</p>
+    
+    <div class="form-card">
+        <h3 style="color: #fff; margin-bottom: 12px; font-size: 16px;">Set Monthly Budget</h3>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Category</label>
+                <select id="budgetCategory">
+                    <option value="Food">Food</option>
+                    <option value="Internet">Internet</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Family">Family</option>
+                    <option value="Investment">Investment</option>
+                    <option value="Emergency">Emergency</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Education">Education</option>
+                    <option value="Health">Health</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <select id="budgetType">
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                    <option value="investment">Investment</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Expected Amount (FCFA)</label>
+                <input type="number" id="budgetExpected" placeholder="Enter amount" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Month</label>
+                <select id="budgetMonth">
+                    <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                    <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                    <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                    <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Year</label>
+                <input type="number" id="budgetYear" value="2026">
+            </div>
         </div>
-        
-        <div id="dataContainer">
-            <div class="empty-state">Loading data...</div>
-        </div>
-        
-        <button class="btn" onclick="loadData()" style="margin-top:15px;">🔄 Refresh</button>
+        <button class="btn" onclick="setBudget()">💰 Set Budget</button>
     </div>
+    
+    <div class="table-wrap">
+        <h3 style="color: #fff; margin-bottom: 10px; font-size: 16px;">Your Budgets</h3>
+        <table>
+            <thead>
+                <tr><th>Category</th><th>Type</th><th>Expected</th><th>Actual</th><th>Difference</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody id="budgetList">
+                <tr><td colspan="7" style="text-align:center; color:#4a5a6f; padding:20px;">No budgets set.</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
     <div class="footer">Every Franc Must Have a Job</div>
 </div>
+
 <script>
-    function loadData() {
-        const container = document.getElementById('dataContainer');
-        container.innerHTML = '<div class="empty-state">Loading...</div>';
+    const now = new Date();
+    document.getElementById('budgetMonth').value = now.getMonth() + 1;
+    document.getElementById('budgetYear').value = now.getFullYear();
+    loadBudget();
+    
+    function loadBudget() {
         fetch('/api/budget')
             .then(res => res.json())
             .then(data => {
+                const tbody = document.getElementById('budgetList');
                 if (data.length === 0) {
-                    container.innerHTML = '<div class="empty-state">No data found. Add some data to get started!</div>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#4a5a6f; padding:20px;">No budgets set.</td></tr>';
                     return;
                 }
-                container.innerHTML = data.map(item => {
-                    const fields = Object.keys(item);
-                    return '<div class="data-item">' + 
-                        fields.map(f => '<span><span class="key">' + f + ':</span> <span class="value">' + (item[f] || '-') + '</span></span>').join('') +
-                        '</div>';
+                tbody.innerHTML = data.map(b => {
+                    const diff = b.actual_amount - b.expected_amount;
+                    const status = diff > 0 ? 'Over' : diff < 0 ? 'Under' : 'On Track';
+                    const cls = diff > 0 ? 'over' : diff < 0 ? 'under' : '';
+                    const badgeCls = diff > 0 ? 'over' : diff < 0 ? 'under' : 'on-track';
+                    const monthName = new Date(2026, parseInt(b.month) - 1, 1).toLocaleString('default', { month: 'long' });
+                    return `<tr>
+                        <td><strong>${b.category}</strong></td>
+                        <td>${b.type}</td>
+                        <td>${Number(b.expected_amount).toLocaleString()} FCFA</td>
+                        <td>${Number(b.actual_amount).toLocaleString()} FCFA</td>
+                        <td class="${cls}">${diff > 0 ? '+' : ''}${Number(diff).toLocaleString()} FCFA</td>
+                        <td><span class="badge ${badgeCls}">${status}</span></td>
+                        <td><button class="btn btn-danger" style="padding:4px 12px; font-size:11px;" onclick="deleteBudget(${b.id})">Delete</button></td>
+                    </tr>`;
                 }).join('');
-            })
-            .catch(err => {
-                container.innerHTML = '<div class="empty-state">Error loading data: ' + err.message + '</div>';
             });
     }
-    loadData();
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-        document.querySelector('.footer').textContent = 'BuSystem • Installed as App';
+    
+    function setBudget() {
+        const category = document.getElementById('budgetCategory').value;
+        const type = document.getElementById('budgetType').value;
+        const expected_amount = document.getElementById('budgetExpected').value;
+        const month = parseInt(document.getElementById('budgetMonth').value);
+        const year = parseInt(document.getElementById('budgetYear').value);
+        if (!expected_amount || expected_amount <= 0) { alert('Please enter a valid amount'); return; }
+        fetch('/api/budget', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category, type, expected_amount: parseFloat(expected_amount), month, year })
+        })
+        .then(() => {
+            document.getElementById('budgetExpected').value = '';
+            loadBudget();
+        });
+    }
+    
+    function deleteBudget(id) {
+        if (!confirm('Delete this budget?')) return;
+        fetch(`/api/budget/${id}`, { method: 'DELETE' })
+            .then(() => loadBudget());
     }
 </script>
 </body>
