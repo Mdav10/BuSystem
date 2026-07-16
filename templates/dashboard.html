@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BuSystem - Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="theme-color" content="#00d4ff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/icons/icon-512.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; animation: fadeInDown 0.5s ease-out; }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .logo { font-size: 24px; font-weight: 700; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
+        .logo-icon { width: 32px; height: 32px; border-radius: 8px; }
+        .user-section { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .user-info { color: #7a8ba3; font-size: 13px; }
+        .logout {
+            background: #ff4757;
+            color: white;
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: 0.2s;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .logout:active { transform: scale(0.95); }
+        .logout::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .logout:active::before { width: 400px; height: 400px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 20px 0; }
+        .card {
+            background: #111a2b;
+            border-radius: 14px;
+            padding: 16px;
+            border: 1px solid #1a2a3f;
+            transition: 0.2s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            animation: fadeInUp 0.5s ease-out both;
+        }
+        .card:nth-child(1) { animation-delay: 0.05s; }
+        .card:nth-child(2) { animation-delay: 0.10s; }
+        .card:nth-child(3) { animation-delay: 0.15s; }
+        .card:nth-child(4) { animation-delay: 0.20s; }
+        .card:nth-child(5) { animation-delay: 0.25s; }
+        .card:nth-child(6) { animation-delay: 0.30s; }
+        .card:nth-child(7) { animation-delay: 0.35s; }
+        .card:nth-child(8) { animation-delay: 0.40s; }
+        .card:nth-child(9) { animation-delay: 0.45s; }
+        .card:nth-child(10) { animation-delay: 0.50s; }
+        .card:active { transform: scale(0.96); }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(0, 212, 255, 0.15);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .card:active::before { width: 600px; height: 600px; }
+        .card:hover { border-color: #00d4ff; }
+        .card .label { font-size: 10px; color: #7a8ba3; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+        .card .value.green { color: #2ecc71; }
+        .card .value.blue { color: #3498db; }
+        .card .value.orange { color: #f39c12; }
+        .card .value.red { color: #e74c3c; }
+        .card .value.purple { color: #9b59b6; }
+        .card .value.cyan { color: #00d4ff; }
+        .progress-bar { width: 100%; height: 4px; background: #1a2332; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 2px; transition: width 0.8s; }
+        .alerts { background: #1a0e0e; border-left: 3px solid #ff4757; padding: 10px 16px; border-radius: 8px; margin: 12px 0; animation: fadeInUp 0.5s ease-out 0.55s both; }
+        .alerts h3 { color: #ff4757; margin-bottom: 4px; font-size: 13px; }
+        .alerts li { list-style: none; padding: 3px 0; color: #ffb3b3; font-size: 12px; }
+        .nav {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin: 14px 0;
+            padding: 12px;
+            background: #0f1a2b;
+            border-radius: 12px;
+            animation: fadeInUp 0.5s ease-out 0.1s both;
+        }
+        .nav a {
+            color: #7a8ba3;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: 0.2s;
+            font-size: 12px;
+            text-align: center;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .nav a:active { transform: scale(0.93); }
+        .nav a::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(0, 212, 255, 0.15);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .nav a:active::before { width: 300px; height: 300px; }
+        .nav a.active { background: #1a2a3f; color: #00d4ff; }
+        .reports { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; animation: fadeInUp 0.5s ease-out 0.6s both; }
+        .btn {
+            background: #00d4ff;
+            color: #0a0e17;
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 12px;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .btn:active::before { width: 400px; height: 400px; }
+        .btn-secondary { background: #1a2a3f; color: #fff; }
+        .btn-secondary:hover { background: #2a3f5f; }
+        .footer { margin-top: 24px; text-align: center; color: #4a5a6f; font-size: 11px; border-top: 1px solid #1a2332; padding-top: 12px; animation: fadeInUp 0.5s ease-out 0.65s both; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } .card .value { font-size: 16px; } .nav a { font-size: 10px; padding: 6px 8px; } }
+        .install-banner {
+            display: none;
+            background: #1a2a3f;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin: 12px 0;
+            text-align: center;
+            font-size: 12px;
+            color: #7a8ba3;
+            border: 1px solid #2a3f5f;
+            animation: fadeInUp 0.5s ease-out;
+        }
+        .install-banner .btn-install {
+            background: #00d4ff;
+            color: #0a0e17;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 6px;
+            font-size: 13px;
+            position: relative;
+            overflow: hidden;
+        }
+        .install-banner .btn-install:active { transform: scale(0.95); }
+        .install-banner .btn-install::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .install-banner .btn-install:active::before { width: 400px; height: 400px; }
+        .app-badge { display: none; background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 10px; color: #2ecc71; border: 1px solid #2a3f5f; margin-left: 8px; }
+        @media (display-mode: standalone) { .install-banner { display: none !important; } .app-badge { display: inline-block; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSys <span class="app-badge">✓ App</span></div>
+        <div class="user-section">
+            <span class="user-info">👤 {{ user.username }}</span>
+            <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
+                <button class="logout">Logout</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="installBanner" class="install-banner">
+        📱 Install BuSys<br>
+        <button class="btn-install" id="installBtn">📲 Install</button>
+    </div>
+    
+    <div class="nav">
+        <a href="/dashboard" class="active">📊 Dashboard</a>
+        <a href="/cashflow">💰 Cash Flow</a>
+        <a href="/investments">📈 Investments</a>
+        <a href="/livestock">🐄 Livestock</a>
+        <a href="/assets">🏦 Assets</a>
+        <a href="/liability">📋 Liabilities</a>
+        <a href="/goals">🎯 Goals</a>
+        <a href="/budget">📋 Budget</a>
+        <a href="/reports">📄 Reports</a>
+        <a href="/analytics">📊 Analytics</a>
+        <a href="/ratios">📐 Ratios</a>
+        <a href="/risk">⚠️ Risk</a>
+        <a href="/timeline">⏰ Timeline</a>
+        <a href="/decisions">🧠 Decisions</a>
+        <a href="/rules">📏 Rules</a>
+        <a href="/exports">📤 Exports</a>
+    </div>
+    
+    <div class="grid">
+        <div class="card"><div class="label">💰 Current Cash</div><div class="value green">{{ "%.0f"|format(current_cash) }}</div></div>
+        <div class="card"><div class="label">🏦 Total Assets</div><div class="value blue">{{ "%.0f"|format(total_assets) }}</div></div>
+        <div class="card"><div class="label">📊 Net Worth</div><div class="value purple">{{ "%.0f"|format(net_worth) }}</div></div>
+        <div class="card"><div class="label">📈 Monthly Income</div><div class="value green">{{ "%.0f"|format(monthly_income) }}</div></div>
+        <div class="card"><div class="label">📉 Monthly Expenses</div><div class="value red">{{ "%.0f"|format(monthly_expenses) }}</div></div>
+        <div class="card"><div class="label">📊 Investments</div><div class="value cyan">{{ "%.0f"|format(total_investments) }}</div></div>
+        <div class="card"><div class="label">🐄 Active Livestock</div><div class="value orange">{{ active_livestock }}</div></div>
+        <div class="card"><div class="label">📈 ROI</div><div class="value green">{{ "%.1f"|format(roi) }}%</div></div>
+        <div class="card">
+            <div class="label">🎯 Goal Progress</div>
+            <div class="value blue">{{ "%.0f"|format(goal_progress) }}%</div>
+            <div class="progress-bar"><div class="progress-fill" style="width: {{ goal_progress }}%;"></div></div>
+        </div>
+        <div class="card">
+            <div class="label">🛡️ Emergency Fund</div>
+            <div class="value orange">{{ "%.0f"|format(emergency_fund) }}%</div>
+            <div class="progress-bar"><div class="progress-fill" style="width: {{ emergency_fund }}%;"></div></div>
+        </div>
+    </div>
+    
+    {% if alerts %}
+    <div class="alerts"><h3>⚠️ Alerts</h3><ul>{% for alert in alerts %}<li>• {{ alert }}</li>{% endfor %}</ul></div>
+    {% endif %}
+    
+    <div class="reports">
+        <a href="{{ url_for('export_report', report_type='transactions', format='pdf') }}" class="btn btn-secondary">📄 PDF</a>
+        <a href="{{ url_for('export_report', report_type='transactions', format='excel') }}" class="btn btn-secondary">📊 Excel</a>
+    </div>
+    
+    <div class="footer">BuSystem • Every Franc Must Have a Job • {{ user.currency }}</div>
+</div>
+<script>
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('installBanner').style.display = 'block';
+    });
+    document.getElementById('installBtn').addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+            if (result.outcome === 'accepted') {
+                document.getElementById('installBanner').style.display = 'none';
+                document.querySelector('.app-badge').style.display = 'inline-block';
+            }
+            deferredPrompt = null;
+        }
+    });
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        document.getElementById('installBanner').style.display = 'none';
+        document.querySelector('.app-badge').style.display = 'inline-block';
+    }
+</script>
+</body>
+</html>
