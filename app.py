@@ -9,6 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from sqlalchemy import func, extract, text
 import json
+import random
 
 load_dotenv()
 
@@ -364,6 +365,33 @@ with app.app_context():
         db.session.commit()
         print("✅ Default rules created")
     
+    # Create sample notifications if none exist
+    if Notification.query.count() == 0:
+        notifications = [
+            Notification(
+                user_id=1,
+                title='Welcome to BuSystem! 🎉',
+                message='Start tracking your finances by adding your first transaction.',
+                type='info'
+            ),
+            Notification(
+                user_id=1,
+                title='💡 Tip: Set Your Goals',
+                message='Setting financial goals helps you stay focused. Click Goals to get started.',
+                type='success'
+            ),
+            Notification(
+                user_id=1,
+                title='📊 Dashboard Overview',
+                message='Your dashboard shows all your key financial metrics at a glance.',
+                type='info'
+            )
+        ]
+        for n in notifications:
+            db.session.add(n)
+        db.session.commit()
+        print("✅ Sample notifications created")
+    
     print("🎉 Database ready!")
 
 # ============================
@@ -504,7 +532,6 @@ def dashboard():
     emergency_fund_ratio = (current_cash / (avg_monthly_expense * 3)) * 100 if avg_monthly_expense > 0 else 0
     emergency_fund_ratio = min(emergency_fund_ratio, 100)
     
-    # Alerts
     alerts = []
     
     ready_animals = Livestock.query.filter(
@@ -571,7 +598,6 @@ def api_transactions():
         db.session.add(transaction)
         db.session.commit()
         
-        # Update budget actual
         today = datetime.now()
         budget = Budget.query.filter_by(
             user_id=current_user.id,
@@ -611,7 +637,6 @@ def api_investments():
         return jsonify([i.to_dict() for i in investments])
     elif request.method == 'POST':
         data = request.json
-        import random
         investment_id = f"{data.get('type')[:3].upper()}{random.randint(100, 999)}"
         investment = Investment(
             user_id=current_user.id,
@@ -1251,50 +1276,14 @@ def get_decisions():
 @app.route('/api/notifications')
 @login_required
 def get_notifications():
-    # Create sample notifications if none exist
-    user_id = current_user.id
-    today = datetime.now()
-    
-    # Check if there are any notifications
-    count = Notification.query.filter_by(user_id=user_id).count()
-    
-    if count == 0:
-        # Create sample notifications
-        notifications = [
-            Notification(
-                user_id=user_id,
-                title='Welcome to BuSystem! 🎉',
-                message='Start tracking your finances by adding your first transaction.',
-                type='info'
-            ),
-            Notification(
-                user_id=user_id,
-                title='💡 Tip: Set Your Goals',
-                message='Setting financial goals helps you stay focused. Click Goals to get started.',
-                type='success'
-            ),
-            Notification(
-                user_id=user_id,
-                title='📊 Dashboard Overview',
-                message='Your dashboard shows all your key financial metrics at a glance.',
-                type='info'
-            )
-        ]
-        for n in notifications:
-            db.session.add(n)
-        db.session.commit()
-        print("✅ Sample notifications created")
-    
-    # Get unread notifications
     notifications = Notification.query.filter_by(
-        user_id=user_id,
+        user_id=current_user.id,
         is_read=False
     ).order_by(Notification.created_at.desc()).limit(20).all()
-    
     return jsonify([n.to_dict() for n in notifications])
 
 # ============================
-# REPORTS API
+# REPORTS API - FULL PDF WITH ALL DATA
 # ============================
 
 @app.route('/api/reports/<report_type>')
@@ -1342,58 +1331,470 @@ def export_report(report_type, format):
     user_id = current_user.id
     if format == 'pdf':
         from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib import colors
         from reportlab.lib.units import inch
+        
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
         styles = getSampleStyleSheet()
         story = []
-        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=20, alignment=1)
-        story.append(Paragraph(f"{report_type.replace('_', ' ').title()} Report", title_style))
+        
+        # ===== TITLE =====
+        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, alignment=1, textColor=colors.HexColor('#00d4ff'))
+        story.append(Paragraph("💰 BuSystem - Complete Financial Report", title_style))
+        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+        story.append(Paragraph(f"User: {current_user.username}", styles['Normal']))
         story.append(Spacer(1, 0.3*inch))
-        transactions = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.desc()).limit(100).all()
-        data = [['Date', 'Type', 'Category', 'Amount', 'Description']]
-        for t in transactions:
-            data.append([
-                t.date.strftime('%Y-%m-%d'),
-                t.type,
-                t.category,
-                f"{t.amount:,.0f}",
-                t.description or ''
-            ])
-        table = Table(data)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        
+        # ===== 1. EXECUTIVE SUMMARY =====
+        story.append(Paragraph("<b>📊 EXECUTIVE SUMMARY</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        total_income = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'income'
+        ).scalar() or 0
+        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'expense'
+        ).scalar() or 0
+        total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
+        total_investments = db.session.query(func.sum(Investment.capital)).filter(
+            Investment.user_id == user_id, Investment.status == 'Running'
+        ).scalar() or 0
+        total_livestock = Livestock.query.filter_by(user_id=user_id).count()
+        active_goals = Goal.query.filter_by(user_id=user_id, status='Active').count()
+        
+        total_owed_to_me = db.session.query(func.sum(Liability.amount)).filter(
+            Liability.user_id == user_id,
+            Liability.type == 'owes_me',
+            Liability.status != 'Paid'
+        ).scalar() or 0
+        total_i_owe = db.session.query(func.sum(Liability.amount)).filter(
+            Liability.user_id == user_id,
+            Liability.type == 'i_owe',
+            Liability.status != 'Paid'
+        ).scalar() or 0
+        
+        summary_data = [
+            ['Metric', 'Amount (FCFA)'],
+            ['Total Income', f"{total_income:,.0f}"],
+            ['Total Expenses', f"{total_expenses:,.0f}"],
+            ['Net Cash', f"{total_income - total_expenses:,.0f}"],
+            ['Total Assets', f"{total_assets:,.0f}"],
+            ['Total Investments', f"{total_investments:,.0f}"],
+            ['Owed to Me', f"{total_owed_to_me:,.0f}"],
+            ['I Owe', f"{total_i_owe:,.0f}"],
+            ['Net Worth', f"{total_assets + total_income - total_expenses:,.0f}"],
+            ['Total Livestock', f"{total_livestock}"],
+            ['Active Goals', f"{active_goals}"]
+        ]
+        summary_table = Table(summary_data, colWidths=[3*inch, 3*inch])
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
         ]))
-        story.append(table)
+        story.append(summary_table)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # ===== 2. TRANSACTIONS =====
+        story.append(PageBreak())
+        story.append(Paragraph("<b>💰 TRANSACTIONS</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        transactions = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.desc()).limit(200).all()
+        if transactions:
+            tx_data = [['Date', 'Type', 'Category', 'Amount', 'Description']]
+            for t in transactions:
+                tx_data.append([
+                    t.date.strftime('%Y-%m-%d'),
+                    t.type.capitalize(),
+                    t.category,
+                    f"{t.amount:,.0f}",
+                    t.description or ''
+                ])
+            tx_table = Table(tx_data, colWidths=[1.2*inch, 1*inch, 1.5*inch, 1.2*inch, 2*inch])
+            tx_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(tx_table)
+        else:
+            story.append(Paragraph("No transactions found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # ===== 3. INVESTMENTS =====
+        story.append(PageBreak())
+        story.append(Paragraph("<b>📈 INVESTMENTS</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        investments = Investment.query.filter_by(user_id=user_id).all()
+        if investments:
+            inv_data = [['ID', 'Type', 'Capital', 'Status', 'Profit', 'ROI']]
+            for i in investments:
+                inv_data.append([
+                    i.investment_id,
+                    f"{i.type}{' ('+i.sub_type+')' if i.sub_type else ''}",
+                    f"{i.capital:,.0f}",
+                    i.status,
+                    f"{i.profit:,.0f}",
+                    f"{i.roi_actual:.1f}%" if i.roi_actual else '-'
+                ])
+            inv_table = Table(inv_data, colWidths=[1*inch, 1.5*inch, 1.2*inch, 1*inch, 1.2*inch, 1*inch])
+            inv_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(inv_table)
+        else:
+            story.append(Paragraph("No investments found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # ===== 4. LIVESTOCK =====
+        story.append(PageBreak())
+        story.append(Paragraph("<b>🐄 LIVESTOCK</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        livestock = Livestock.query.filter_by(user_id=user_id).all()
+        if livestock:
+            ls_data = [['Tag', 'Type', 'Breed', 'Purchase Price', 'Status', 'Profit']]
+            for l in livestock:
+                ls_data.append([
+                    l.tag,
+                    l.type,
+                    l.breed or '-',
+                    f"{l.purchase_price:,.0f}",
+                    l.status,
+                    f"{l.profit:,.0f}" if l.profit else '-'
+                ])
+            ls_table = Table(ls_data, colWidths=[0.8*inch, 1*inch, 1*inch, 1.2*inch, 1*inch, 1.2*inch])
+            ls_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(ls_table)
+        else:
+            story.append(Paragraph("No livestock found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # ===== 5. ASSETS =====
+        story.append(PageBreak())
+        story.append(Paragraph("<b>🏦 ASSETS</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        assets = Asset.query.filter_by(user_id=user_id).all()
+        if assets:
+            asset_data = [['Name', 'Category', 'Purchase Price', 'Current Value', 'Condition']]
+            for a in assets:
+                asset_data.append([
+                    a.name,
+                    a.category,
+                    f"{a.purchase_price:,.0f}",
+                    f"{a.current_value:,.0f}",
+                    a.condition
+                ])
+            asset_table = Table(asset_data, colWidths=[1.5*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1*inch])
+            asset_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(asset_table)
+        else:
+            story.append(Paragraph("No assets found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # ===== 6. GOALS =====
+        story.append(PageBreak())
+        story.append(Paragraph("<b>🎯 GOALS</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        goals = Goal.query.filter_by(user_id=user_id).all()
+        if goals:
+            goal_data = [['Name', 'Target', 'Current', 'Progress', 'Status']]
+            for g in goals:
+                goal_data.append([
+                    g.name,
+                    f"{g.target_amount:,.0f}",
+                    f"{g.current_amount:,.0f}",
+                    f"{g.progress:.0f}%",
+                    g.status
+                ])
+            goal_table = Table(goal_data, colWidths=[1.5*inch, 1.2*inch, 1.2*inch, 1*inch, 1.2*inch])
+            goal_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(goal_table)
+        else:
+            story.append(Paragraph("No goals found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # ===== 7. BUDGETS =====
+        story.append(PageBreak())
+        story.append(Paragraph("<b>📋 BUDGETS</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        all_budgets = Budget.query.filter_by(user_id=user_id).order_by(Budget.year.desc(), Budget.month.desc()).all()
+        if all_budgets:
+            budget_data = [['Category', 'Type', 'Month/Year', 'Expected', 'Actual', 'Difference', 'Status']]
+            for b in all_budgets:
+                month_name = datetime(b.year, b.month, 1).strftime('%B %Y')
+                budget_data.append([
+                    b.category,
+                    b.type,
+                    month_name,
+                    f"{b.expected_amount:,.0f}",
+                    f"{b.actual_amount:,.0f}",
+                    f"{b.difference:+,.0f}",
+                    b.status or 'pending'
+                ])
+            budget_table = Table(budget_data, colWidths=[1.2*inch, 1*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1*inch])
+            budget_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(budget_table)
+        else:
+            story.append(Paragraph("No budgets found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # ===== 8. LIABILITIES =====
+        story.append(PageBreak())
+        story.append(Paragraph("<b>📋 LIABILITIES</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        liabilities = Liability.query.filter_by(user_id=user_id).all()
+        if liabilities:
+            liability_data = [['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']]
+            for l in liabilities:
+                liability_data.append([
+                    'Owed to Me' if l.type == 'owes_me' else 'I Owe',
+                    l.name,
+                    l.description or '-',
+                    f"{l.amount:,.0f}",
+                    l.due_date.strftime('%Y-%m-%d') if l.due_date else '-',
+                    l.status
+                ])
+            liability_table = Table(liability_data, colWidths=[1.2*inch, 1.2*inch, 1.5*inch, 1.2*inch, 1.2*inch, 1*inch])
+            liability_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(liability_table)
+        else:
+            story.append(Paragraph("No liabilities found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # ===== 9. RULES =====
+        story.append(PageBreak())
+        story.append(Paragraph("<b>📏 FINANCIAL RULES</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        rules = FinancialRule.query.filter_by(user_id=user_id, is_active=True).all()
+        if rules:
+            rule_data = [['Name', 'Category', 'Condition', 'Message']]
+            for r in rules:
+                rule_data.append([
+                    r.name,
+                    r.category,
+                    f"{r.condition_type} {r.condition_operator} {r.condition_value}",
+                    r.action_message or '-'
+                ])
+            rule_table = Table(rule_data, colWidths=[1.5*inch, 1.2*inch, 1.5*inch, 2*inch])
+            rule_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(rule_table)
+        else:
+            story.append(Paragraph("No rules found.", styles['Normal']))
+        
+        # ===== FOOTER =====
+        story.append(Spacer(1, 0.5*inch))
+        footer_style = ParagraphStyle('Footer', fontSize=10, alignment=1, textColor=colors.HexColor('#4a5a6f'))
+        story.append(Paragraph("BuSystem v1.0 • Every Franc Must Have a Job", footer_style))
+        story.append(Paragraph(f"Report generated on {datetime.now().strftime('%Y-%m-%d at %H:%M')}", footer_style))
+        story.append(Paragraph(f"User: {current_user.username} • Currency: {current_user.currency}", footer_style))
+        
         doc.build(story)
         buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name=f"{report_type}_{datetime.now().strftime('%Y%m%d')}.pdf")
+        return send_file(buffer, as_attachment=True, download_name=f"BuSystem_Full_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf")
+    
     elif format == 'excel':
         import xlsxwriter
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output)
-        worksheet = workbook.add_worksheet()
+        
+        # Transactions sheet
+        worksheet1 = workbook.add_worksheet('Transactions')
         headers = ['Date', 'Type', 'Category', 'Amount', 'Description']
         for col, header in enumerate(headers):
-            worksheet.write(0, col, header)
+            worksheet1.write(0, col, header)
         transactions = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.desc()).all()
         for row, t in enumerate(transactions, 1):
-            worksheet.write(row, 0, t.date.strftime('%Y-%m-%d'))
-            worksheet.write(row, 1, t.type)
-            worksheet.write(row, 2, t.category)
-            worksheet.write(row, 3, t.amount)
-            worksheet.write(row, 4, t.description or '')
+            worksheet1.write(row, 0, t.date.strftime('%Y-%m-%d'))
+            worksheet1.write(row, 1, t.type)
+            worksheet1.write(row, 2, t.category)
+            worksheet1.write(row, 3, t.amount)
+            worksheet1.write(row, 4, t.description or '')
+        
+        # Investments sheet
+        worksheet2 = workbook.add_worksheet('Investments')
+        headers2 = ['ID', 'Type', 'Sub Type', 'Capital', 'Status', 'Profit', 'ROI']
+        for col, header in enumerate(headers2):
+            worksheet2.write(0, col, header)
+        investments = Investment.query.filter_by(user_id=user_id).all()
+        for row, i in enumerate(investments, 1):
+            worksheet2.write(row, 0, i.investment_id)
+            worksheet2.write(row, 1, i.type)
+            worksheet2.write(row, 2, i.sub_type or '')
+            worksheet2.write(row, 3, i.capital)
+            worksheet2.write(row, 4, i.status)
+            worksheet2.write(row, 5, i.profit)
+            worksheet2.write(row, 6, i.roi_actual)
+        
+        # Livestock sheet
+        worksheet3 = workbook.add_worksheet('Livestock')
+        headers3 = ['Tag', 'Type', 'Breed', 'Purchase Price', 'Status', 'Profit']
+        for col, header in enumerate(headers3):
+            worksheet3.write(0, col, header)
+        livestock = Livestock.query.filter_by(user_id=user_id).all()
+        for row, l in enumerate(livestock, 1):
+            worksheet3.write(row, 0, l.tag)
+            worksheet3.write(row, 1, l.type)
+            worksheet3.write(row, 2, l.breed or '')
+            worksheet3.write(row, 3, l.purchase_price)
+            worksheet3.write(row, 4, l.status)
+            worksheet3.write(row, 5, l.profit or 0)
+        
+        # Assets sheet
+        worksheet4 = workbook.add_worksheet('Assets')
+        headers4 = ['Name', 'Category', 'Purchase Price', 'Current Value', 'Condition']
+        for col, header in enumerate(headers4):
+            worksheet4.write(0, col, header)
+        assets = Asset.query.filter_by(user_id=user_id).all()
+        for row, a in enumerate(assets, 1):
+            worksheet4.write(row, 0, a.name)
+            worksheet4.write(row, 1, a.category)
+            worksheet4.write(row, 2, a.purchase_price)
+            worksheet4.write(row, 3, a.current_value)
+            worksheet4.write(row, 4, a.condition)
+        
+        # Goals sheet
+        worksheet5 = workbook.add_worksheet('Goals')
+        headers5 = ['Name', 'Target', 'Current', 'Progress', 'Status']
+        for col, header in enumerate(headers5):
+            worksheet5.write(0, col, header)
+        goals = Goal.query.filter_by(user_id=user_id).all()
+        for row, g in enumerate(goals, 1):
+            worksheet5.write(row, 0, g.name)
+            worksheet5.write(row, 1, g.target_amount)
+            worksheet5.write(row, 2, g.current_amount)
+            worksheet5.write(row, 3, g.progress)
+            worksheet5.write(row, 4, g.status)
+        
+        # Budgets sheet
+        worksheet6 = workbook.add_worksheet('Budgets')
+        headers6 = ['Category', 'Type', 'Month', 'Year', 'Expected', 'Actual', 'Difference', 'Status']
+        for col, header in enumerate(headers6):
+            worksheet6.write(0, col, header)
+        budgets = Budget.query.filter_by(user_id=user_id).all()
+        for row, b in enumerate(budgets, 1):
+            worksheet6.write(row, 0, b.category)
+            worksheet6.write(row, 1, b.type)
+            worksheet6.write(row, 2, b.month)
+            worksheet6.write(row, 3, b.year)
+            worksheet6.write(row, 4, b.expected_amount)
+            worksheet6.write(row, 5, b.actual_amount)
+            worksheet6.write(row, 6, b.difference)
+            worksheet6.write(row, 7, b.status or 'pending')
+        
+        # Liabilities sheet
+        worksheet7 = workbook.add_worksheet('Liabilities')
+        headers7 = ['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']
+        for col, header in enumerate(headers7):
+            worksheet7.write(0, col, header)
+        liabilities = Liability.query.filter_by(user_id=user_id).all()
+        for row, l in enumerate(liabilities, 1):
+            worksheet7.write(row, 0, 'Owed to Me' if l.type == 'owes_me' else 'I Owe')
+            worksheet7.write(row, 1, l.name)
+            worksheet7.write(row, 2, l.description or '')
+            worksheet7.write(row, 3, l.amount)
+            worksheet7.write(row, 4, l.due_date.strftime('%Y-%m-%d') if l.due_date else '')
+            worksheet7.write(row, 5, l.status)
+        
+        # Rules sheet
+        worksheet8 = workbook.add_worksheet('Rules')
+        headers8 = ['Name', 'Category', 'Condition Type', 'Condition Value', 'Operator', 'Message']
+        for col, header in enumerate(headers8):
+            worksheet8.write(0, col, header)
+        rules = FinancialRule.query.filter_by(user_id=user_id, is_active=True).all()
+        for row, r in enumerate(rules, 1):
+            worksheet8.write(row, 0, r.name)
+            worksheet8.write(row, 1, r.category)
+            worksheet8.write(row, 2, r.condition_type)
+            worksheet8.write(row, 3, r.condition_value)
+            worksheet8.write(row, 4, r.condition_operator)
+            worksheet8.write(row, 5, r.action_message or '')
+        
         workbook.close()
         output.seek(0)
-        return send_file(output, as_attachment=True, download_name=f"{report_type}_{datetime.now().strftime('%Y%m%d')}.xlsx")
+        return send_file(output, as_attachment=True, download_name=f"BuSystem_Full_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx")
+    
     return jsonify({'error': 'Invalid format'}), 400
 
 # ============================
