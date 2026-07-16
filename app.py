@@ -274,12 +274,12 @@ class Liability(db.Model):
     __tablename__ = 'liabilities'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    type = db.Column(db.String(20), nullable=False)  # 'owes_me' or 'i_owe'
+    type = db.Column(db.String(20), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(200))
     amount = db.Column(db.Float, nullable=False)
     due_date = db.Column(db.DateTime)
-    status = db.Column(db.String(20), default='Pending')  # Pending, Paid, Overdue
+    status = db.Column(db.String(20), default='Pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     paid_at = db.Column(db.DateTime)
     notes = db.Column(db.Text)
@@ -360,7 +360,9 @@ with app.app_context():
 def serve_static(filename):
     return send_from_directory('static', filename)
 
-
+# ============================
+# PWA ROUTES
+# ============================
 
 @app.route('/manifest.json')
 def serve_manifest():
@@ -384,6 +386,7 @@ def assetlinks():
             "sha256_cert_fingerprints": []
         }
     }])
+
 # ============================
 # AUTHENTICATION
 # ============================
@@ -419,7 +422,7 @@ def logout():
     return redirect(url_for('login'))
 
 # ============================
-# DASHBOARD WITH ALERTS
+# DASHBOARD
 # ============================
 
 @app.route('/dashboard')
@@ -540,7 +543,7 @@ def dashboard():
     )
 
 # ============================
-# TRANSACTIONS API
+# API ENDPOINTS
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST'])
@@ -604,10 +607,6 @@ def delete_transaction(id):
     db.session.commit()
     return jsonify({'status': 'success'})
 
-# ============================
-# INVESTMENTS API (with DELETE)
-# ============================
-
 @app.route('/api/investments', methods=['GET', 'POST'])
 @login_required
 def api_investments():
@@ -664,10 +663,6 @@ def delete_investment(id):
     db.session.commit()
     return jsonify({'status': 'success'})
 
-# ============================
-# LIVESTOCK API (with DELETE)
-# ============================
-
 @app.route('/api/livestock', methods=['GET', 'POST'])
 @login_required
 def api_livestock():
@@ -704,10 +699,6 @@ def delete_livestock(id):
     db.session.commit()
     return jsonify({'status': 'success'})
 
-# ============================
-# ASSETS API (with DELETE)
-# ============================
-
 @app.route('/api/assets', methods=['GET', 'POST'])
 @login_required
 def api_assets():
@@ -742,10 +733,6 @@ def delete_asset(id):
     db.session.delete(asset)
     db.session.commit()
     return jsonify({'status': 'success'})
-
-# ============================
-# GOALS API (with DELETE)
-# ============================
 
 @app.route('/api/goals', methods=['GET', 'POST', 'PUT'])
 @login_required
@@ -794,10 +781,6 @@ def delete_goal(id):
     db.session.commit()
     return jsonify({'status': 'success'})
 
-# ============================
-# BUDGET API (with DELETE + Monthly Summary)
-# ============================
-
 @app.route('/api/budget', methods=['GET', 'POST'])
 @login_required
 def api_budget():
@@ -838,7 +821,6 @@ def api_budget():
 @app.route('/api/budget/monthly')
 @login_required
 def get_monthly_budget_summary():
-    """Get monthly budget summary for all months"""
     user_id = current_user.id
     
     results = db.session.query(
@@ -869,10 +851,6 @@ def delete_budget(id):
     db.session.delete(budget)
     db.session.commit()
     return jsonify({'status': 'success'})
-
-# ============================
-# LIABILITY API (with DELETE)
-# ============================
 
 @app.route('/api/liabilities', methods=['GET', 'POST'])
 @login_required
@@ -926,26 +904,22 @@ def delete_liability(id):
 def get_liability_summary():
     user_id = current_user.id
     
-    # Total owed to me (people who owe me)
     total_owed_to_me = db.session.query(func.sum(Liability.amount)).filter(
         Liability.user_id == user_id,
         Liability.type == 'owes_me',
         Liability.status != 'Paid'
     ).scalar() or 0
     
-    # Total I owe (debts)
     total_i_owe = db.session.query(func.sum(Liability.amount)).filter(
         Liability.user_id == user_id,
         Liability.type == 'i_owe',
         Liability.status != 'Paid'
     ).scalar() or 0
     
-    # Total assets
     total_assets = db.session.query(func.sum(Asset.current_value)).filter(
         Asset.user_id == user_id
     ).scalar() or 0
     
-    # Total cash
     total_income = db.session.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == user_id,
         Transaction.type == 'income'
@@ -966,10 +940,6 @@ def get_liability_summary():
         'total_equity': total_equity,
         'net_position': total_owed_to_me - total_i_owe
     })
-
-# ============================
-# RULES API (with DELETE)
-# ============================
 
 @app.route('/api/rules', methods=['GET', 'POST'])
 @login_required
@@ -1052,10 +1022,6 @@ def check_rules():
     
     return jsonify(alerts)
 
-# ============================
-# RATIOS API
-# ============================
-
 @app.route('/api/ratios')
 @login_required
 def calculate_ratios():
@@ -1087,10 +1053,6 @@ def calculate_ratios():
         'investment_success_rate': (len([i for i in sold_investments if i.profit > 0]) / len(sold_investments) * 100) if sold_investments else 0
     })
 
-# ============================
-# ANALYTICS API
-# ============================
-
 @app.route('/api/analytics/<chart_type>')
 @login_required
 def get_analytics(chart_type):
@@ -1115,10 +1077,6 @@ def get_analytics(chart_type):
         return jsonify([{'category': i[0], 'total': float(i[1])} for i in data])
     
     return jsonify([])
-
-# ============================
-# DECISIONS API
-# ============================
 
 @app.route('/api/decisions')
 @login_required
@@ -1198,10 +1156,6 @@ def get_decisions():
     
     return jsonify(recommendations[:8])
 
-# ============================
-# RISK API
-# ============================
-
 @app.route('/api/risk')
 @login_required
 def get_risk_analysis():
@@ -1230,10 +1184,6 @@ def get_risk_analysis():
         'diversification_score': min((len(set(i.type for i in investments)) / 4) * 100, 100) if investments else 0,
         'overall_risk': 'Low' if high_risk < 2 else 'Medium' if high_risk < 5 else 'High'
     })
-
-# ============================
-# TIMELINE API
-# ============================
 
 @app.route('/api/timeline')
 @login_required
@@ -1280,10 +1230,6 @@ def get_timeline():
     events.sort(key=lambda x: x['date'], reverse=True)
     return jsonify(events[:100])
 
-# ============================
-# NOTIFICATIONS API
-# ============================
-
 @app.route('/api/notifications')
 @login_required
 def get_notifications():
@@ -1292,10 +1238,6 @@ def get_notifications():
         is_read=False
     ).order_by(Notification.created_at.desc()).limit(20).all()
     return jsonify([n.to_dict() for n in notifications])
-
-# ============================
-# REPORTS API (FULL PDF WITH ALL DATA)
-# ============================
 
 @app.route('/api/reports/<report_type>')
 @login_required
@@ -1359,15 +1301,10 @@ def export_report(report_type, format):
         styles = getSampleStyleSheet()
         story = []
         
-        # Title
         title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, alignment=1, textColor=colors.HexColor('#00d4ff'))
         story.append(Paragraph("💰 BuSystem - Complete Financial Report", title_style))
         story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
         story.append(Spacer(1, 0.3*inch))
-        
-        # ===== 1. SUMMARY =====
-        story.append(Paragraph("<b>📊 FINANCIAL SUMMARY</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
         
         total_income = db.session.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == user_id, Transaction.type == 'income'
@@ -1382,7 +1319,6 @@ def export_report(report_type, format):
         total_livestock = Livestock.query.filter_by(user_id=user_id).count()
         active_goals = Goal.query.filter_by(user_id=user_id, status='Active').count()
         
-        # Liability summary
         total_owed_to_me = db.session.query(func.sum(Liability.amount)).filter(
             Liability.user_id == user_id,
             Liability.type == 'owes_me',
@@ -1421,7 +1357,7 @@ def export_report(report_type, format):
         story.append(summary_table)
         story.append(Spacer(1, 0.3*inch))
         
-        # ===== 2. TRANSACTIONS =====
+        # Transactions
         story.append(PageBreak())
         story.append(Paragraph("<b>💰 TRANSACTIONS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1450,7 +1386,7 @@ def export_report(report_type, format):
         story.append(tx_table)
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 3. INVESTMENTS =====
+        # Investments
         story.append(PageBreak())
         story.append(Paragraph("<b>📈 INVESTMENTS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1480,7 +1416,7 @@ def export_report(report_type, format):
         story.append(inv_table)
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 4. LIVESTOCK =====
+        # Livestock
         story.append(PageBreak())
         story.append(Paragraph("<b>🐄 LIVESTOCK</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1510,7 +1446,7 @@ def export_report(report_type, format):
         story.append(ls_table)
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 5. ASSETS =====
+        # Assets
         story.append(PageBreak())
         story.append(Paragraph("<b>🏦 ASSETS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1539,7 +1475,7 @@ def export_report(report_type, format):
         story.append(asset_table)
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 6. GOALS =====
+        # Goals
         story.append(PageBreak())
         story.append(Paragraph("<b>🎯 GOALS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1569,7 +1505,7 @@ def export_report(report_type, format):
         story.append(goal_table)
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 7. BUDGETS =====
+        # Budgets
         story.append(PageBreak())
         story.append(Paragraph("<b>📋 BUDGET VS ACTUAL</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1602,7 +1538,7 @@ def export_report(report_type, format):
         ]))
         story.append(budget_table)
         
-        # ===== 8. LIABILITIES =====
+        # Liabilities
         story.append(PageBreak())
         story.append(Paragraph("<b>📋 LIABILITIES</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1631,9 +1567,8 @@ def export_report(report_type, format):
         ]))
         story.append(liability_table)
         
-        # Footer
-        story.append(Spacer(1, 0.5*inch))
         footer_style = ParagraphStyle('Footer', fontSize=10, alignment=1, textColor=colors.HexColor('#4a5a6f'))
+        story.append(Spacer(1, 0.5*inch))
         story.append(Paragraph("BuSystem v1.0 • Every Franc Must Have a Job", footer_style))
         story.append(Paragraph(f"Report generated on {datetime.now().strftime('%Y-%m-%d at %H:%M')}", footer_style))
         
