@@ -360,6 +360,30 @@ with app.app_context():
 def serve_static(filename):
     return send_from_directory('static', filename)
 
+
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory('static', 'manifest.json')
+
+@app.route('/service-worker.js')
+def serve_sw():
+    return send_from_directory('static', 'service-worker.js')
+
+@app.route('/offline')
+def offline():
+    return render_template('offline.html'), 503
+
+@app.route('/.well-known/assetlinks.json')
+def assetlinks():
+    return jsonify([{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.busystem.app",
+            "sha256_cert_fingerprints": []
+        }
+    }])
 # ============================
 # AUTHENTICATION
 # ============================

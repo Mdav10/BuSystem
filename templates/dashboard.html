@@ -7,66 +7,105 @@
     <meta name="theme-color" content="#0a0e17">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="/static/manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: #0a0e17; 
             color: #e0e6ed; 
-            padding: 20px; 
+            padding: 16px; 
             -webkit-tap-highlight-color: transparent;
             min-height: 100vh;
             overflow-x: hidden;
+            padding-bottom: 40px;
         }
         .container { max-width: 1400px; margin: 0 auto; }
         .header { 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            padding: 20px 0; 
+            padding: 16px 0; 
             border-bottom: 1px solid #1a2332; 
             flex-wrap: wrap; 
             gap: 10px; 
+            animation: fadeInDown 0.5s ease-out;
         }
         .logo { 
-            font-size: 28px; 
-            font-weight: bold; 
+            font-size: 24px; 
+            font-weight: 700; 
             color: #00d4ff; 
             display: flex; 
             align-items: center; 
             gap: 8px; 
-            animation: fadeInDown 0.5s ease-out;
         }
-        .logo-icon { font-size: 32px; }
+        .logo-icon { font-size: 28px; }
+        .user-section { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .user-info { color: #7a8ba3; font-size: 13px; }
         .logout { 
             background: #ff4757; 
             color: white; 
-            padding: 10px 20px; 
+            padding: 8px 18px; 
             border: none; 
             border-radius: 8px; 
             cursor: pointer; 
+            font-weight: 600;
+            font-size: 13px;
+            transition: 0.2s;
             -webkit-tap-highlight-color: transparent;
-            transition: 0.3s;
-            font-weight: bold;
+            position: relative;
+            overflow: hidden;
         }
         .logout:active { transform: scale(0.95); }
+        .logout::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .logout:active::before { width: 300px; height: 300px; }
+        
         .grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 15px; 
-            margin: 25px 0; 
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); 
+            gap: 12px; 
+            margin: 20px 0; 
         }
         .card { 
             background: #111a2b; 
             border-radius: 14px; 
-            padding: 20px; 
+            padding: 16px; 
             border: 1px solid #1a2a3f; 
-            transition: 0.3s; 
-            cursor: default;
-            animation: fadeInUp 0.6s ease-out both;
+            transition: 0.2s; 
+            cursor: pointer;
+            animation: fadeInUp 0.5s ease-out both;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
+        .card:active { transform: scale(0.96); }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(0, 212, 255, 0.08);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .card:active::before { width: 400px; height: 400px; }
         .card:nth-child(1) { animation-delay: 0.05s; }
         .card:nth-child(2) { animation-delay: 0.10s; }
         .card:nth-child(3) { animation-delay: 0.15s; }
@@ -77,138 +116,54 @@
         .card:nth-child(8) { animation-delay: 0.40s; }
         .card:nth-child(9) { animation-delay: 0.45s; }
         .card:nth-child(10) { animation-delay: 0.50s; }
-        .card:hover { transform: translateY(-3px); border-color: #00d4ff; }
-        .card:active { transform: scale(0.97); }
-        .card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; letter-spacing: 1px; }
-        .card .value { font-size: 22px; font-weight: bold; margin-top: 6px; }
+        .card:hover { border-color: #00d4ff; }
+        .card .label { font-size: 10px; color: #7a8ba3; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
         .card .value.green { color: #2ecc71; }
         .card .value.blue { color: #3498db; }
         .card .value.orange { color: #f39c12; }
         .card .value.red { color: #e74c3c; }
         .card .value.purple { color: #9b59b6; }
         .card .value.cyan { color: #00d4ff; }
-        .progress-bar { width: 100%; height: 6px; background: #1a2332; border-radius: 3px; margin-top: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 3px; transition: width 0.8s; }
+        .progress-bar { width: 100%; height: 4px; background: #1a2332; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 2px; transition: width 0.8s; }
+        
         .alerts { 
             background: #1a0e0e; 
-            border-left: 4px solid #ff4757; 
-            padding: 12px 18px; 
+            border-left: 3px solid #ff4757; 
+            padding: 10px 16px; 
             border-radius: 8px; 
-            margin: 15px 0; 
-            animation: fadeInUp 0.6s ease-out 0.55s both;
+            margin: 12px 0; 
+            animation: fadeInUp 0.5s ease-out 0.55s both;
         }
-        .alerts h3 { color: #ff4757; margin-bottom: 8px; font-size: 14px; }
-        .alerts li { list-style: none; padding: 4px 0; color: #ffb3b3; font-size: 13px; }
+        .alerts h3 { color: #ff4757; margin-bottom: 4px; font-size: 13px; }
+        .alerts li { list-style: none; padding: 3px 0; color: #ffb3b3; font-size: 12px; }
+        
         .nav { 
-            display: flex; 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); 
             gap: 6px; 
-            flex-wrap: wrap; 
-            margin: 15px 0; 
+            margin: 14px 0; 
             padding: 12px; 
             background: #0f1a2b; 
-            border-radius: 10px; 
-            animation: fadeInUp 0.6s ease-out 0.1s both;
+            border-radius: 12px; 
+            animation: fadeInUp 0.5s ease-out 0.1s both;
         }
         .nav a { 
             color: #7a8ba3; 
             text-decoration: none; 
-            padding: 6px 14px; 
-            border-radius: 6px; 
-            transition: 0.3s; 
-            font-size: 13px; 
-            -webkit-tap-highlight-color: transparent;
-            position: relative;
-        }
-        .nav a:hover { background: #1a2a3f; color: #fff; }
-        .nav a:active { transform: scale(0.95); }
-        .nav a.active { background: #1a2a3f; color: #00d4ff; }
-        .nav a::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 50%;
-            width: 0;
-            height: 2px;
-            background: #00d4ff;
-            transition: 0.3s;
-            transform: translateX(-50%);
-        }
-        .nav a:hover::after, .nav a.active::after {
-            width: 60%;
-        }
-        .reports { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; animation: fadeInUp 0.6s ease-out 0.6s both; }
-        .btn { 
-            background: #00d4ff; 
-            color: #0a0e17; 
-            padding: 8px 18px; 
-            border: none; 
+            padding: 8px 6px; 
             border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            transition: 0.3s; 
-            text-decoration: none; 
-            display: inline-block; 
-            font-size: 13px; 
-            -webkit-tap-highlight-color: transparent;
-        }
-        .btn:hover { transform: scale(1.03); background: #00ff88; }
-        .btn:active { transform: scale(0.95); }
-        .btn-secondary { background: #1a2a3f; color: #fff; }
-        .btn-secondary:hover { background: #2a3f5f; }
-        .footer { 
-            margin-top: 30px; 
-            text-align: center; 
-            color: #4a5a6f; 
-            font-size: 12px; 
-            border-top: 1px solid #1a2332; 
-            padding-top: 15px; 
-            animation: fadeInUp 0.6s ease-out 0.65s both;
-        }
-        .user-info { color: #7a8ba3; font-size: 13px; }
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @media (max-width: 600px) { 
-            .grid { grid-template-columns: 1fr 1fr; } 
-            .card .value { font-size: 17px; }
-            .nav a { font-size: 11px; padding: 4px 10px; }
-        }
-        .install-banner {
-            display: none;
-            background: #1a2a3f;
-            padding: 12px 18px;
-            border-radius: 12px;
-            margin: 15px 0;
+            transition: 0.2s; 
+            font-size: 11px; 
             text-align: center;
-            font-size: 13px;
-            color: #7a8ba3;
-            border: 1px solid #2a3f5f;
-            animation: slideUp 0.5s ease-out;
-        }
-        .install-banner .btn-install {
-            background: #00d4ff;
-            color: #0a0e17;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        .install-banner .btn-install:active {
-            transform: scale(0.95);
-        }
-        /* Circle launch animation for buttons */
-        .nav a, .btn, .logout, .card {
+            -webkit-tap-highlight-color: transparent;
             position: relative;
             overflow: hidden;
+            font-weight: 500;
         }
-        .nav a::before, .btn::before, .logout::before, .card::before {
+        .nav a:active { transform: scale(0.93); }
+        .nav a::before {
             content: '';
             position: absolute;
             top: 50%;
@@ -216,22 +171,121 @@
             width: 0;
             height: 0;
             border-radius: 50%;
-            background: rgba(0, 212, 255, 0.2);
+            background: rgba(0, 212, 255, 0.12);
             transform: translate(-50%, -50%);
             transition: width 0.6s, height 0.6s;
             pointer-events: none;
         }
-        .nav a:active::before, .btn:active::before, .logout:active::before, .card:active::before {
-            width: 300px;
-            height: 300px;
+        .nav a:active::before { width: 200px; height: 200px; }
+        .nav a.active { background: #1a2a3f; color: #00d4ff; }
+        
+        .reports { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; animation: fadeInUp 0.5s ease-out 0.6s both; }
+        .btn { 
+            background: #00d4ff; 
+            color: #0a0e17; 
+            padding: 8px 18px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            transition: 0.2s; 
+            text-decoration: none; 
+            display: inline-block; 
+            font-size: 12px; 
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .btn:active::before { width: 300px; height: 300px; }
+        .btn-secondary { background: #1a2a3f; color: #fff; }
+        
+        .footer { 
+            margin-top: 24px; 
+            text-align: center; 
+            color: #4a5a6f; 
+            font-size: 11px; 
+            border-top: 1px solid #1a2332; 
+            padding-top: 12px; 
+            animation: fadeInUp 0.5s ease-out 0.65s both;
+        }
+        
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @media (max-width: 600px) { 
+            .grid { grid-template-columns: 1fr 1fr; } 
+            .card .value { font-size: 16px; }
+            .nav { grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); }
+            .nav a { font-size: 10px; padding: 6px 4px; }
+        }
+        
+        .install-banner {
+            display: none;
+            background: #1a2a3f;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin: 12px 0;
+            text-align: center;
+            font-size: 12px;
+            color: #7a8ba3;
+            border: 1px solid #2a3f5f;
+            animation: fadeInUp 0.5s ease-out;
+        }
+        .install-banner .btn-install {
+            background: #00d4ff;
+            color: #0a0e17;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 6px;
+            font-size: 13px;
+        }
+        .install-banner .btn-install:active { transform: scale(0.95); }
+        
+        .app-badge {
+            display: none;
+            background: #1a2a3f;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            color: #2ecc71;
+            border: 1px solid #2a3f5f;
+            margin-left: 8px;
+        }
+        
+        @media (display-mode: standalone) {
+            .install-banner { display: none !important; }
+            .app-badge { display: inline-block; }
         }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <div class="logo"><span class="logo-icon">💰</span> BuSys</div>
-        <div>
+        <div class="logo"><span class="logo-icon">💰</span> BuSys <span class="app-badge">✓ App</span></div>
+        <div class="user-section">
             <span class="user-info">👤 {{ user.username }}</span>
             <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
                 <button class="logout">Logout</button>
@@ -298,7 +352,7 @@
 </div>
 
 <script>
-    // PWA Install Prompt
+    // PWA Install
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
@@ -307,32 +361,29 @@
         if (banner) banner.style.display = 'block';
     });
     
-    const installBtn = document.getElementById('installBtn');
-    if (installBtn) {
-        installBtn.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const result = await deferredPrompt.userChoice;
-                if (result.outcome === 'accepted') {
-                    document.getElementById('installBanner').style.display = 'none';
-                }
-                deferredPrompt = null;
+    document.getElementById('installBtn').addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+            if (result.outcome === 'accepted') {
+                document.getElementById('installBanner').style.display = 'none';
+                document.querySelector('.app-badge').style.display = 'inline-block';
             }
-        });
-    }
+            deferredPrompt = null;
+        }
+    });
     
-    // Register Service Worker
+    // Service Worker
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/static/service-worker.js')
-            .then(reg => console.log('✅ BuSystem SW registered'))
-            .catch(err => console.log('⚠️ BuSystem SW failed:', err));
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(reg => console.log('✅ SW registered'))
+            .catch(err => console.log('⚠️ SW failed:', err));
     }
     
     // Hide install banner if already installed
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-        const banner = document.getElementById('installBanner');
-        if (banner) banner.style.display = 'none';
-        document.querySelector('.footer').textContent = 'BuSystem v1.0 • Installed as App • ' + '{{ user.currency }}';
+        document.getElementById('installBanner').style.display = 'none';
+        document.querySelector('.app-badge').style.display = 'inline-block';
     }
 </script>
 </body>
