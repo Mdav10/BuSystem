@@ -354,7 +354,15 @@ with app.app_context():
     print("🎉 Database initialized successfully!")
 
 # ============================
-# SERVE MANIFEST.JSON PROPERLY
+# SERVE STATIC FILES (Icons)
+# ============================
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
+
+# ============================
+# SERVE MANIFEST.JSON
 # ============================
 
 @app.route('/manifest.json')
@@ -372,21 +380,15 @@ def serve_manifest():
         "id": "/",
         "icons": [
             {
-                "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E",
-                "sizes": "512x512",
-                "type": "image/svg+xml",
-                "purpose": "any maskable"
-            },
-            {
-                "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E",
+                "src": "/static/icons/icon-192.png",
                 "sizes": "192x192",
-                "type": "image/svg+xml",
+                "type": "image/png",
                 "purpose": "any maskable"
             },
             {
-                "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230a0e17'/%3E%3Ctext x='256' y='340' font-family='Arial, sans-serif' font-size='180' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3E💰%3C/text%3E%3Ctext x='256' y='420' font-family='Arial, sans-serif' font-size='42' font-weight='bold' text-anchor='middle' fill='%2300d4ff'%3EBuSys%3C/text%3E%3C/svg%3E",
-                "sizes": "128x128",
-                "type": "image/svg+xml",
+                "src": "/static/icons/icon-512.png",
+                "sizes": "512x512",
+                "type": "image/png",
                 "purpose": "any maskable"
             }
         ]
@@ -548,7 +550,7 @@ def dashboard():
     )
 
 # ============================
-# ALL API ENDPOINTS - REAL FUNCTIONALITY
+# ALL API ENDPOINTS
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
@@ -1135,7 +1137,7 @@ def get_notifications():
     return jsonify([n.to_dict() for n in notifications])
 
 # ============================
-# REPORTS - FULL PDF WITH ALL DATA
+# REPORTS
 # ============================
 
 @app.route('/api/reports/<report_type>')
@@ -1238,7 +1240,7 @@ def export_report(report_type, format):
     return jsonify({'error': 'Invalid format'}), 400
 
 # ============================
-# PAGE ROUTES - ALL MODULES
+# PAGE ROUTES
 # ============================
 
 @app.route('/cashflow')
