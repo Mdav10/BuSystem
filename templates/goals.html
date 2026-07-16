@@ -20,6 +20,7 @@
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
         .btn { background: #00d4ff; color: #000; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-danger { background: #ff4757; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .btn-success { background: #2ecc71; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
         .btn-warning { background: #f39c12; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
@@ -34,6 +35,8 @@
         .sub { color: #888; font-size: 13px; }
         .progress-bar { width: 100%; height: 6px; background: #1a1a1a; border-radius: 3px; overflow: hidden; margin-top: 4px; }
         .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #00ff88); border-radius: 3px; }
+        .action-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
+        .action-buttons button { padding: 3px 10px; font-size: 10px; border: none; border-radius: 4px; cursor: pointer; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: #111; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; border: 1px solid #222; }
         .modal-content h3 { color: #00d4ff; margin-bottom: 15px; }
@@ -77,7 +80,7 @@
             </div>
             <div class="form-group">
                 <label>Current Amount (FCFA)</label>
-                <input type="number" id="goalCurrent" placeholder="Current saved" step="0.01">
+                <input type="number" id="goalCurrent" placeholder="Current saved" step="0.01" value="0">
             </div>
             <div class="form-group">
                 <label>Deadline</label>
@@ -110,22 +113,26 @@
     <div class="footer">Every Franc Must Have a Job</div>
 </div>
 
-<!-- Update Modal -->
-<div id="updateModal" class="modal">
+<!-- Add Amount Modal -->
+<div id="addModal" class="modal">
     <div class="modal-content">
-        <span class="close" onclick="closeModal()">&times;</span>
-        <h3>✏️ Update Goal Progress</h3>
+        <span class="close" onclick="closeAddModal()">&times;</span>
+        <h3>💰 Add to Goal</h3>
         <div class="form-group">
             <label>Goal</label>
-            <input type="text" id="updateGoalName" disabled style="color:#888;">
+            <input type="text" id="addGoalName" disabled style="color:#888;">
         </div>
         <div class="form-group">
-            <label>Current Amount (FCFA)</label>
-            <input type="number" id="updateGoalAmount" step="0.01">
+            <label>Current Amount</label>
+            <input type="text" id="addCurrentAmount" disabled style="color:#888;">
+        </div>
+        <div class="form-group">
+            <label>Amount to Add (FCFA)</label>
+            <input type="number" id="addAmount" placeholder="Enter amount to add" step="0.01">
         </div>
         <div class="modal-actions">
-            <button class="btn" onclick="updateGoal()">✅ Update</button>
-            <button class="btn" onclick="closeModal()" style="background:#222; color:#fff;">Cancel</button>
+            <button class="btn btn-success" onclick="addToGoal()">✅ Add Amount</button>
+            <button class="btn" onclick="closeAddModal()" style="background:#222; color:#fff;">Cancel</button>
         </div>
     </div>
 </div>
@@ -158,38 +165,52 @@
                         </td>
                         <td><span class="badge ${g.status.toLowerCase()}">${g.status}</span></td>
                         <td>
-                            <button class="btn-warning" onclick="openUpdateModal(${g.id}, '${g.name}', ${g.current_amount})">✏️</button>
-                            <button class="btn-danger" onclick="deleteGoal(${g.id})">Delete</button>
+                            <div class="action-buttons">
+                                <button class="btn-success" onclick="openAddModal(${g.id}, '${g.name}', ${g.current_amount})">💰 Add</button>
+                                <button class="btn-danger" onclick="deleteGoal(${g.id})">Delete</button>
+                            </div>
                         </td>
                     </tr>
                 `).join('');
             });
     }
     
-    function openUpdateModal(id, name, current) {
+    function openAddModal(id, name, current) {
         currentGoalId = id;
-        document.getElementById('updateGoalName').value = name;
-        document.getElementById('updateGoalAmount').value = current;
-        document.getElementById('updateModal').style.display = 'flex';
+        document.getElementById('addGoalName').value = name;
+        document.getElementById('addCurrentAmount').value = current.toLocaleString() + ' FCFA';
+        document.getElementById('addAmount').value = '';
+        document.getElementById('addModal').style.display = 'flex';
     }
     
-    function closeModal() {
-        document.getElementById('updateModal').style.display = 'none';
+    function closeAddModal() {
+        document.getElementById('addModal').style.display = 'none';
         currentGoalId = null;
     }
     
-    function updateGoal() {
-        const amount = document.getElementById('updateGoalAmount').value;
-        if (!amount || amount < 0) { alert('Please enter a valid amount'); return; }
-        fetch('/api/goals', {
-            method: 'PUT',
+    function addToGoal() {
+        const amount = document.getElementById('addAmount').value;
+        if (!amount || parseFloat(amount) <= 0) {
+            alert('Please enter a valid amount to add');
+            return;
+        }
+        
+        fetch(`/api/goals/${currentGoalId}/add`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: currentGoalId, current_amount: parseFloat(amount) })
+            body: JSON.stringify({ amount: parseFloat(amount) })
         })
         .then(res => res.json())
-        .then(() => {
-            closeModal();
-            loadGoals();
+        .then(data => {
+            if (data.status === 'success') {
+                alert(`✅ Added ${parseFloat(amount).toLocaleString()} FCFA!\n\nNew Current: ${data.current_amount.toLocaleString()} FCFA\nProgress: ${data.progress.toFixed(0)}%\nRemaining: ${data.remaining.toLocaleString()} FCFA`);
+                closeAddModal();
+                loadGoals();
+            }
+        })
+        .catch(err => {
+            alert('❌ Error adding amount');
+            console.error(err);
         });
     }
     

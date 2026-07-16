@@ -20,11 +20,17 @@
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
         .btn { background: #00d4ff; color: #000; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-danger { background: #ff4757; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .btn-success { background: #2ecc71; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .btn-warning { background: #f39c12; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .btn-info { background: #3498db; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #111; padding: 10px; text-align: left; color: #888; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #222; }
         td { padding: 8px 10px; border-bottom: 1px solid #1a1a1a; font-size: 13px; }
         .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
+        .badge.pending { background: #3a3a1a; color: #f39c12; }
+        .badge.done { background: #1a3a2a; color: #2ecc71; }
+        .badge.not_done { background: #3a1a1a; color: #ff4757; }
         .badge.over { background: #3a1a1a; color: #ff4757; }
         .badge.under { background: #1a3a2a; color: #2ecc71; }
         .badge.on-track { background: #1a2a3f; color: #f39c12; }
@@ -34,6 +40,12 @@
         .sub { color: #888; font-size: 13px; }
         .over { color: #ff4757; }
         .under { color: #2ecc71; }
+        .action-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
+        .action-buttons button { padding: 3px 10px; font-size: 10px; border: none; border-radius: 4px; cursor: pointer; }
+        .review-status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
+        .review-status.done { background: #1a3a2a; color: #2ecc71; }
+        .review-status.not_done { background: #3a1a1a; color: #ff4757; }
+        .review-status.pending { background: #3a3a1a; color: #f39c12; }
         @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -99,10 +111,10 @@
         <h3 style="color: #fff; margin-bottom: 10px; font-size: 16px;">Your Budgets</h3>
         <table>
             <thead>
-                <tr><th>Category</th><th>Type</th><th>Expected</th><th>Actual</th><th>Difference</th><th>Status</th><th>Action</th></tr>
+                <tr><th>Category</th><th>Type</th><th>Expected</th><th>Actual</th><th>Difference</th><th>Status</th><th>Review</th><th>Action</th></tr>
             </thead>
             <tbody id="budgetList">
-                <tr><td colspan="7" style="text-align:center; color:#555; padding:20px;">No budgets set</td></tr>
+                <tr><td colspan="8" style="text-align:center; color:#555; padding:20px;">No budgets set</td></tr>
             </tbody>
         </table>
     </div>
@@ -122,7 +134,7 @@
             .then(data => {
                 const tbody = document.getElementById('budgetList');
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#555; padding:20px;">No budgets set</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#555; padding:20px;">No budgets set</td></tr>';
                     return;
                 }
                 tbody.innerHTML = data.map(b => {
@@ -130,7 +142,14 @@
                     const status = diff > 0 ? 'Over' : diff < 0 ? 'Under' : 'On Track';
                     const cls = diff > 0 ? 'over' : diff < 0 ? 'under' : '';
                     const badgeCls = diff > 0 ? 'over' : diff < 0 ? 'under' : 'on-track';
-                    const monthName = new Date(2026, parseInt(b.month) - 1, 1).toLocaleString('default', { month: 'long' });
+                    
+                    // Review status
+                    const reviewStatus = b.status || 'pending';
+                    const statusLabel = reviewStatus === 'done' ? '✅ Done' : reviewStatus === 'not_done' ? '❌ Not Done' : '⏳ Pending';
+                    const statusCls = reviewStatus === 'done' ? 'done' : reviewStatus === 'not_done' ? 'not_done' : 'pending';
+                    
+                    const monthName = new Date(parseInt(b.year), parseInt(b.month) - 1, 1).toLocaleString('default', { month: 'long' });
+                    
                     return `<tr>
                         <td><strong>${b.category}</strong></td>
                         <td>${b.type}</td>
@@ -138,7 +157,17 @@
                         <td>${Number(b.actual_amount).toLocaleString()} FCFA</td>
                         <td class="${cls}">${diff > 0 ? '+' : ''}${Number(diff).toLocaleString()} FCFA</td>
                         <td><span class="badge ${badgeCls}">${status}</span></td>
-                        <td><button class="btn-danger" onclick="deleteBudget(${b.id})">Delete</button></td>
+                        <td>
+                            <span class="review-status ${statusCls}">${statusLabel}</span>
+                            <div class="action-buttons" style="margin-top:4px;">
+                                ${reviewStatus !== 'done' ? `<button class="btn-success" onclick="updateBudgetStatus(${b.id}, 'done')">✅ Well Done</button>` : ''}
+                                ${reviewStatus !== 'not_done' ? `<button class="btn-danger" onclick="updateBudgetStatus(${b.id}, 'not_done')">❌ Not Done</button>` : ''}
+                                ${reviewStatus !== 'pending' ? `<button class="btn-info" onclick="updateBudgetStatus(${b.id}, 'pending')">⏳ Reset</button>` : ''}
+                            </div>
+                        </td>
+                        <td>
+                            <button class="btn-danger" onclick="deleteBudget(${b.id})">Delete</button>
+                        </td>
                     </tr>`;
                 }).join('');
             });
@@ -159,6 +188,27 @@
         .then(() => {
             document.getElementById('budgetExpected').value = '';
             loadBudget();
+        });
+    }
+    
+    function updateBudgetStatus(id, status) {
+        const label = status === 'done' ? 'Well Done ✅' : status === 'not_done' ? 'Not Done ❌' : 'Pending ⏳';
+        if (!confirm(`Mark this budget as "${label}"?`)) return;
+        fetch(`/api/budget/${id}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(`✅ Budget marked as "${label}"!`);
+                loadBudget();
+            }
+        })
+        .catch(err => {
+            alert('❌ Error updating status');
+            console.error(err);
         });
     }
     

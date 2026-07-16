@@ -20,6 +20,8 @@
         .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
         .btn { background: #00d4ff; color: #000; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-danger { background: #ff4757; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .btn-success { background: #2ecc71; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .btn-warning { background: #f39c12; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #111; padding: 10px; text-align: left; color: #888; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #222; }
@@ -33,6 +35,10 @@
         .footer { margin-top: 30px; text-align: center; color: #555; font-size: 12px; border-top: 1px solid #222; padding-top: 16px; }
         h2 { color: #00d4ff; margin-bottom: 5px; }
         .sub { color: #888; font-size: 13px; }
+        .action-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
+        .action-buttons button { padding: 3px 10px; font-size: 10px; border: none; border-radius: 4px; cursor: pointer; }
+        .profit-positive { color: #2ecc71; }
+        .profit-negative { color: #ff4757; }
         @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -89,10 +95,10 @@
         <h3 style="color: #fff; margin-bottom: 10px; font-size: 16px;">Your Livestock</h3>
         <table>
             <thead>
-                <tr><th>Tag</th><th>Type</th><th>Breed</th><th>Purchase Price</th><th>Status</th><th>Expected Sell</th><th>Action</th></tr>
+                <tr><th>Tag</th><th>Type</th><th>Breed</th><th>Purchase Price</th><th>Status</th><th>Profit</th><th>Expected Sell</th><th>Actions</th></tr>
             </thead>
             <tbody id="livestockList">
-                <tr><td colspan="7" style="text-align:center; color:#555; padding:20px;">No animals yet</td></tr>
+                <tr><td colspan="8" style="text-align:center; color:#555; padding:20px;">No animals yet</td></tr>
             </tbody>
         </table>
     </div>
@@ -110,20 +116,30 @@
             .then(data => {
                 const tbody = document.getElementById('livestockList');
                 if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#555; padding:20px;">No animals yet</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#555; padding:20px;">No animals yet</td></tr>';
                     return;
                 }
-                tbody.innerHTML = data.map(l => `
-                    <tr>
-                        <td><strong>${l.tag}</strong></td>
-                        <td>${l.type}</td>
-                        <td>${l.breed || '-'}</td>
-                        <td>${Number(l.purchase_price).toLocaleString()} FCFA</td>
-                        <td><span class="badge ${l.status.toLowerCase()}">${l.status}</span></td>
-                        <td>${l.expected_sell_date || '-'}</td>
-                        <td><button class="btn-danger" onclick="deleteLivestock(${l.id})">Delete</button></td>
-                    </tr>
-                `).join('');
+                tbody.innerHTML = data.map(l => {
+                    const profitClass = l.profit > 0 ? 'profit-positive' : l.profit < 0 ? 'profit-negative' : '';
+                    const canSell = l.status === 'Active' || l.status === 'Ready';
+                    return `
+                        <tr>
+                            <td><strong>${l.tag}</strong></td>
+                            <td>${l.type}</td>
+                            <td>${l.breed || '-'}</td>
+                            <td>${Number(l.purchase_price).toLocaleString()} FCFA</td>
+                            <td><span class="badge ${l.status.toLowerCase()}">${l.status}</span></td>
+                            <td class="${profitClass}">${l.profit ? Number(l.profit).toLocaleString() + ' FCFA' : '-'}</td>
+                            <td>${l.expected_sell_date || '-'}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    ${canSell ? `<button class="btn-success" onclick="sellLivestock(${l.id})">Sell</button>` : ''}
+                                    <button class="btn-danger" onclick="deleteLivestock(${l.id})">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
             });
     }
     
@@ -149,8 +165,32 @@
         });
     }
     
+    function sellLivestock(id) {
+        const price = prompt('💰 Enter sell price (FCFA):');
+        if (price === null) return;
+        if (!price || parseFloat(price) <= 0) { alert('Please enter a valid sell price'); return; }
+        if (!confirm(`Sell this animal for ${parseFloat(price).toLocaleString()} FCFA?`)) return;
+        
+        fetch(`/api/livestock/${id}/sell`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sell_price: parseFloat(price) })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(`✅ Sold!\n\nSell Price: ${data.sell_price.toLocaleString()} FCFA\nProfit: ${data.profit.toLocaleString()} FCFA`);
+                loadLivestock();
+            }
+        })
+        .catch(err => {
+            alert('❌ Error selling animal');
+            console.error(err);
+        });
+    }
+    
     function deleteLivestock(id) {
-        if (!confirm('Delete this animal?')) return;
+        if (!confirm('Delete this animal permanently?')) return;
         fetch('/api/livestock', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
