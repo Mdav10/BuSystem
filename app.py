@@ -1209,7 +1209,7 @@ def get_timeline():
             'date': l.purchase_date.strftime('%Y-%m-%d'),
             'type': 'livestock',
             'title': f"Added: {l.type} - {l.tag}",
-            'description': f"Purchased for {l.purchase_price:,.0f} FCFA",
+            'description': f"Purchased for {l.purchase_price:,.0f} BIF",
             'icon': '🐄'
         })
     for g in Goal.query.filter_by(user_id=user_id).order_by(Goal.created_at.desc()).limit(20).all():
@@ -1217,7 +1217,7 @@ def get_timeline():
             'date': g.created_at.strftime('%Y-%m-%d'),
             'type': 'goal',
             'title': f"Goal: {g.name}",
-            'description': f"Target: {g.target_amount:,.0f} FCFA ({g.progress:.0f}%)",
+            'description': f"Target: {g.target_amount:,.0f} BIF ({g.progress:.0f}%)",
             'icon': '🎯'
         })
     events.sort(key=lambda x: x['date'], reverse=True)
