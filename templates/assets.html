@@ -129,8 +129,8 @@
                     <tr>
                         <td><strong>${a.name}</strong></td>
                         <td>${a.category}</td>
-                        <td>${Number(a.purchase_price).toLocaleString()} FCFA</td>
-                        <td>${Number(a.current_value).toLocaleString()} FCFA</td>
+                        <td>${Number(a.purchase_price).toLocaleString()} BIF</td>
+                        <td>${Number(a.current_value).toLocaleString()} BIF</td>
                         <td>${a.location || '-'}</td>
                         <td><span class="badge">${a.condition}</span></td>
                         <td><button class="btn-danger" onclick="deleteAsset(${a.id})">Delete</button></td>
@@ -143,7 +143,7 @@
     function updateStats(data) {
         let total = 0;
         data.forEach(a => total += Number(a.current_value));
-        document.getElementById('totalAssets').textContent = total.toLocaleString() + ' FCFA';
+        document.getElementById('totalAssets').textContent = total.toLocaleString() + ' BIF';
         document.getElementById('assetCount').textContent = data.length;
     }
     

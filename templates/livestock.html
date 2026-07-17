@@ -127,9 +127,9 @@
                             <td><strong>${l.tag}</strong></td>
                             <td>${l.type}</td>
                             <td>${l.breed || '-'}</td>
-                            <td>${Number(l.purchase_price).toLocaleString()} FCFA</td>
+                            <td>${Number(l.purchase_price).toLocaleString()} BIF</td>
                             <td><span class="badge ${l.status.toLowerCase()}">${l.status}</span></td>
-                            <td class="${profitClass}">${l.profit ? Number(l.profit).toLocaleString() + ' FCFA' : '-'}</td>
+                            <td class="${profitClass}">${l.profit ? Number(l.profit).toLocaleString() + ' BIF' : '-'}</td>
                             <td>${l.expected_sell_date || '-'}</td>
                             <td>
                                 <div class="action-buttons">
@@ -166,10 +166,10 @@
     }
     
     function sellLivestock(id) {
-        const price = prompt('💰 Enter sell price (FCFA):');
+        const price = prompt('💰 Enter sell price (BIF):');
         if (price === null) return;
         if (!price || parseFloat(price) <= 0) { alert('Please enter a valid sell price'); return; }
-        if (!confirm(`Sell this animal for ${parseFloat(price).toLocaleString()} FCFA?`)) return;
+        if (!confirm(`Sell this animal for ${parseFloat(price).toLocaleString()} BIF?`)) return;
         
         fetch(`/api/livestock/${id}/sell`, {
             method: 'POST',
@@ -179,7 +179,7 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert(`✅ Sold!\n\nSell Price: ${data.sell_price.toLocaleString()} FCFA\nProfit: ${data.profit.toLocaleString()} FCFA`);
+                alert(`✅ Sold!\n\nSell Price: ${data.sell_price.toLocaleString()} BIF\nProfit: ${data.profit.toLocaleString()} BIF`);
                 loadLivestock();
             }
         })

@@ -84,11 +84,11 @@
                 let totalIncome = 0, totalExpenses = 0;
                 data.income.forEach(i => totalIncome += i.total);
                 data.expenses.forEach(e => totalExpenses += e.total);
-                document.getElementById('repIncome').textContent = totalIncome.toLocaleString() + ' FCFA';
-                document.getElementById('repExpenses').textContent = totalExpenses.toLocaleString() + ' FCFA';
+                document.getElementById('repIncome').textContent = totalIncome.toLocaleString() + ' BIF';
+                document.getElementById('repExpenses').textContent = totalExpenses.toLocaleString() + ' BIF';
                 const net = totalIncome - totalExpenses;
                 const el = document.getElementById('repNet');
-                el.textContent = net.toLocaleString() + ' FCFA';
+                el.textContent = net.toLocaleString() + ' BIF';
                 el.className = 'value ' + (net >= 0 ? 'green' : 'red');
             });
     }
@@ -97,8 +97,8 @@
         fetch('/api/reports/balance_sheet')
             .then(res => res.json())
             .then(data => {
-                document.getElementById('repAssets').textContent = data.total_assets.toLocaleString() + ' FCFA';
-                document.getElementById('repNetWorth').textContent = data.net_worth.toLocaleString() + ' FCFA';
+                document.getElementById('repAssets').textContent = data.total_assets.toLocaleString() + ' BIF';
+                document.getElementById('repNetWorth').textContent = data.net_worth.toLocaleString() + ' BIF';
             });
     }
 </script>

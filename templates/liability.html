@@ -143,7 +143,7 @@
                             <td><span class="badge ${typeClass}">${typeLabel}</span></td>
                             <td><strong>${l.name}</strong></td>
                             <td>${l.description || '-'}</td>
-                            <td style="color:${amountColor}">${Number(l.amount).toLocaleString()} FCFA</td>
+                            <td style="color:${amountColor}">${Number(l.amount).toLocaleString()} BIF</td>
                             <td>${l.due_date || '-'}</td>
                             <td><span class="badge ${statusClass}">${l.status || 'Pending'}</span></td>
                             <td>
@@ -162,11 +162,11 @@
         fetch('/api/liabilities/summary')
             .then(res => res.json())
             .then(data => {
-                document.getElementById('statOwedToMe').textContent = Number(data.total_owed_to_me).toLocaleString() + ' FCFA';
-                document.getElementById('statIOwe').textContent = Number(data.total_i_owe).toLocaleString() + ' FCFA';
+                document.getElementById('statOwedToMe').textContent = Number(data.total_owed_to_me).toLocaleString() + ' BIF';
+                document.getElementById('statIOwe').textContent = Number(data.total_i_owe).toLocaleString() + ' BIF';
                 const net = data.net_position;
                 const el = document.getElementById('statNet');
-                el.textContent = (net > 0 ? '+' : '') + Number(net).toLocaleString() + ' FCFA';
+                el.textContent = (net > 0 ? '+' : '') + Number(net).toLocaleString() + ' BIF';
                 el.className = 'value ' + (net > 0 ? 'green' : net < 0 ? 'red' : '');
             });
     }
