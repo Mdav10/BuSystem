@@ -1193,7 +1193,7 @@ def get_timeline():
             'date': t.date.strftime('%Y-%m-%d'),
             'type': 'transaction',
             'title': f"{t.type.capitalize()}: {t.category}",
-            'description': f"{t.amount:,.0f} FCFA",
+            'description': f"{t.amount:,.0f} BIF",
             'icon': '💰'
         })
     for i in Investment.query.filter_by(user_id=user_id).order_by(Investment.purchase_date.desc()).limit(30).all():
