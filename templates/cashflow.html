@@ -133,7 +133,7 @@
                         <td>${t.date ? t.date.split(' ')[0] : ''}</td>
                         <td><span class="badge ${t.type}">${t.type}</span></td>
                         <td>${t.category}</td>
-                        <td style="color:${t.type === 'income' ? '#2ecc71' : '#ff4757'}">${t.type === 'income' ? '+' : '-'} ${Number(t.amount).toLocaleString()} FCFA</td>
+                        <td style="color:${t.type === 'income' ? '#2ecc71' : '#ff4757'}">${t.type === 'income' ? '+' : '-'} ${Number(t.amount).toLocaleString()} BIF</td>
                         <td>${t.description || '-'}</td>
                         <td><button class="btn-danger" onclick="deleteTransaction(${t.id})">Delete</button></td>
                     </tr>

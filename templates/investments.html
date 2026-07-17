@@ -129,9 +129,9 @@
                     <tr>
                         <td><strong>${i.investment_id}</strong></td>
                         <td>${i.type}${i.sub_type ? ' ('+i.sub_type+')' : ''}</td>
-                        <td>${Number(i.capital).toLocaleString()} FCFA</td>
+                        <td>${Number(i.capital).toLocaleString()} BIF</td>
                         <td><span class="badge ${i.status.toLowerCase()}">${i.status}</span></td>
-                        <td style="color:${i.profit >= 0 ? '#2ecc71' : '#ff4757'}">${Number(i.profit).toLocaleString()} FCFA</td>
+                        <td style="color:${i.profit >= 0 ? '#2ecc71' : '#ff4757'}">${Number(i.profit).toLocaleString()} BIF</td>
                         <td>${i.roi_actual ? Number(i.roi_actual).toFixed(1) + '%' : '-'}</td>
                         <td>
                             <div class="action-buttons">
@@ -152,9 +152,9 @@
             if (i.status === 'Running') active++;
             profit += Number(i.profit);
         });
-        document.getElementById('totalInvested').textContent = total.toLocaleString() + ' FCFA';
+        document.getElementById('totalInvested').textContent = total.toLocaleString() + ' BIF';
         document.getElementById('activeCount').textContent = active;
-        document.getElementById('totalProfit').textContent = profit.toLocaleString() + ' FCFA';
+        document.getElementById('totalProfit').textContent = profit.toLocaleString() + ' BIF';
     }
     
     function addInvestment() {
@@ -180,10 +180,10 @@
     }
     
     function sellInvestment(id) {
-        const price = prompt('💰 Enter sell price (FCFA):');
+        const price = prompt('💰 Enter sell price (BIF):');
         if (price === null) return;
         if (!price || parseFloat(price) <= 0) { alert('Please enter a valid sell price'); return; }
-        if (!confirm(`Sell this investment for ${parseFloat(price).toLocaleString()} FCFA?`)) return;
+        if (!confirm(`Sell this investment for ${parseFloat(price).toLocaleString()} BIF?`)) return;
         
         fetch(`/api/investments/${id}/sell`, {
             method: 'POST',
@@ -193,7 +193,7 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert(`✅ Sold! Profit: ${data.profit.toLocaleString()} FCFA | ROI: ${data.roi.toFixed(1)}%`);
+                alert(`✅ Sold! Profit: ${data.profit.toLocaleString()} BIF | ROI: ${data.roi.toFixed(1)}%`);
                 loadInvestments();
             }
         })
