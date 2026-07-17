@@ -1,7 +1,7 @@
 {
   "name": "BuSystem",
-  "short_name": "BuSys",
-  "description": "Personal Finance Operating System",
+  "short_name": "Mugisha",
+  "description": "My Finance Operating System",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0e17",

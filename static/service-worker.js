@@ -1,4 +1,4 @@
-const CACHE_NAME = 'busystem-v5';
+const CACHE_NAME = 'busystem-v10';
 const urlsToCache = [
   '/',
   '/dashboard',
