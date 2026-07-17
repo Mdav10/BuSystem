@@ -2,80 +2,224 @@
 <html>
 <head>
     <title>BuSystem</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#00d4ff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="/static/manifest.json">
-    <link rel="icon" href="/static/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/icons/icon-512.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #0a0e17, #1a2a3f);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e17 0%, #1a2a3f 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: #fff;
+            color: #e0e6ed;
+            -webkit-tap-highlight-color: transparent;
+            padding: 16px;
         }
         .login-box {
-            background: #111;
-            padding: 40px;
-            border-radius: 20px;
-            border: 1px solid #222;
-            width: 380px;
-            max-width: 90%;
+            background: #111a2b;
+            padding: 50px 40px;
+            border-radius: 24px;
+            border: 1px solid #1a2a3f;
+            width: 400px;
+            max-width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            animation: slideUp 0.6s ease-out;
         }
-        .logo { font-size: 36px; font-weight: bold; color: #00d4ff; text-align: center; }
-        .subtitle { text-align: center; color: #888; margin-bottom: 30px; font-size: 14px; }
-        .input-group { margin-bottom: 16px; }
-        .input-group label { display: block; margin-bottom: 4px; color: #888; font-size: 13px; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .app-icon { width: 80px; height: 80px; display: block; margin: 0 auto 15px; border-radius: 20px; }
+        .logo-text { font-size: 36px; font-weight: bold; color: #00d4ff; text-align: center; margin-bottom: 8px; }
+        .subtitle { text-align: center; color: #7a8ba3; margin-bottom: 30px; font-size: 14px; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; margin-bottom: 6px; font-size: 13px; color: #7a8ba3; }
         .input-group input {
             width: 100%;
-            padding: 12px;
-            background: #0a0e17;
-            border: 1px solid #222;
-            border-radius: 8px;
+            padding: 14px;
+            background: #0f1a2b;
+            border: 1px solid #1a2a3f;
+            border-radius: 10px;
             color: #fff;
             font-size: 16px;
+            transition: 0.3s;
+            -webkit-appearance: none;
         }
-        .input-group input:focus { outline: none; border-color: #00d4ff; }
+        .input-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0,212,255,0.1);
+        }
         .btn-login {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             background: #00d4ff;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 18px;
             font-weight: bold;
-            color: #000;
+            color: #0a0e17;
             cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
-        .btn-login:hover { background: #00ff88; }
-        .error { color: #ff4757; text-align: center; margin-bottom: 16px; }
-        .footer { text-align: center; margin-top: 16px; color: #555; font-size: 12px; }
-        .icon { text-align: center; font-size: 60px; margin-bottom: 10px; }
+        .btn-login:active { transform: scale(0.96); }
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            pointer-events: none;
+        }
+        .btn-login:active::before { width: 400px; height: 400px; }
+        .btn-login:hover { background: #00ff88; transform: scale(1.02); }
+        .error { color: #ff4757; text-align: center; margin-bottom: 15px; font-size: 14px; }
+        .footer { text-align: center; margin-top: 20px; color: #4a5a6f; font-size: 12px; }
+        .install-banner {
+            background: linear-gradient(135deg, #1a2a3f, #0f1a2b);
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 13px;
+            color: #7a8ba3;
+            border: 1px solid #2a3f5f;
+            animation: slideUp 0.5s ease-out;
+            display: block !important;
+        }
+        .install-banner .btn-install {
+            background: #00d4ff;
+            color: #0a0e17;
+            border: none;
+            padding: 10px 30px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+        .install-banner .btn-install:active { transform: scale(0.95); }
+        .install-banner .btn-install:hover { background: #00ff88; transform: scale(1.02); }
+        .install-banner .app-status {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            margin-top: 6px;
+        }
+        .install-banner .app-status.installed {
+            background: #1a3a2a;
+            color: #2ecc71;
+        }
+        .install-banner .app-status.not-installed {
+            background: #3a2a1a;
+            color: #f39c12;
+        }
+        @media (display-mode: standalone) {
+            .install-banner { display: none !important; }
+        }
+        @media (max-width: 480px) { .login-box { padding: 30px 20px; } }
     </style>
 </head>
 <body>
 <div class="login-box">
-    <div class="icon">💰</div>
-    <div class="logo">BuSys</div>
-    <div class="subtitle">Personal Finance OS BY Mugisha Pc</div>
+    <img src="/static/icons/icon-192.png" alt="BuSystem" class="app-icon">
+    <div class="logo-text">BuSys</div>
+    <div class="subtitle">Personal Finance OS</div>
     {% with messages = get_flashed_messages() %}
         {% if messages %}<div class="error">{{ messages[0] }}</div>{% endif %}
     {% endwith %}
     <form method="POST">
         <div class="input-group">
             <label>Username</label>
-            <input type="text" name="username" placeholder="Enter username" required>
+            <input type="text" name="username" placeholder="Enter username" required autocomplete="username">
         </div>
         <div class="input-group">
             <label>Password</label>
-            <input type="password" name="password" placeholder="Enter password" required>
+            <input type="password" name="password" placeholder="Enter password" required autocomplete="current-password">
         </div>
-        <button type="submit" class="btn-login">Access</button>
+        <button type="submit" class="btn-login">🚀 Access</button>
     </form>
+    
+    <!-- ALWAYS VISIBLE INSTALL BANNER -->
+    <div id="installBanner" class="install-banner">
+        <div style="font-size: 24px; margin-bottom: 4px;">📱</div>
+        <div style="font-weight: 600; color: #fff; font-size: 15px;">Install BuSystem as App</div>
+        <div style="font-size: 12px; color: #7a8ba3; margin: 4px 0;">Full screen • Offline • Faster</div>
+        <button class="btn-install" id="installBtn">📲 Install App</button>
+        <div style="margin-top: 6px;">
+            <span class="app-status not-installed" id="appStatus">📲 Not Installed</span>
+        </div>
+    </div>
+    
     <div class="footer">Every Franc Must Have a Job</div>
 </div>
+
+<script>
+    let deferredPrompt;
+    const installBanner = document.getElementById('installBanner');
+    const installBtn = document.getElementById('installBtn');
+    const appStatus = document.getElementById('appStatus');
+    
+    function checkInstalled() {
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+            installBanner.style.display = 'none';
+            appStatus.textContent = '✅ Installed';
+            appStatus.className = 'app-status installed';
+        } else {
+            installBanner.style.display = 'block';
+            appStatus.textContent = '📲 Not Installed';
+            appStatus.className = 'app-status not-installed';
+        }
+    }
+    
+    checkInstalled();
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBanner.style.display = 'block';
+        appStatus.textContent = '📲 Ready to Install';
+        appStatus.className = 'app-status not-installed';
+    });
+    
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+            if (result.outcome === 'accepted') {
+                appStatus.textContent = '✅ Installed!';
+                appStatus.className = 'app-status installed';
+                installBanner.style.display = 'none';
+            } else {
+                appStatus.textContent = '❌ Declined';
+                appStatus.className = 'app-status not-installed';
+            }
+            deferredPrompt = null;
+        } else {
+            appStatus.textContent = '🔄 Please allow installation...';
+            if (window.location.protocol === 'https:') {
+                appStatus.textContent = '⚠️ Click browser menu → "Install App"';
+            }
+        }
+    });
+</script>
 </body>
 </html>
