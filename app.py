@@ -1,7 +1,7 @@
 import os
 import io
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, send_from_directory, Response, abort
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, send_from_directory, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_cors import CORS
@@ -28,7 +28,7 @@ login_manager.login_view = 'login'
 CORS(app)
 
 # ============================
-# DATABASE MODELS
+# DATABASE MODELS (YOUR ORIGINAL)
 # ============================
 
 class User(UserMixin, db.Model):
@@ -38,9 +38,9 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     currency = db.Column(db.String(10), default='FCFA')
     email = db.Column(db.String(120), nullable=True)
-    role = db.Column(db.String(20), default='user')
+    role = db.Column(db.String(20), default='user')  # NEW: superadmin, admin, user
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # NEW
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -55,6 +55,7 @@ class User(UserMixin, db.Model):
         return self.role == 'superadmin'
 
 
+# YOUR ORIGINAL MODELS - EXACTLY AS YOU HAD THEM
 class Transaction(db.Model):
     __tablename__ = 'transactions'
     id = db.Column(db.Integer, primary_key=True)
@@ -323,7 +324,7 @@ class Notification(db.Model):
 
 
 # ============================
-# NEW ADMIN MODELS
+# NEW ADMIN MODELS (ADDED)
 # ============================
 
 class Product(db.Model):
@@ -419,7 +420,7 @@ class Sale(db.Model):
 
 
 # ============================
-# DECORATORS
+# DECORATORS (ADDED)
 # ============================
 
 def superadmin_required(f):
@@ -445,178 +446,115 @@ def admin_required(f):
 
 
 # ============================
-# INITIALIZE DATABASE WITH PROPER MIGRATION
+# INITIALIZE DATABASE (YOUR ORIGINAL + ADDED)
 # ============================
 
-def column_exists(table, column):
-    """Check if a column exists in a table"""
-    try:
-        # Rollback any existing transaction
-        db.session.rollback()
-        # Use a fresh connection
-        with db.engine.connect() as conn:
-            result = conn.execute(text(f"""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = '{table}' AND column_name = '{column}'
-            """))
-            return result.fetchone() is not None
-    except Exception as e:
-        print(f"⚠️ Error checking {table}.{column}: {e}")
-        return False
-
-
-def safe_add_column(table, column, col_type, default=None):
-    """Safely add a column to a table if it doesn't exist"""
-    try:
-        # Rollback any existing transaction
-        db.session.rollback()
-        
-        if column_exists(table, column):
-            print(f"✅ {table}.{column} already exists")
-            return True
-        
-        print(f"⚠️ Adding {table}.{column}...")
-        with db.engine.connect() as conn:
-            sql = f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
-            if default:
-                if col_type == 'INTEGER':
-                    sql += f" DEFAULT {default}"
-                else:
-                    sql += f" DEFAULT '{default}'"
-            conn.execute(text(sql))
-            conn.commit()
-            print(f"✅ Added {table}.{column}")
-            return True
-    except Exception as e:
-        print(f"⚠️ Could not add {table}.{column}: {e}")
-        db.session.rollback()
-        return False
-
-
 with app.app_context():
-    print("🔄 Creating tables if they don't exist...")
     db.create_all()
     
-    print("🔄 Running migrations...")
-    
-    # Add transactions columns
-    safe_add_column('transactions', 'type', 'VARCHAR(20)', 'income')
-    safe_add_column('transactions', 'category', 'VARCHAR(50)', 'Other')
-    safe_add_column('transactions', 'description', 'VARCHAR(200)')
-    safe_add_column('transactions', 'date', 'TIMESTAMP')
-    safe_add_column('transactions', 'created_at', 'TIMESTAMP')
-    
-    # Add budgets columns
-    safe_add_column('budgets', 'status', 'VARCHAR(20)', 'pending')
-    safe_add_column('budgets', 'status_updated_at', 'TIMESTAMP')
-    
-    # Add users columns
-    safe_add_column('users', 'role', 'VARCHAR(20)', 'user')
-    safe_add_column('users', 'created_by', 'INTEGER')
-    
-    print("✅ Migrations complete!")
-    
-    # Create SuperAdmin if not exists
+    # Add budget status columns if not exist (YOUR ORIGINAL)
     try:
-        db.session.rollback()
-        if not User.query.filter_by(username='MCM').first():
-            user = User(username='MCM', currency='FCFA', email='admin@busystem.com', role='superadmin')
-            user.set_password('0880Mcm+_+')
-            db.session.add(user)
-            db.session.commit()
-            print("✅ SuperAdmin 'MCM' created")
-        else:
-            user = User.query.filter_by(username='MCM').first()
-            if user.role != 'superadmin':
-                user.role = 'superadmin'
-                db.session.commit()
-                print("✅ MCM upgraded to SuperAdmin")
+        db.session.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'"))
+        db.session.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMP"))
+        db.session.commit()
+        print("✅ Budget status columns added")
     except Exception as e:
-        print(f"⚠️ Error creating SuperAdmin: {e}")
-        db.session.rollback()
+        print(f"⚠️ Budget status columns already exist: {e}")
     
-    # Create default rules
+    # Add user role columns (NEW)
     try:
-        db.session.rollback()
-        if FinancialRule.query.count() == 0:
-            rules = [
-                FinancialRule(
-                    user_id=1,
-                    name='Investment Diversification',
-                    category='investment',
-                    condition_type='percentage',
-                    condition_value=40,
-                    condition_operator='>',
-                    action_type='warn',
-                    action_message='Do not invest more than 40% in one type'
-                ),
-                FinancialRule(
-                    user_id=1,
-                    name='Emergency Fund Minimum',
-                    category='emergency',
-                    condition_type='months',
-                    condition_value=3,
-                    condition_operator='<',
-                    action_type='warn',
-                    action_message='Keep at least 3 months of expenses'
-                ),
-                FinancialRule(
-                    user_id=1,
-                    name='Monthly Spending Limit',
-                    category='spending',
-                    condition_type='percentage',
-                    condition_value=80,
-                    condition_operator='>',
-                    action_type='warn',
-                    action_message='Do not spend more than 80% of income'
-                )
-            ]
-            for rule in rules:
-                db.session.add(rule)
-            db.session.commit()
-            print("✅ Default rules created")
+        db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'"))
+        db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_by INTEGER"))
+        db.session.commit()
+        print("✅ User role columns added")
     except Exception as e:
-        print(f"⚠️ Error creating rules: {e}")
-        db.session.rollback()
+        print(f"⚠️ User role columns already exist: {e}")
     
-    # Create sample notifications
-    try:
-        db.session.rollback()
-        if Notification.query.count() == 0:
-            notifications = [
-                Notification(
-                    user_id=1,
-                    title='Welcome to BuSystem! 🎉',
-                    message='Start tracking your finances by adding your first transaction.',
-                    type='info'
-                ),
-                Notification(
-                    user_id=1,
-                    title='💡 Tip: Set Your Goals',
-                    message='Setting financial goals helps you stay focused. Click Goals to get started.',
-                    type='success'
-                ),
-                Notification(
-                    user_id=1,
-                    title='📊 Dashboard Overview',
-                    message='Your dashboard shows all your key financial metrics at a glance.',
-                    type='info'
-                )
-            ]
-            for n in notifications:
-                db.session.add(n)
+    # Create SuperAdmin (YOUR ORIGINAL + ROLE)
+    if not User.query.filter_by(username='MCM').first():
+        user = User(username='MCM', currency='FCFA', email='admin@busystem.com', role='superadmin')
+        user.set_password('0880Mcm+_+')
+        db.session.add(user)
+        db.session.commit()
+        print("✅ SuperAdmin 'MCM' created")
+    else:
+        user = User.query.filter_by(username='MCM').first()
+        if user.role != 'superadmin':
+            user.role = 'superadmin'
             db.session.commit()
-            print("✅ Sample notifications created")
-    except Exception as e:
-        print(f"⚠️ Error creating notifications: {e}")
-        db.session.rollback()
+            print("✅ MCM upgraded to SuperAdmin")
+    
+    # Create default rules (YOUR ORIGINAL)
+    if FinancialRule.query.count() == 0:
+        rules = [
+            FinancialRule(
+                user_id=1,
+                name='Investment Diversification',
+                category='investment',
+                condition_type='percentage',
+                condition_value=40,
+                condition_operator='>',
+                action_type='warn',
+                action_message='Do not invest more than 40% in one type'
+            ),
+            FinancialRule(
+                user_id=1,
+                name='Emergency Fund Minimum',
+                category='emergency',
+                condition_type='months',
+                condition_value=3,
+                condition_operator='<',
+                action_type='warn',
+                action_message='Keep at least 3 months of expenses'
+            ),
+            FinancialRule(
+                user_id=1,
+                name='Monthly Spending Limit',
+                category='spending',
+                condition_type='percentage',
+                condition_value=80,
+                condition_operator='>',
+                action_type='warn',
+                action_message='Do not spend more than 80% of income'
+            )
+        ]
+        for rule in rules:
+            db.session.add(rule)
+        db.session.commit()
+        print("✅ Default rules created")
+    
+    # Create sample notifications (YOUR ORIGINAL)
+    if Notification.query.count() == 0:
+        notifications = [
+            Notification(
+                user_id=1,
+                title='Welcome to BuSystem! 🎉',
+                message='Start tracking your finances by adding your first transaction.',
+                type='info'
+            ),
+            Notification(
+                user_id=1,
+                title='💡 Tip: Set Your Goals',
+                message='Setting financial goals helps you stay focused. Click Goals to get started.',
+                type='success'
+            ),
+            Notification(
+                user_id=1,
+                title='📊 Dashboard Overview',
+                message='Your dashboard shows all your key financial metrics at a glance.',
+                type='info'
+            )
+        ]
+        for n in notifications:
+            db.session.add(n)
+        db.session.commit()
+        print("✅ Sample notifications created")
     
     print("🎉 Database ready!")
 
 
 # ============================
-# SERVE STATIC FILES
+# SERVE STATIC FILES (YOUR ORIGINAL)
 # ============================
 
 @app.route('/static/<path:filename>')
@@ -645,7 +583,7 @@ def serve_manifest():
 
 
 # ============================
-# AUTHENTICATION
+# AUTHENTICATION (YOUR ORIGINAL)
 # ============================
 
 @login_manager.user_loader
@@ -683,7 +621,7 @@ def logout():
 
 
 # ============================
-# SUPERADMIN ONLY ROUTES (Original Features)
+# DASHBOARD (YOUR ORIGINAL + ADMIN STATS)
 # ============================
 
 @app.route('/dashboard')
@@ -776,7 +714,7 @@ def dashboard():
     if emergency_fund_ratio < 30:
         alerts.append(f"🛡️ Emergency fund is low ({emergency_fund_ratio:.0f}%)")
     
-    # Admin stats
+    # NEW: Admin stats
     total_products = Product.query.count()
     total_clients = Client.query.count()
     total_sales = Sale.query.count()
@@ -803,7 +741,7 @@ def dashboard():
 
 
 # ============================
-# ALL ORIGINAL API ROUTES WITH @superadmin_required
+# TRANSACTIONS API (YOUR ORIGINAL)
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
@@ -853,6 +791,10 @@ def api_transactions():
         db.session.commit()
         return jsonify({'status': 'success'})
 
+
+# ============================
+# INVESTMENTS API (YOUR ORIGINAL)
+# ============================
 
 @app.route('/api/investments', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -920,6 +862,10 @@ def sell_investment(id):
     })
 
 
+# ============================
+# LIVESTOCK API (YOUR ORIGINAL)
+# ============================
+
 @app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -981,6 +927,10 @@ def sell_livestock(id):
     })
 
 
+# ============================
+# ASSETS API (YOUR ORIGINAL)
+# ============================
+
 @app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1014,6 +964,10 @@ def api_assets():
         db.session.commit()
         return jsonify({'status': 'success'})
 
+
+# ============================
+# GOALS API (YOUR ORIGINAL)
+# ============================
 
 @app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
@@ -1084,6 +1038,10 @@ def add_goal_amount(id):
     })
 
 
+# ============================
+# BUDGET API (YOUR ORIGINAL)
+# ============================
+
 @app.route('/api/budget', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1152,6 +1110,10 @@ def update_budget_status(id):
         'updated_at': budget.status_updated_at.strftime('%Y-%m-%d %H:%M')
     })
 
+
+# ============================
+# LIABILITIES API (YOUR ORIGINAL)
+# ============================
 
 @app.route('/api/liabilities', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -1251,6 +1213,10 @@ def get_liability_summary():
     })
 
 
+# ============================
+# RULES API (YOUR ORIGINAL)
+# ============================
+
 @app.route('/api/rules', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1328,6 +1294,10 @@ def check_rules():
     return jsonify(alerts)
 
 
+# ============================
+# RATIOS API (YOUR ORIGINAL)
+# ============================
+
 @app.route('/api/ratios')
 @login_required
 @superadmin_required
@@ -1353,6 +1323,10 @@ def calculate_ratios():
         'capital_turnover': (total_income / total_assets) if total_assets > 0 else 0
     })
 
+
+# ============================
+# RISK API (YOUR ORIGINAL)
+# ============================
 
 @app.route('/api/risk')
 @login_required
@@ -1380,6 +1354,10 @@ def get_risk_analysis():
     })
 
 
+# ============================
+# ANALYTICS API (YOUR ORIGINAL)
+# ============================
+
 @app.route('/api/analytics/<chart_type>')
 @login_required
 @superadmin_required
@@ -1403,6 +1381,10 @@ def get_analytics(chart_type):
         return jsonify([{'category': i[0], 'total': float(i[1])} for i in data])
     return jsonify([])
 
+
+# ============================
+# TIMELINE API (YOUR ORIGINAL)
+# ============================
 
 @app.route('/api/timeline')
 @login_required
@@ -1445,6 +1427,10 @@ def get_timeline():
     events.sort(key=lambda x: x['date'], reverse=True)
     return jsonify(events[:100])
 
+
+# ============================
+# DECISIONS API (YOUR ORIGINAL)
+# ============================
 
 @app.route('/api/decisions')
 @login_required
@@ -1490,6 +1476,10 @@ def get_decisions():
     return jsonify(recommendations[:5])
 
 
+# ============================
+# NOTIFICATIONS API (YOUR ORIGINAL)
+# ============================
+
 @app.route('/api/notifications')
 @login_required
 @superadmin_required
@@ -1500,6 +1490,10 @@ def get_notifications():
     ).order_by(Notification.created_at.desc()).limit(20).all()
     return jsonify([n.to_dict() for n in notifications])
 
+
+# ============================
+# REPORTS API (YOUR ORIGINAL - Full PDF)
+# ============================
 
 @app.route('/api/reports/<report_type>')
 @login_required
@@ -1998,8 +1992,149 @@ def export_report(report_type, format):
 
 
 # ============================
-# ADMIN ROUTES (Products, Clients, Sales)
+# PAGE ROUTES - SUPERADMIN ONLY (YOUR ORIGINAL)
 # ============================
+
+@app.route('/cashflow')
+@login_required
+@superadmin_required
+def cashflow():
+    return render_template('cashflow.html', user=current_user)
+
+
+@app.route('/investments')
+@login_required
+@superadmin_required
+def investments():
+    return render_template('investments.html', user=current_user)
+
+
+@app.route('/livestock')
+@login_required
+@superadmin_required
+def livestock():
+    return render_template('livestock.html', user=current_user)
+
+
+@app.route('/assets')
+@login_required
+@superadmin_required
+def assets():
+    return render_template('assets.html', user=current_user)
+
+
+@app.route('/goals')
+@login_required
+@superadmin_required
+def goals():
+    return render_template('goals.html', user=current_user)
+
+
+@app.route('/budget')
+@login_required
+@superadmin_required
+def budget():
+    return render_template('budget.html', user=current_user)
+
+
+@app.route('/liability')
+@login_required
+@superadmin_required
+def liability():
+    return render_template('liability.html', user=current_user)
+
+
+@app.route('/rules')
+@login_required
+@superadmin_required
+def rules():
+    return render_template('rules.html', user=current_user)
+
+
+@app.route('/reports')
+@login_required
+@superadmin_required
+def reports():
+    return render_template('reports.html', user=current_user)
+
+
+@app.route('/ratios')
+@login_required
+@superadmin_required
+def ratios():
+    return render_template('ratios.html', user=current_user)
+
+
+@app.route('/analytics')
+@login_required
+@superadmin_required
+def analytics():
+    return render_template('analytics.html', user=current_user)
+
+
+@app.route('/risk')
+@login_required
+@superadmin_required
+def risk():
+    return render_template('risk.html', user=current_user)
+
+
+@app.route('/timeline')
+@login_required
+@superadmin_required
+def timeline():
+    return render_template('timeline.html', user=current_user)
+
+
+@app.route('/decisions')
+@login_required
+@superadmin_required
+def decisions():
+    return render_template('decisions.html', user=current_user)
+
+
+@app.route('/exports')
+@login_required
+@superadmin_required
+def exports():
+    return render_template('exports.html', user=current_user)
+
+
+@app.route('/notifications')
+@login_required
+@superadmin_required
+def notifications():
+    return render_template('notifications.html', user=current_user)
+
+
+# ============================
+# NEW ADMIN ROUTES (ADDED)
+# ============================
+
+@app.route('/admin')
+@login_required
+@admin_required
+def admin_panel():
+    total_products = Product.query.count()
+    total_clients = Client.query.count()
+    total_sales = Sale.query.count()
+    total_revenue = db.session.query(func.sum(Sale.final_total)).scalar() or 0
+    recent_sales = Sale.query.order_by(Sale.sale_date.desc()).limit(10).all()
+    
+    for sale in recent_sales:
+        sale.product = Product.query.get(sale.product_id)
+        sale.client = Client.query.get(sale.client_id) if sale.client_id else None
+        sale.final_amount = sale.final_total
+    
+    return render_template('admin_dashboard.html',
+        user=current_user,
+        total_products=total_products,
+        total_clients=total_clients,
+        total_sales=total_sales,
+        total_revenue=total_revenue,
+        recent_sales=recent_sales
+    )
+
 
 @app.route('/admin/products')
 @login_required
@@ -2007,6 +2142,38 @@ def export_report(report_type, format):
 def admin_products():
     return render_template('admin_products.html', user=current_user)
 
+
+@app.route('/admin/clients')
+@login_required
+@admin_required
+def admin_clients():
+    return render_template('admin_clients.html', user=current_user)
+
+
+@app.route('/admin/sales')
+@login_required
+@admin_required
+def admin_sales():
+    return render_template('admin_sales.html', user=current_user)
+
+
+@app.route('/admin/reports')
+@login_required
+@admin_required
+def admin_reports():
+    return render_template('admin_reports.html', user=current_user)
+
+
+@app.route('/admin/users')
+@login_required
+@superadmin_required
+def admin_users():
+    return render_template('admin_users.html', user=current_user)
+
+
+# ============================
+# NEW ADMIN API ROUTES (ADDED)
+# ============================
 
 @app.route('/api/admin/products', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
@@ -2058,13 +2225,6 @@ def admin_low_stock():
     return jsonify([p.to_dict() for p in products])
 
 
-@app.route('/admin/clients')
-@login_required
-@admin_required
-def admin_clients():
-    return render_template('admin_clients.html', user=current_user)
-
-
 @app.route('/api/admin/clients', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
 @admin_required
@@ -2110,13 +2270,6 @@ def api_admin_clients():
 def admin_trusted_clients():
     clients = Client.query.filter_by(is_trusted=True).all()
     return jsonify([c.to_dict() for c in clients])
-
-
-@app.route('/admin/sales')
-@login_required
-@admin_required
-def admin_sales():
-    return render_template('admin_sales.html', user=current_user)
 
 
 @app.route('/api/admin/sales', methods=['GET', 'POST'])
@@ -2309,10 +2462,6 @@ def admin_export_sales(format):
     return jsonify({'error': 'Invalid format'}), 400
 
 
-# ============================
-# ADMIN USER MANAGEMENT (SuperAdmin Only)
-# ============================
-
 @app.route('/api/admin/users')
 @login_required
 @superadmin_required
@@ -2379,177 +2528,9 @@ def admin_delete_user(user_id):
     if user.id == current_user.id:
         return jsonify({'error': 'Cannot delete yourself'}), 403
     
-    Transaction.query.filter_by(user_id=user_id).delete()
-    Investment.query.filter_by(user_id=user_id).delete()
-    Livestock.query.filter_by(user_id=user_id).delete()
-    Asset.query.filter_by(user_id=user_id).delete()
-    Goal.query.filter_by(user_id=user_id).delete()
-    Budget.query.filter_by(user_id=user_id).delete()
-    Liability.query.filter_by(user_id=user_id).delete()
-    FinancialRule.query.filter_by(user_id=user_id).delete()
-    Notification.query.filter_by(user_id=user_id).delete()
-    
     db.session.delete(user)
     db.session.commit()
     return jsonify({'status': 'success', 'message': f'User {user.username} deleted'})
-
-
-# ============================
-# PAGE ROUTES (SuperAdmin Only - Original Features)
-# ============================
-
-@app.route('/cashflow')
-@login_required
-@superadmin_required
-def cashflow():
-    return render_template('cashflow.html', user=current_user)
-
-
-@app.route('/investments')
-@login_required
-@superadmin_required
-def investments():
-    return render_template('investments.html', user=current_user)
-
-
-@app.route('/livestock')
-@login_required
-@superadmin_required
-def livestock():
-    return render_template('livestock.html', user=current_user)
-
-
-@app.route('/assets')
-@login_required
-@superadmin_required
-def assets():
-    return render_template('assets.html', user=current_user)
-
-
-@app.route('/goals')
-@login_required
-@superadmin_required
-def goals():
-    return render_template('goals.html', user=current_user)
-
-
-@app.route('/budget')
-@login_required
-@superadmin_required
-def budget():
-    return render_template('budget.html', user=current_user)
-
-
-@app.route('/liability')
-@login_required
-@superadmin_required
-def liability():
-    return render_template('liability.html', user=current_user)
-
-
-@app.route('/rules')
-@login_required
-@superadmin_required
-def rules():
-    return render_template('rules.html', user=current_user)
-
-
-@app.route('/reports')
-@login_required
-@superadmin_required
-def reports():
-    return render_template('reports.html', user=current_user)
-
-
-@app.route('/ratios')
-@login_required
-@superadmin_required
-def ratios():
-    return render_template('ratios.html', user=current_user)
-
-
-@app.route('/analytics')
-@login_required
-@superadmin_required
-def analytics():
-    return render_template('analytics.html', user=current_user)
-
-
-@app.route('/risk')
-@login_required@superadmin_required
-def risk():
-    return render_template('risk.html', user=current_user)
-
-
-@app.route('/timeline')
-@login_required
-@superadmin_required
-def timeline():
-    return render_template('timeline.html', user=current_user)
-
-
-@app.route('/decisions')
-@login_required
-@superadmin_required
-def decisions():
-    return render_template('decisions.html', user=current_user)
-
-
-@app.route('/exports')
-@login_required
-@superadmin_required
-def exports():
-    return render_template('exports.html', user=current_user)
-
-
-@app.route('/notifications')
-@login_required
-@superadmin_required
-def notifications():
-    return render_template('notifications.html', user=current_user)
-
-
-# ============================
-# ADMIN PAGE ROUTES
-# ============================
-
-@app.route('/admin')
-@login_required
-@admin_required
-def admin_panel():
-    total_products = Product.query.count()
-    total_clients = Client.query.count()
-    total_sales = Sale.query.count()
-    total_revenue = db.session.query(func.sum(Sale.final_total)).scalar() or 0
-    recent_sales = Sale.query.order_by(Sale.sale_date.desc()).limit(10).all()
-    
-    for sale in recent_sales:
-        sale.product = Product.query.get(sale.product_id)
-        sale.client = Client.query.get(sale.client_id) if sale.client_id else None
-        sale.final_amount = sale.final_total
-    
-    return render_template('admin_dashboard.html',
-        user=current_user,
-        total_products=total_products,
-        total_clients=total_clients,
-        total_sales=total_sales,
-        total_revenue=total_revenue,
-        recent_sales=recent_sales
-    )
-
-
-@app.route('/admin/users')
-@login_required
-@superadmin_required
-def admin_users():
-    return render_template('admin_users.html', user=current_user)
-
-
-@app.route('/admin/reports')
-@login_required
-@admin_required
-def admin_reports():
-    return render_template('admin_reports.html', user=current_user)
 
 
 if __name__ == '__main__':
