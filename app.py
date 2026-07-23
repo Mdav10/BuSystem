@@ -29,7 +29,7 @@ login_manager.login_message = 'Please log in to access this page.'
 CORS(app)
 
 # ============================
-# DATABASE MODELS
+# DATABASE MODELS - ALL ORIGINAL + NEW
 # ============================
 
 class User(UserMixin, db.Model):
@@ -417,16 +417,17 @@ class Sale(db.Model):
         }
 
 # ============================
-# INIT DATABASE - PRESERVE DATA
+# DATABASE INITIALIZATION - PRESERVES ALL DATA
 # ============================
 
 def init_database():
     with app.app_context():
         try:
+            # Create all tables if they don't exist (won't delete data)
             db.create_all()
-            print("✅ Tables verified")
+            print("✅ Tables verified - data preserved")
             
-            # Fix missing columns
+            # Fix missing columns without dropping data
             try:
                 db.session.execute(text("SELECT currency FROM users LIMIT 1"))
             except Exception:
@@ -488,7 +489,7 @@ def init_database():
                 except Exception as e:
                     print(f"⚠️ Could not add budget status: {e}")
             
-            # Ensure MCM exists
+            # Ensure MCM exists and is SuperAdmin
             if not User.query.filter_by(username='MCM').first():
                 user = User(
                     username='MCM',
@@ -506,13 +507,13 @@ def init_database():
                 if mcm.role != 'superadmin':
                     mcm.role = 'superadmin'
                     db.session.commit()
-                    print("✅ MCM role updated")
+                    print("✅ MCM role updated to SuperAdmin")
                 if not mcm.check_password('0880Mcm+_+'):
                     mcm.set_password('0880Mcm+_+')
                     db.session.commit()
                     print("✅ MCM password reset")
             
-            # Default rules
+            # Default rules only if none exist
             if FinancialRule.query.count() == 0:
                 rules = [
                     FinancialRule(user_id=1, name='Investment Diversification', category='investment', condition_type='percentage', condition_value=40, condition_operator='>', action_type='warn', action_message='Do not invest more than 40% in one type'),
@@ -524,6 +525,7 @@ def init_database():
                 db.session.commit()
                 print("✅ Default rules created")
             
+            # Sample notifications only if none exist
             if Notification.query.count() == 0:
                 notifications = [
                     Notification(user_id=1, title='Welcome to BuSystem! 🎉', message='Start tracking your finances by adding your first transaction.', type='info'),
@@ -535,7 +537,12 @@ def init_database():
                 db.session.commit()
                 print("✅ Sample notifications created")
             
-            print("🎉 Database ready!")
+            # Count existing data
+            tx_count = Transaction.query.count()
+            inv_count = Investment.query.count()
+            ls_count = Livestock.query.count()
+            print(f"📊 Data preserved: {tx_count} transactions, {inv_count} investments, {ls_count} livestock")
+            print("🎉 Database ready with ALL your data preserved!")
             
         except Exception as e:
             print(f"❌ Database init error: {e}")
@@ -573,7 +580,7 @@ def serve_manifest():
     return Response(json.dumps(manifest), mimetype='application/json')
 
 # ============================
-# AUTHENTICATION - FIXED
+# AUTHENTICATION - CORRECT ROUTING
 # ============================
 
 @login_manager.user_loader
@@ -621,7 +628,7 @@ def logout():
     return redirect('/login')
 
 # ============================
-# SUPERADMIN DASHBOARD
+# SUPERADMIN DASHBOARD - ALL DATA SHOWING
 # ============================
 
 @app.route('/dashboard')
@@ -633,7 +640,7 @@ def dashboard():
     user_id = current_user.id
     today = datetime.now()
     
-    # Get data safely
+    # Get ALL data - showing your old data
     try:
         total_income = db.session.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == user_id, Transaction.type == 'income'
@@ -700,6 +707,23 @@ def dashboard():
     except:
         total_roi = 0
     
+    # Goal progress
+    try:
+        active_goals = Goal.query.filter_by(user_id=user_id, status='Active').all()
+        avg_goal_progress = sum(g.progress for g in active_goals) / len(active_goals) if active_goals else 0
+    except:
+        avg_goal_progress = 0
+    
+    # Emergency fund
+    try:
+        avg_monthly_expense = db.session.query(func.avg(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'expense'
+        ).scalar() or 0
+        emergency_fund_ratio = (current_cash / (avg_monthly_expense * 3)) * 100 if avg_monthly_expense > 0 else 0
+        emergency_fund_ratio = min(emergency_fund_ratio, 100)
+    except:
+        emergency_fund_ratio = 0
+    
     # Alerts
     alerts = []
     try:
@@ -713,6 +737,14 @@ def dashboard():
     except:
         pass
     
+    try:
+        budgets = Budget.query.filter_by(user_id=user_id, month=today.month, year=today.year).all()
+        for budget in budgets:
+            if budget.actual_amount > budget.expected_amount:
+                alerts.append(f"⚠️ {budget.category} budget exceeded by {budget.actual_amount - budget.expected_amount:,.0f} FCFA")
+    except:
+        pass
+    
     return render_template('dashboard.html',
         current_cash=current_cash,
         total_assets=total_assets,
@@ -722,9 +754,9 @@ def dashboard():
         total_investments=total_investments,
         active_livestock=active_livestock,
         roi=total_roi,
-        goal_progress=0,
-        emergency_fund=0,
-        alerts=alerts[:5],
+        goal_progress=avg_goal_progress,
+        emergency_fund=emergency_fund_ratio,
+        alerts=alerts[:10],
         user=current_user
     )
 
@@ -777,7 +809,7 @@ def admin_dashboard():
     )
 
 # ============================
-# OLD FEATURES API - ALL WORKING
+# OLD FEATURES API - ALL WORKING WITH YOUR DATA
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
