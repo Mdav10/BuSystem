@@ -28,7 +28,7 @@ login_manager.login_view = 'login'
 CORS(app)
 
 # ============================
-# DATABASE MODELS (YOUR ORIGINAL)
+# DATABASE MODELS
 # ============================
 
 class User(UserMixin, db.Model):
@@ -38,9 +38,9 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     currency = db.Column(db.String(10), default='FCFA')
     email = db.Column(db.String(120), nullable=True)
-    role = db.Column(db.String(20), default='user')  # NEW: superadmin, admin, user
+    role = db.Column(db.String(20), default='user')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # NEW
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -55,7 +55,6 @@ class User(UserMixin, db.Model):
         return self.role == 'superadmin'
 
 
-# YOUR ORIGINAL MODELS - EXACTLY AS YOU HAD THEM
 class Transaction(db.Model):
     __tablename__ = 'transactions'
     id = db.Column(db.Integer, primary_key=True)
@@ -324,7 +323,7 @@ class Notification(db.Model):
 
 
 # ============================
-# NEW ADMIN MODELS (ADDED)
+# NEW ADMIN MODELS
 # ============================
 
 class Product(db.Model):
@@ -420,7 +419,7 @@ class Sale(db.Model):
 
 
 # ============================
-# DECORATORS (ADDED)
+# DECORATORS
 # ============================
 
 def superadmin_required(f):
@@ -446,31 +445,64 @@ def admin_required(f):
 
 
 # ============================
-# INITIALIZE DATABASE (YOUR ORIGINAL + ADDED)
+# DATABASE MIGRATION HELPER
+# ============================
+
+def ensure_column_exists(table, column, col_type, default=None):
+    """Check if column exists and add it if not"""
+    try:
+        db.session.rollback()
+        # Check if column exists using information_schema
+        result = db.session.execute(text(f"""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = '{table}' AND column_name = '{column}'
+        """))
+        exists = result.fetchone() is not None
+        
+        if not exists:
+            print(f"⚠️ Adding column {table}.{column}...")
+            sql = f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+            if default:
+                if col_type == 'INTEGER':
+                    sql += f" DEFAULT {default}"
+                else:
+                    sql += f" DEFAULT '{default}'"
+            db.session.execute(text(sql))
+            db.session.commit()
+            print(f"✅ Added {table}.{column}")
+        else:
+            print(f"✅ {table}.{column} already exists")
+    except Exception as e:
+        print(f"⚠️ Error with {table}.{column}: {e}")
+        db.session.rollback()
+
+
+# ============================
+# INITIALIZE DATABASE
 # ============================
 
 with app.app_context():
     db.create_all()
     
-    # Add budget status columns if not exist (YOUR ORIGINAL)
-    try:
-        db.session.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'"))
-        db.session.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMP"))
-        db.session.commit()
-        print("✅ Budget status columns added")
-    except Exception as e:
-        print(f"⚠️ Budget status columns already exist: {e}")
+    print("🔄 Checking database schema...")
     
-    # Add user role columns (NEW)
-    try:
-        db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'"))
-        db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_by INTEGER"))
-        db.session.commit()
-        print("✅ User role columns added")
-    except Exception as e:
-        print(f"⚠️ User role columns already exist: {e}")
+    # Ensure all required columns exist
+    ensure_column_exists('transactions', 'type', 'VARCHAR(20)', 'income')
+    ensure_column_exists('transactions', 'category', 'VARCHAR(50)', 'Other')
+    ensure_column_exists('transactions', 'description', 'VARCHAR(200)')
+    ensure_column_exists('transactions', 'date', 'TIMESTAMP')
+    ensure_column_exists('transactions', 'created_at', 'TIMESTAMP')
     
-    # Create SuperAdmin (YOUR ORIGINAL + ROLE)
+    ensure_column_exists('budgets', 'status', 'VARCHAR(20)', 'pending')
+    ensure_column_exists('budgets', 'status_updated_at', 'TIMESTAMP')
+    
+    ensure_column_exists('users', 'role', 'VARCHAR(20)', 'user')
+    ensure_column_exists('users', 'created_by', 'INTEGER')
+    
+    print("✅ Schema check complete!")
+    
+    # Create SuperAdmin if not exists
     if not User.query.filter_by(username='MCM').first():
         user = User(username='MCM', currency='FCFA', email='admin@busystem.com', role='superadmin')
         user.set_password('0880Mcm+_+')
@@ -484,7 +516,7 @@ with app.app_context():
             db.session.commit()
             print("✅ MCM upgraded to SuperAdmin")
     
-    # Create default rules (YOUR ORIGINAL)
+    # Create default rules if none exist
     if FinancialRule.query.count() == 0:
         rules = [
             FinancialRule(
@@ -523,7 +555,7 @@ with app.app_context():
         db.session.commit()
         print("✅ Default rules created")
     
-    # Create sample notifications (YOUR ORIGINAL)
+    # Create sample notifications if none exist
     if Notification.query.count() == 0:
         notifications = [
             Notification(
@@ -554,7 +586,7 @@ with app.app_context():
 
 
 # ============================
-# SERVE STATIC FILES (YOUR ORIGINAL)
+# SERVE STATIC FILES
 # ============================
 
 @app.route('/static/<path:filename>')
@@ -583,7 +615,7 @@ def serve_manifest():
 
 
 # ============================
-# AUTHENTICATION (YOUR ORIGINAL)
+# AUTHENTICATION
 # ============================
 
 @login_manager.user_loader
@@ -621,7 +653,7 @@ def logout():
 
 
 # ============================
-# DASHBOARD (YOUR ORIGINAL + ADMIN STATS)
+# DASHBOARD
 # ============================
 
 @app.route('/dashboard')
@@ -714,7 +746,6 @@ def dashboard():
     if emergency_fund_ratio < 30:
         alerts.append(f"🛡️ Emergency fund is low ({emergency_fund_ratio:.0f}%)")
     
-    # NEW: Admin stats
     total_products = Product.query.count()
     total_clients = Client.query.count()
     total_sales = Sale.query.count()
@@ -741,7 +772,7 @@ def dashboard():
 
 
 # ============================
-# TRANSACTIONS API (YOUR ORIGINAL)
+# TRANSACTIONS API
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
@@ -793,7 +824,7 @@ def api_transactions():
 
 
 # ============================
-# INVESTMENTS API (YOUR ORIGINAL)
+# INVESTMENTS API
 # ============================
 
 @app.route('/api/investments', methods=['GET', 'POST', 'DELETE'])
@@ -863,7 +894,7 @@ def sell_investment(id):
 
 
 # ============================
-# LIVESTOCK API (YOUR ORIGINAL)
+# LIVESTOCK API
 # ============================
 
 @app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
@@ -928,7 +959,7 @@ def sell_livestock(id):
 
 
 # ============================
-# ASSETS API (YOUR ORIGINAL)
+# ASSETS API
 # ============================
 
 @app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
@@ -966,7 +997,7 @@ def api_assets():
 
 
 # ============================
-# GOALS API (YOUR ORIGINAL)
+# GOALS API
 # ============================
 
 @app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
@@ -1039,7 +1070,7 @@ def add_goal_amount(id):
 
 
 # ============================
-# BUDGET API (YOUR ORIGINAL)
+# BUDGET API
 # ============================
 
 @app.route('/api/budget', methods=['GET', 'POST', 'DELETE'])
@@ -1112,7 +1143,7 @@ def update_budget_status(id):
 
 
 # ============================
-# LIABILITIES API (YOUR ORIGINAL)
+# LIABILITIES API
 # ============================
 
 @app.route('/api/liabilities', methods=['GET', 'POST', 'DELETE'])
@@ -1214,7 +1245,7 @@ def get_liability_summary():
 
 
 # ============================
-# RULES API (YOUR ORIGINAL)
+# RULES API
 # ============================
 
 @app.route('/api/rules', methods=['GET', 'POST', 'DELETE'])
@@ -1295,7 +1326,7 @@ def check_rules():
 
 
 # ============================
-# RATIOS API (YOUR ORIGINAL)
+# RATIOS API
 # ============================
 
 @app.route('/api/ratios')
@@ -1325,7 +1356,7 @@ def calculate_ratios():
 
 
 # ============================
-# RISK API (YOUR ORIGINAL)
+# RISK API
 # ============================
 
 @app.route('/api/risk')
@@ -1355,7 +1386,7 @@ def get_risk_analysis():
 
 
 # ============================
-# ANALYTICS API (YOUR ORIGINAL)
+# ANALYTICS API
 # ============================
 
 @app.route('/api/analytics/<chart_type>')
@@ -1383,7 +1414,7 @@ def get_analytics(chart_type):
 
 
 # ============================
-# TIMELINE API (YOUR ORIGINAL)
+# TIMELINE API
 # ============================
 
 @app.route('/api/timeline')
@@ -1429,7 +1460,7 @@ def get_timeline():
 
 
 # ============================
-# DECISIONS API (YOUR ORIGINAL)
+# DECISIONS API
 # ============================
 
 @app.route('/api/decisions')
@@ -1477,7 +1508,7 @@ def get_decisions():
 
 
 # ============================
-# NOTIFICATIONS API (YOUR ORIGINAL)
+# NOTIFICATIONS API
 # ============================
 
 @app.route('/api/notifications')
@@ -1492,7 +1523,7 @@ def get_notifications():
 
 
 # ============================
-# REPORTS API (YOUR ORIGINAL - Full PDF)
+# REPORTS API
 # ============================
 
 @app.route('/api/reports/<report_type>')
@@ -1992,7 +2023,7 @@ def export_report(report_type, format):
 
 
 # ============================
-# PAGE ROUTES - SUPERADMIN ONLY (YOUR ORIGINAL)
+# PAGE ROUTES - SUPERADMIN ONLY
 # ============================
 
 @app.route('/cashflow')
@@ -2108,7 +2139,7 @@ def notifications():
 
 
 # ============================
-# NEW ADMIN ROUTES (ADDED)
+# ADMIN ROUTES (NEW)
 # ============================
 
 @app.route('/admin')
@@ -2172,7 +2203,7 @@ def admin_users():
 
 
 # ============================
-# NEW ADMIN API ROUTES (ADDED)
+# ADMIN API ROUTES (NEW)
 # ============================
 
 @app.route('/api/admin/products', methods=['GET', 'POST', 'PUT', 'DELETE'])
