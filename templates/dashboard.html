@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>BuSystem</title>
+    <title>BuSystem - Dashboard</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#00d4ff">
@@ -21,6 +21,7 @@
         .logo-icon { width: 32px; height: 32px; border-radius: 8px; }
         .user-section { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .user-info { color: #7a8ba3; font-size: 13px; }
+        .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #f39c12; border: 1px solid #3a3a1a; }
         .logout {
             background: #ff4757;
             color: white;
@@ -141,6 +142,8 @@
         }
         .nav a:active::before { width: 300px; height: 300px; }
         .nav a.active { background: #1a2a3f; color: #00d4ff; }
+        .nav a.admin-link { color: #f39c12; border: 1px solid #3a3a1a; }
+        .nav a.admin-link:hover { background: #3a3a1a; }
         .reports { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; animation: fadeInUp 0.5s ease-out 0.6s both; }
         .btn {
             background: #00d4ff;
@@ -177,9 +180,8 @@
         .btn-secondary:hover { background: #2a3f5f; }
         .footer { margin-top: 24px; text-align: center; color: #4a5a6f; font-size: 11px; border-top: 1px solid #1a2332; padding-top: 12px; animation: fadeInUp 0.5s ease-out 0.65s both; }
         @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } .card .value { font-size: 16px; } .nav a { font-size: 10px; padding: 6px 8px; } }
-        
-        /* INSTALL BANNER - ALWAYS VISIBLE */
         .install-banner {
+            display: none;
             background: linear-gradient(135deg, #1a2a3f, #0f1a2b);
             padding: 16px 20px;
             border-radius: 12px;
@@ -188,8 +190,6 @@
             font-size: 14px;
             color: #7a8ba3;
             border: 1px solid #2a3f5f;
-            animation: fadeInUp 0.5s ease-out;
-            display: block !important;
         }
         .install-banner .btn-install {
             background: #00d4ff;
@@ -201,79 +201,31 @@
             cursor: pointer;
             margin-top: 8px;
             font-size: 15px;
-            position: relative;
-            overflow: hidden;
             transition: 0.3s;
         }
         .install-banner .btn-install:active { transform: scale(0.95); }
-        .install-banner .btn-install::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-            pointer-events: none;
-        }
-        .install-banner .btn-install:active::before { width: 400px; height: 400px; }
         .install-banner .btn-install:hover { background: #00ff88; transform: scale(1.02); }
-        .install-banner .app-status {
-            display: inline-block;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            margin-top: 6px;
-        }
-        .install-banner .app-status.installed {
-            background: #1a3a2a;
-            color: #2ecc71;
-        }
-        .install-banner .app-status.not-installed {
-            background: #3a2a1a;
-            color: #f39c12;
-        }
-        
-        .app-badge { 
-            display: none; 
-            background: #1a2a3f; 
-            padding: 4px 12px; 
-            border-radius: 20px; 
-            font-size: 10px; 
-            color: #2ecc71; 
-            border: 1px solid #2a3f5f; 
-            margin-left: 8px; 
-        }
-        @media (display-mode: standalone) { 
-            .install-banner { display: none !important; } 
-            .app-badge { display: inline-block; } 
-        }
+        .app-badge { display: none; background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 10px; color: #2ecc71; border: 1px solid #2a3f5f; margin-left: 8px; }
+        @media (display-mode: standalone) { .install-banner { display: none !important; } .app-badge { display: inline-block; } }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSys <span class="app-badge">✓ Installed</span></div>
+        <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSys <span class="app-badge">✓ App</span></div>
         <div class="user-section">
             <span class="user-info">👤 {{ user.username }}</span>
+            <span class="role-badge">⭐ SuperAdmin</span>
             <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
                 <button class="logout">Logout</button>
             </form>
         </div>
     </div>
     
-    <!-- ALWAYS VISIBLE INSTALL BANNER -->
     <div id="installBanner" class="install-banner">
-        <div style="font-size: 32px; margin-bottom: 6px;">📱</div>
-        <div style="font-weight: 600; color: #fff; font-size: 16px;">Install BuSystem as App</div>
-        <div style="font-size: 13px; color: #7a8ba3; margin: 4px 0 8px;">Get full screen experience, offline access, and faster loading</div>
-        <button class="btn-install" id="installBtn">📲 Install App</button>
-        <div style="margin-top: 8px;">
-            <span class="app-status not-installed" id="appStatus">⏳ Not Installed</span>
-        </div>
+        📱 Install BuSystem as App
+        <br>
+        <button class="btn-install" id="installBtn">📲 Install</button>
     </div>
     
     <div class="nav">
@@ -294,6 +246,11 @@
         <a href="/rules">📏 Rules</a>
         <a href="/exports">📤 Exports</a>
         <a href="/notifications">🔔 Notifications</a>
+        <a href="/admin/users" class="admin-link">👑 Admin Users</a>
+        <a href="/admin/products" class="admin-link">📦 Products</a>
+        <a href="/admin/clients" class="admin-link">👥 Clients</a>
+        <a href="/admin/sales" class="admin-link">💰 Sales</a>
+        <a href="/admin/reports" class="admin-link">📄 Admin Reports</a>
     </div>
     
     <div class="grid">
@@ -322,8 +279,8 @@
     {% endif %}
     
     <div class="reports">
-        <a href="{{ url_for('export_report', report_type='transactions', format='pdf') }}" class="btn btn-secondary">📄 PDF</a>
-        <a href="{{ url_for('export_report', report_type='transactions', format='excel') }}" class="btn btn-secondary">📊 Excel</a>
+        <a href="/api/reports/export/transactions/pdf" class="btn btn-secondary">📄 PDF</a>
+        <a href="/api/reports/export/transactions/excel" class="btn btn-secondary">📊 Excel</a>
     </div>
     
     <div class="footer">BuSystem • Every Franc Must Have a Job • {{ user.currency }}</div>
@@ -331,75 +288,22 @@
 
 <script>
     let deferredPrompt;
-    const installBanner = document.getElementById('installBanner');
-    const installBtn = document.getElementById('installBtn');
-    const appStatus = document.getElementById('appStatus');
-    
-    // Check if already installed
-    function checkInstalled() {
-        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-            installBanner.style.display = 'none';
-            document.querySelector('.app-badge').style.display = 'inline-block';
-            appStatus.textContent = '✅ Installed';
-            appStatus.className = 'app-status installed';
-        } else {
-            installBanner.style.display = 'block';
-            appStatus.textContent = '📲 Not Installed';
-            appStatus.className = 'app-status not-installed';
-        }
-    }
-    
-    // Run on load
-    checkInstalled();
-    
-    // Listen for install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        installBanner.style.display = 'block';
-        appStatus.textContent = '📲 Ready to Install';
-        appStatus.className = 'app-status not-installed';
+        document.getElementById('installBanner').style.display = 'block';
     });
-    
-    // Handle install button click
-    installBtn.addEventListener('click', async () => {
+    document.getElementById('installBtn').addEventListener('click', async () => {
         if (deferredPrompt) {
-            // Show the install prompt
             deferredPrompt.prompt();
-            const result = await deferredPrompt.userChoice;
-            if (result.outcome === 'accepted') {
-                appStatus.textContent = '✅ Installed!';
-                appStatus.className = 'app-status installed';
-                installBanner.style.display = 'none';
-                document.querySelector('.app-badge').style.display = 'inline-block';
-            } else {
-                appStatus.textContent = '❌ Installation declined';
-                appStatus.className = 'app-status not-installed';
-            }
+            await deferredPrompt.userChoice;
             deferredPrompt = null;
-        } else {
-            // If no deferred prompt, try to trigger it again
-            appStatus.textContent = '🔄 Please allow installation...';
-            // Try to re-trigger
-            if (window.location.protocol === 'https:') {
-                appStatus.textContent = '⚠️ Click the browser menu → "Install App"';
-            }
         }
     });
-    
-    // Also show install button if user clicks the banner
-    installBanner.addEventListener('click', function(e) {
-        if (e.target === this) {
-            installBtn.click();
-        }
-    });
-    
-    // Check install status on visibility change
-    document.addEventListener('visibilitychange', function() {
-        if (!document.hidden) {
-            checkInstalled();
-        }
-    });
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        document.getElementById('installBanner').style.display = 'none';
+        document.querySelector('.app-badge').style.display = 'inline-block';
+    }
 </script>
 </body>
 </html>
