@@ -2,182 +2,52 @@
 <html>
 <head>
     <title>BuSystem - Admin</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#00d4ff">
     <link rel="manifest" href="/static/manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    <link rel="icon" href="/static/icons/icon-192.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; animation: fadeInDown 0.5s ease-out; }
-        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
         .logo { font-size: 24px; font-weight: 700; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
         .logo-icon { width: 32px; height: 32px; border-radius: 8px; }
-        .user-section { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .user-info { color: #7a8ba3; font-size: 13px; }
-        .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #00d4ff; }
-        .logout {
-            background: #ff4757;
-            color: white;
-            padding: 8px 18px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 13px;
-            transition: 0.2s;
-            position: relative;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .logout:active { transform: scale(0.95); }
-        .logout::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-            pointer-events: none;
-        }
-        .logout:active::before { width: 400px; height: 400px; }
-        .nav {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin: 14px 0;
-            padding: 12px;
-            background: #0f1a2b;
-            border-radius: 12px;
-            animation: fadeInUp 0.5s ease-out 0.1s both;
-        }
-        .nav a {
-            color: #7a8ba3;
-            text-decoration: none;
-            padding: 8px 14px;
-            border-radius: 8px;
-            transition: 0.2s;
-            font-size: 13px;
-            text-align: center;
-            font-weight: 500;
-            position: relative;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .nav a:active { transform: scale(0.93); }
-        .nav a::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(0, 212, 255, 0.15);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-            pointer-events: none;
-        }
-        .nav a:active::before { width: 300px; height: 300px; }
+        .logout { background: #ff4757; color: white; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; padding: 12px; background: #0f1a2b; border-radius: 12px; }
+        .nav a { color: #7a8ba3; text-decoration: none; padding: 8px 14px; border-radius: 8px; transition: 0.2s; font-size: 13px; text-align: center; }
+        .nav a:hover { background: #1a2a3f; color: #fff; }
         .nav a.active { background: #1a2a3f; color: #00d4ff; }
-        .nav a.super { color: #f39c12; border: 1px solid #3a3a1a; }
-        .nav a.super:hover { background: #3a3a1a; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
-        .card { background: #111a2b; border-radius: 14px; padding: 20px; border: 1px solid #1a2a3f; transition: 0.3s; animation: fadeInUp 0.5s ease-out both; }
-        .card:nth-child(1) { animation-delay: 0.05s; }
-        .card:nth-child(2) { animation-delay: 0.10s; }
-        .card:nth-child(3) { animation-delay: 0.15s; }
-        .card:nth-child(4) { animation-delay: 0.20s; }
-        .card:nth-child(5) { animation-delay: 0.25s; }
-        .card:nth-child(6) { animation-delay: 0.30s; }
+        .card { background: #111a2b; padding: 20px; border-radius: 14px; border: 1px solid #1a2a3f; transition: 0.3s; }
         .card:hover { border-color: #00d4ff; transform: translateY(-3px); }
         .card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; letter-spacing: 1px; }
         .card .value { font-size: 24px; font-weight: bold; margin-top: 6px; }
         .card .value.green { color: #2ecc71; }
         .card .value.blue { color: #3498db; }
         .card .value.orange { color: #f39c12; }
-        .card .value.red { color: #e74c3c; }
-        .card .value.purple { color: #9b59b6; }
         .card .value.cyan { color: #00d4ff; }
-        .table-wrap { overflow-x: auto; margin-top: 20px; animation: fadeInUp 0.5s ease-out 0.4s both; }
+        .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
-        th { background: #1a2a3f; padding: 12px; text-align: left; color: #7a8ba3; font-size: 12px; text-transform: uppercase; }
-        td { padding: 10px 12px; border-bottom: 1px solid #1a2332; font-size: 14px; }
-        .btn { background: #00d4ff; color: #0a0e17; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; text-decoration: none; display: inline-block; font-size: 13px; position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; }
-        .btn:active { transform: scale(0.95); }
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-            pointer-events: none;
-        }
-        .btn:active::before { width: 400px; height: 400px; }
-        .btn-secondary { background: #1a2a3f; color: #fff; }
-        .btn-secondary:hover { background: #2a3f5f; }
-        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; }
-        .badge.success { background: #1a3a2a; color: #2ecc71; }
-        .badge.warning { background: #3a3a1a; color: #f39c12; }
-        .badge.danger { background: #3a1a1a; color: #ff4757; }
+        th { background: #1a2a3f; padding: 10px; text-align: left; color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
+        td { padding: 8px 10px; border-bottom: 1px solid #1a2332; font-size: 13px; }
         .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
-        .install-banner {
-            display: none;
-            background: linear-gradient(135deg, #1a2a3f, #0f1a2b);
-            padding: 16px 20px;
-            border-radius: 12px;
-            margin: 12px 0;
-            text-align: center;
-            font-size: 14px;
-            color: #7a8ba3;
-            border: 1px solid #2a3f5f;
-        }
-        .install-banner .btn-install {
-            background: #00d4ff;
-            color: #0a0e17;
-            border: none;
-            padding: 10px 30px;
-            border-radius: 8px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 8px;
-            font-size: 15px;
-            transition: 0.3s;
-        }
-        .install-banner .btn-install:active { transform: scale(0.95); }
-        .install-banner .btn-install:hover { background: #00ff88; transform: scale(1.02); }
-        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } .nav a { font-size: 11px; padding: 6px 10px; } }
+        .user-info { color: #7a8ba3; font-size: 13px; }
+        .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #3498db; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSys</div>
-        <div class="user-section">
+        <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSystem</div>
+        <div>
             <span class="user-info">👤 {{ user.username }}</span>
-            <span class="role-badge">{{ user.role }}</span>
+            <span class="role-badge">Admin</span>
             <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
                 <button class="logout">Logout</button>
             </form>
         </div>
-    </div>
-    
-    <div id="installBanner" class="install-banner">
-        📱 Install BuSystem as App
-        <br>
-        <button class="btn-install" id="installBtn">📲 Install</button>
     </div>
     
     <div class="nav">
@@ -187,21 +57,16 @@
         <a href="/admin/sales">💰 Sales</a>
         <a href="/admin/reports">📄 Reports</a>
         {% if user.role == 'superadmin' %}
-        <a href="/admin/users" class="super">👑 Users</a>
-        <a href="/dashboard" class="super">📊 SuperAdmin</a>
+        <a href="/admin/users" style="color:#f39c12; border:1px solid #3a3a1a;">👑 Admin Users</a>
+        <a href="/dashboard" style="color:#f39c12; border:1px solid #3a3a1a;">📊 SuperAdmin</a>
         {% endif %}
     </div>
     
     <div class="grid">
         <div class="card"><div class="label">📦 Products</div><div class="value blue">{{ total_products }}</div></div>
         <div class="card"><div class="label">👥 Clients</div><div class="value cyan">{{ total_clients }}</div></div>
-        <div class="card"><div class="label">💰 Sales</div><div class="value purple">{{ total_sales }}</div></div>
+        <div class="card"><div class="label">💰 Sales</div><div class="value orange">{{ total_sales }}</div></div>
         <div class="card"><div class="label">💰 Revenue</div><div class="value green">{{ "%.0f"|format(total_revenue) }}</div></div>
-        <div class="card"><div class="label">📦 Low Stock</div><div class="value {% if low_stock > 0 %}red{% else %}green{% endif %}">{{ low_stock }}</div></div>
-        <div class="card">
-            <div class="label">🏆 Top Client</div>
-            <div class="value orange">{{ top_client[0] if top_client else 'None' }}</div>
-        </div>
     </div>
     
     <div class="table-wrap">
@@ -228,24 +93,5 @@
     
     <div class="footer">BuSystem • Every Franc Must Have a Job</div>
 </div>
-
-<script>
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        document.getElementById('installBanner').style.display = 'block';
-    });
-    document.getElementById('installBtn').addEventListener('click', async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            await deferredPrompt.userChoice;
-            deferredPrompt = null;
-        }
-    });
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-        document.getElementById('installBanner').style.display = 'none';
-    }
-</script>
 </body>
 </html>
