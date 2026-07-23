@@ -448,116 +448,51 @@ def admin_required(f):
 # INITIALIZE DATABASE WITH PROPER MIGRATION
 # ============================
 
-def run_migrations():
-    """Run database migrations for existing tables with proper transaction handling"""
-    with app.app_context():
-        # Check and add transactions columns
-        try:
-            # First check if the column exists by trying to select from it
-            db.session.execute(text("SELECT type FROM transactions LIMIT 1"))
-            print("✅ transactions.type column exists")
-        except Exception as e:
-            if 'column "type" does not exist' in str(e) or 'UndefinedColumn' in str(e):
-                print("⚠️ transactions.type column missing - adding...")
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE transactions ADD COLUMN type VARCHAR(20) DEFAULT 'income'"))
-                        conn.commit()
-                    print("✅ Added type column")
-                except Exception as e2:
-                    print(f"⚠️ Could not add type column: {e2}")
-                
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE transactions ADD COLUMN category VARCHAR(50) DEFAULT 'Other'"))
-                        conn.commit()
-                    print("✅ Added category column")
-                except Exception as e2:
-                    print(f"⚠️ Could not add category column: {e2}")
-                
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE transactions ADD COLUMN description VARCHAR(200)"))
-                        conn.commit()
-                    print("✅ Added description column")
-                except Exception as e2:
-                    print(f"⚠️ Could not add description column: {e2}")
-                
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE transactions ADD COLUMN date TIMESTAMP DEFAULT NOW()"))
-                        conn.commit()
-                    print("✅ Added date column")
-                except Exception as e2:
-                    print(f"⚠️ Could not add date column: {e2}")
-                
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE transactions ADD COLUMN created_at TIMESTAMP DEFAULT NOW()"))
-                        conn.commit()
-                    print("✅ Added created_at column")
-                except Exception as e2:
-                    print(f"⚠️ Could not add created_at column: {e2}")
-            else:
-                print(f"⚠️ Error checking transactions.type: {e}")
-        
-        # Check and add budgets status columns
-        try:
-            db.session.execute(text("SELECT status FROM budgets LIMIT 1"))
-            print("✅ budgets.status column exists")
-        except Exception as e:
-            if 'column "status" does not exist' in str(e) or 'UndefinedColumn' in str(e):
-                print("⚠️ budgets.status column missing - adding...")
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE budgets ADD COLUMN status VARCHAR(20) DEFAULT 'pending'"))
-                        conn.commit()
-                    print("✅ Added budget status column")
-                except Exception as e2:
-                    print(f"⚠️ Could not add budget status: {e2}")
-                
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE budgets ADD COLUMN status_updated_at TIMESTAMP"))
-                        conn.commit()
-                    print("✅ Added budget status_updated_at column")
-                except Exception as e2:
-                    print(f"⚠️ Could not add budget status_updated_at: {e2}")
-            else:
-                print(f"⚠️ Error checking budgets.status: {e}")
-        
-        # Check and add users role columns
-        try:
-            db.session.execute(text("SELECT role FROM users LIMIT 1"))
-            print("✅ users.role column exists")
-        except Exception as e:
-            if 'column "role" does not exist' in str(e) or 'UndefinedColumn' in str(e):
-                print("⚠️ users.role column missing - adding...")
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user'"))
-                        conn.commit()
-                    print("✅ Added role column")
-                except Exception as e2:
-                    print(f"⚠️ Could not add role column: {e2}")
-                
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN created_by INTEGER"))
-                        conn.commit()
-                    print("✅ Added created_by column")
-                except Exception as e2:
-                    print(f"⚠️ Could not add created_by column: {e2}")
-            else:
-                print(f"⚠️ Error checking users.role: {e}")
+def safe_add_column(table, column, col_type, default=None):
+    """Safely add a column to a table if it doesn't exist"""
+    try:
+        with db.engine.connect() as conn:
+            # Check if column exists
+            try:
+                conn.execute(text(f"SELECT {column} FROM {table} LIMIT 1"))
+                print(f"✅ {table}.{column} already exists")
+                return True
+            except Exception:
+                # Column doesn't exist, add it
+                sql = f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+                if default:
+                    sql += f" DEFAULT '{default}'"
+                conn.execute(text(sql))
+                conn.commit()
+                print(f"✅ Added {table}.{column}")
+                return True
+    except Exception as e:
+        print(f"⚠️ Could not add {table}.{column}: {e}")
+        return False
 
 
 with app.app_context():
     # Create all tables if they don't exist
     db.create_all()
     
-    # Run migrations for existing tables
-    run_migrations()
+    print("🔄 Running database migrations...")
+    
+    # Add transactions columns
+    safe_add_column('transactions', 'type', 'VARCHAR(20)', 'income')
+    safe_add_column('transactions', 'category', 'VARCHAR(50)', 'Other')
+    safe_add_column('transactions', 'description', 'VARCHAR(200)')
+    safe_add_column('transactions', 'date', 'TIMESTAMP')
+    safe_add_column('transactions', 'created_at', 'TIMESTAMP')
+    
+    # Add budgets columns
+    safe_add_column('budgets', 'status', 'VARCHAR(20)', 'pending')
+    safe_add_column('budgets', 'status_updated_at', 'TIMESTAMP')
+    
+    # Add users columns
+    safe_add_column('users', 'role', 'VARCHAR(20)', 'user')
+    safe_add_column('users', 'created_by', 'INTEGER')
+    
+    print("✅ Migrations complete!")
     
     # Create SuperAdmin if not exists
     try:
