@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BuSystem - Products</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="theme-color" content="#00d4ff">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
+        .logo { font-size: 24px; font-weight: 700; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
+        .logo-icon { width: 32px; height: 32px; border-radius: 8px; }
+        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
+        .form-card { background: #111a2b; border-radius: 16px; padding: 20px; border: 1px solid #1a2a3f; margin: 20px 0; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 4px; color: #7a8ba3; font-size: 12px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
+        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+        .btn:active { transform: scale(0.95); }
+        .btn::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(255,255,255,0.3); transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s; pointer-events: none; }
+        .btn:active::before { width: 400px; height: 400px; }
+        .btn-danger { background: #ff4757; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .btn-warning { background: #f39c12; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .table-wrap { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1a2a3f; padding: 10px; text-align: left; color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
+        td { padding: 8px 10px; border-bottom: 1px solid #1a2332; font-size: 13px; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
+        .badge.low { background: #3a1a1a; color: #ff4757; }
+        .badge.ok { background: #1a3a2a; color: #2ecc71; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
+        h2 { color: #00d4ff; margin-bottom: 5px; }
+        .sub { color: #7a8ba3; font-size: 13px; }
+        .action-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
+        .action-buttons button { padding: 3px 10px; font-size: 10px; border: none; border-radius: 4px; cursor: pointer; }
+        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSystem</div>
+        <a href="/admin/dashboard" class="back">← Dashboard</a>
+    </div>
+    
+    <h2>📦 Products</h2>
+    <p class="sub">Manage your products</p>
+    
+    <div class="form-card">
+        <h3 style="color: #fff; margin-bottom: 12px; font-size: 16px;">Add Product</h3>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Product Name</label>
+                <input type="text" id="prodName" placeholder="Enter product name">
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select id="prodCategory">
+                    <option value="Livestock">Livestock</option>
+                    <option value="Crops">Crops</option>
+                    <option value="Goods">Goods</option>
+                    <option value="Services">Services</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Price (FCFA)</label>
+                <input type="number" id="prodPrice" placeholder="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Cost Price (FCFA)</label>
+                <input type="number" id="prodCost" placeholder="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Stock Quantity</label>
+                <input type="number" id="prodStock" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label>Min Stock Level</label>
+                <input type="number" id="prodMinStock" placeholder="5">
+            </div>
+            <div class="form-group">
+                <label>Unit</label>
+                <select id="prodUnit">
+                    <option value="piece">Piece</option>
+                    <option value="kg">KG</option>
+                    <option value="liter">Liter</option>
+                    <option value="box">Box</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" id="prodDesc" placeholder="Optional description">
+            </div>
+        </div>
+        <button class="btn" onclick="addProduct()">➕ Add Product</button>
+    </div>
+    
+    <div class="table-wrap">
+        <h3 style="color: #fff; margin-bottom: 10px;">Your Products</h3>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Min Level</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="productsList">
+                <tr><td colspan="7" style="text-align:center; color:#4a5a6f; padding:20px;">No products yet</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="footer">Every Franc Must Have a Job</div>
+</div>
+
+<script>
+    loadProducts();
+    
+    function loadProducts() {
+        fetch('/api/products')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('productsList');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#4a5a6f; padding:20px;">No products yet</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(p => {
+                    const status = p.stock_quantity <= p.min_stock_level ? 'Low Stock' : 'In Stock';
+                    const cls = p.stock_quantity <= p.min_stock_level ? 'low' : 'ok';
+                    return `<tr>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.category}</td>
+                        <td>${Number(p.price).toLocaleString()} FCFA</td>
+                        <td>${p.stock_quantity}</td>
+                        <td>${p.min_stock_level}</td>
+                        <td><span class="badge ${cls}">${status}</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-warning" onclick="updateStock(${p.id})">✏️ Stock</button>
+                                <button class="btn-danger" onclick="deleteProduct(${p.id})">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+            });
+    }
+    
+    function addProduct() {
+        const name = document.getElementById('prodName').value;
+        const category = document.getElementById('prodCategory').value;
+        const price = document.getElementById('prodPrice').value;
+        const cost_price = document.getElementById('prodCost').value;
+        const stock_quantity = document.getElementById('prodStock').value;
+        const min_stock_level = document.getElementById('prodMinStock').value;
+        const unit = document.getElementById('prodUnit').value;
+        const description = document.getElementById('prodDesc').value;
+        
+        if (!name || !price || price <= 0) {
+            alert('Please enter product name and valid price');
+            return;
+        }
+        
+        fetch('/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, category, price: parseFloat(price), cost_price: parseFloat(cost_price) || 0, stock_quantity: parseInt(stock_quantity) || 0, min_stock_level: parseInt(min_stock_level) || 0, unit, description })
+        })
+        .then(res => res.json())
+        .then(() => {
+            document.getElementById('prodName').value = '';
+            document.getElementById('prodPrice').value = '';
+            document.getElementById('prodCost').value = '';
+            document.getElementById('prodStock').value = '';
+            document.getElementById('prodMinStock').value = '';
+            document.getElementById('prodDesc').value = '';
+            loadProducts();
+        });
+    }
+    
+    function updateStock(id) {
+        const newStock = prompt('Enter new stock quantity:');
+        if (newStock === null) return;
+        if (!newStock || parseInt(newStock) < 0) { alert('Please enter a valid quantity'); return; }
+        
+        fetch(`/api/products/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stock_quantity: parseInt(newStock) })
+        })
+        .then(() => loadProducts());
+    }
+    
+    function deleteProduct(id) {
+        if (!confirm('Delete this product?')) return;
+        fetch('/api/products', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        })
+        .then(() => loadProducts());
+    }
+</script>
+</body>
+</html>
