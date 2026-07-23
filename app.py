@@ -523,6 +523,7 @@ with app.app_context():
     fix_database_schema()
     db.create_all()
     
+    # Create SuperAdmin (MCM) if not exists
     if not User.query.filter_by(username='MCM').first():
         user = User(
             username='MCM', 
@@ -541,6 +542,11 @@ with app.app_context():
             mcm.role = 'superadmin'
             db.session.commit()
             print("✅ MCM updated to SuperAdmin")
+        # Make sure password is correct
+        if not mcm.check_password('0880Mcm+_+'):
+            mcm.set_password('0880Mcm+_+')
+            db.session.commit()
+            print("✅ MCM password reset")
     
     if FinancialRule.query.count() == 0:
         rules = [
@@ -621,7 +627,7 @@ def serve_manifest():
     return Response(json.dumps(manifest), mimetype='application/json')
 
 # ============================
-# AUTHENTICATION - SIMPLE AND CLEAN
+# AUTHENTICATION
 # ============================
 
 @login_manager.user_loader
@@ -1104,7 +1110,7 @@ def api_users():
         return jsonify({'status': 'success'})
 
 # ============================
-# EXISTING API ENDPOINTS - SIMPLIFIED
+# EXISTING API ENDPOINTS
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
@@ -1778,7 +1784,7 @@ def export_sales_excel():
     return send_file(output, as_attachment=True, download_name=f"sales_report_{datetime.now().strftime('%Y%m%d')}.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 # ============================
-# PAGE ROUTES - ALL WORKING
+# PAGE ROUTES
 # ============================
 
 @app.route('/cashflow')
