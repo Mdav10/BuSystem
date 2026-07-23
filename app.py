@@ -418,53 +418,69 @@ class Sale(db.Model):
 
 
 # ============================
+# FIX DATABASE SCHEMA
+# ============================
+
+def fix_database_schema():
+    """Fix missing columns in existing tables"""
+    with app.app_context():
+        # Fix transactions table
+        try:
+            db.session.execute(text("SELECT type FROM transactions LIMIT 1"))
+            print("✅ transactions.type column exists")
+        except Exception as e:
+            print(f"🔄 transactions.type missing, attempting to add...")
+            try:
+                db.session.execute(text("ALTER TABLE transactions ADD COLUMN type VARCHAR(20)"))
+                db.session.execute(text("ALTER TABLE transactions ADD COLUMN category VARCHAR(50)"))
+                db.session.execute(text("ALTER TABLE transactions ADD COLUMN amount FLOAT"))
+                db.session.execute(text("ALTER TABLE transactions ADD COLUMN description VARCHAR(200)"))
+                db.session.execute(text("ALTER TABLE transactions ADD COLUMN date TIMESTAMP"))
+                db.session.execute(text("ALTER TABLE transactions ADD COLUMN created_at TIMESTAMP"))
+                db.session.commit()
+                print("✅ Added missing columns to transactions table")
+            except Exception as e2:
+                print(f"⚠️ Could not add columns to transactions: {e2}")
+        
+        # Fix users table
+        try:
+            db.session.execute(text("SELECT role FROM users LIMIT 1"))
+            print("✅ users.role column exists")
+        except Exception as e:
+            try:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'admin'"))
+                db.session.execute(text("ALTER TABLE users ADD COLUMN created_by INTEGER REFERENCES users(id)"))
+                db.session.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE"))
+                db.session.execute(text("ALTER TABLE users ADD COLUMN last_login TIMESTAMP"))
+                db.session.commit()
+                print("✅ Added missing columns to users table")
+            except Exception as e2:
+                print(f"⚠️ Could not add columns to users: {e2}")
+        
+        # Fix budgets table
+        try:
+            db.session.execute(text("SELECT status FROM budgets LIMIT 1"))
+            print("✅ budgets.status column exists")
+        except Exception as e:
+            try:
+                db.session.execute(text("ALTER TABLE budgets ADD COLUMN status VARCHAR(20) DEFAULT 'pending'"))
+                db.session.execute(text("ALTER TABLE budgets ADD COLUMN status_updated_at TIMESTAMP"))
+                db.session.commit()
+                print("✅ Added missing columns to budgets table")
+            except Exception as e2:
+                print(f"⚠️ Could not add columns to budgets: {e2}")
+        
+        # Create all tables
+        db.create_all()
+
+# Run schema fix
+fix_database_schema()
+
+# ============================
 # INITIALIZE DATABASE
 # ============================
 
 with app.app_context():
-    db.create_all()
-    
-    # Add budget status columns if not exist
-    try:
-        db.session.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'"))
-        db.session.execute(text("ALTER TABLE budgets ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMP"))
-        db.session.commit()
-        print("✅ Budget status columns added")
-    except Exception as e:
-        print(f"⚠️ Budget status columns already exist: {e}")
-    
-    # Add role column
-    try:
-        db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'admin'"))
-        db.session.commit()
-        print("✅ Role column added")
-    except Exception as e:
-        print(f"⚠️ Role column already exists: {e}")
-    
-    # Add created_by column
-    try:
-        db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id)"))
-        db.session.commit()
-        print("✅ Created_by column added")
-    except Exception as e:
-        print(f"⚠️ Created_by column already exists: {e}")
-    
-    # Add is_active column
-    try:
-        db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE"))
-        db.session.commit()
-        print("✅ Is_active column added")
-    except Exception as e:
-        print(f"⚠️ Is_active column already exists: {e}")
-    
-    # Add last_login column
-    try:
-        db.session.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP"))
-        db.session.commit()
-        print("✅ Last_login column added")
-    except Exception as e:
-        print(f"⚠️ Last_login column already exists: {e}")
-    
     if not User.query.filter_by(username='MCM').first():
         user = User(username='MCM', currency='FCFA', email='admin@busystem.com', role='superadmin', is_active=True)
         user.set_password('0880Mcm+_+')
@@ -476,7 +492,7 @@ with app.app_context():
     mcm = User.query.filter_by(username='MCM').first()
     if mcm:
         try:
-            db.session.execute(text("UPDATE users SET role = 'superadmin' WHERE username = 'MCM'"))
+            mcm.role = 'superadmin'
             db.session.commit()
             print("✅ MCM set as SuperAdmin")
         except Exception as e:
@@ -610,83 +626,120 @@ def dashboard():
     user_id = current_user.id
     today = datetime.now()
     
-    total_income = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id, Transaction.type == 'income'
-    ).scalar() or 0
+    # All queries with error handling
+    try:
+        total_income = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'income'
+        ).scalar() or 0
+    except Exception as e:
+        print(f"⚠️ Income error: {e}")
+        total_income = 0
     
-    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id, Transaction.type == 'expense'
-    ).scalar() or 0
+    try:
+        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'expense'
+        ).scalar() or 0
+    except Exception as e:
+        print(f"⚠️ Expenses error: {e}")
+        total_expenses = 0
     
     current_cash = total_income - total_expenses
     
-    total_assets = db.session.query(func.sum(Asset.current_value)).filter(
-        Asset.user_id == user_id
-    ).scalar() or 0
+    try:
+        total_assets = db.session.query(func.sum(Asset.current_value)).filter(
+            Asset.user_id == user_id
+        ).scalar() or 0
+    except Exception as e:
+        print(f"⚠️ Assets error: {e}")
+        total_assets = 0
     
-    total_investments = db.session.query(func.sum(Investment.capital)).filter(
-        Investment.user_id == user_id,
-        Investment.status == 'Running'
-    ).scalar() or 0
+    try:
+        total_investments = db.session.query(func.sum(Investment.capital)).filter(
+            Investment.user_id == user_id, Investment.status == 'Running'
+        ).scalar() or 0
+    except Exception as e:
+        print(f"⚠️ Investments error: {e}")
+        total_investments = 0
     
     net_worth = current_cash + total_assets + total_investments
     
-    monthly_income = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id, Transaction.type == 'income',
-        extract('month', Transaction.date) == today.month,
-        extract('year', Transaction.date) == today.year
-    ).scalar() or 0
+    try:
+        monthly_income = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'income',
+            extract('month', Transaction.date) == today.month,
+            extract('year', Transaction.date) == today.year
+        ).scalar() or 0
+    except Exception as e:
+        print(f"⚠️ Monthly income error: {e}")
+        monthly_income = 0
     
-    monthly_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id, Transaction.type == 'expense',
-        extract('month', Transaction.date) == today.month,
-        extract('year', Transaction.date) == today.year
-    ).scalar() or 0
+    try:
+        monthly_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'expense',
+            extract('month', Transaction.date) == today.month,
+            extract('year', Transaction.date) == today.year
+        ).scalar() or 0
+    except Exception as e:
+        print(f"⚠️ Monthly expenses error: {e}")
+        monthly_expenses = 0
     
-    sold_investments = Investment.query.filter_by(user_id=user_id, status='Sold').all()
-    total_roi = 0
-    if sold_investments:
-        total_profit = sum(i.profit for i in sold_investments)
-        total_capital = sum(i.capital for i in sold_investments)
-        if total_capital > 0:
-            total_roi = (total_profit / total_capital) * 100
+    try:
+        active_livestock = Livestock.query.filter_by(user_id=user_id, status='Active').count()
+    except Exception as e:
+        print(f"⚠️ Livestock error: {e}")
+        active_livestock = 0
     
-    active_livestock = Livestock.query.filter_by(user_id=user_id, status='Active').count()
+    try:
+        sold_investments = Investment.query.filter_by(user_id=user_id, status='Sold').all()
+        total_roi = 0
+        if sold_investments:
+            total_profit = sum(i.profit for i in sold_investments)
+            total_capital = sum(i.capital for i in sold_investments)
+            if total_capital > 0:
+                total_roi = (total_profit / total_capital) * 100
+    except Exception as e:
+        print(f"⚠️ ROI error: {e}")
+        total_roi = 0
     
-    active_goals = Goal.query.filter_by(user_id=user_id, status='Active').all()
-    avg_goal_progress = sum(g.progress for g in active_goals) / len(active_goals) if active_goals else 0
+    # Goal progress
+    try:
+        active_goals = Goal.query.filter_by(user_id=user_id, status='Active').all()
+        avg_goal_progress = sum(g.progress for g in active_goals) / len(active_goals) if active_goals else 0
+    except Exception as e:
+        print(f"⚠️ Goals error: {e}")
+        avg_goal_progress = 0
     
-    avg_monthly_expense = db.session.query(func.avg(Transaction.amount)).filter(
-        Transaction.user_id == user_id, Transaction.type == 'expense'
-    ).scalar() or 0
-    emergency_fund_ratio = (current_cash / (avg_monthly_expense * 3)) * 100 if avg_monthly_expense > 0 else 0
-    emergency_fund_ratio = min(emergency_fund_ratio, 100)
+    # Emergency fund
+    try:
+        avg_monthly_expense = db.session.query(func.avg(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'expense'
+        ).scalar() or 0
+        emergency_fund_ratio = (current_cash / (avg_monthly_expense * 3)) * 100 if avg_monthly_expense > 0 else 0
+        emergency_fund_ratio = min(emergency_fund_ratio, 100)
+    except Exception as e:
+        print(f"⚠️ Emergency fund error: {e}")
+        emergency_fund_ratio = 0
     
+    # Alerts
     alerts = []
+    try:
+        ready_animals = Livestock.query.filter(
+            Livestock.user_id == user_id,
+            Livestock.status == 'Active',
+            Livestock.expected_sell_date <= today
+        ).limit(5).all()
+        for animal in ready_animals:
+            alerts.append(f"🐄 {animal.tag} ({animal.type}) is ready to sell!")
+    except Exception as e:
+        print(f"⚠️ Alerts error: {e}")
     
-    ready_animals = Livestock.query.filter(
-        Livestock.user_id == user_id,
-        Livestock.status == 'Active',
-        Livestock.expected_sell_date <= today
-    ).limit(5).all()
-    for animal in ready_animals:
-        alerts.append(f"🐄 {animal.tag} ({animal.type}) is ready to sell!")
-    
-    budgets = Budget.query.filter_by(user_id=user_id, month=today.month, year=today.year).all()
-    for budget in budgets:
-        if budget.actual_amount > budget.expected_amount:
-            alerts.append(f"⚠️ {budget.category} budget exceeded by {budget.actual_amount - budget.expected_amount:,.0f} FCFA")
-    
-    overdue_investments = Investment.query.filter(
-        Investment.user_id == user_id,
-        Investment.status == 'Running',
-        Investment.expected_exit_date <= today
-    ).limit(3).all()
-    for inv in overdue_investments:
-        alerts.append(f"📊 Investment {inv.investment_id} ({inv.type}) is overdue!")
-    
-    if emergency_fund_ratio < 30:
-        alerts.append(f"🛡️ Emergency fund is low ({emergency_fund_ratio:.0f}%)")
+    try:
+        budgets = Budget.query.filter_by(user_id=user_id, month=today.month, year=today.year).all()
+        for budget in budgets:
+            if budget.actual_amount > budget.expected_amount:
+                alerts.append(f"⚠️ {budget.category} budget exceeded by {budget.actual_amount - budget.expected_amount:,.0f} FCFA")
+    except Exception as e:
+        print(f"⚠️ Budget alerts error: {e}")
     
     return render_template('dashboard.html',
         current_cash=current_cash,
@@ -705,7 +758,7 @@ def dashboard():
 
 
 # ============================
-# ADMIN DASHBOARD - FIXED
+# ADMIN DASHBOARD
 # ============================
 
 @app.route('/admin/dashboard')
@@ -713,7 +766,6 @@ def dashboard():
 def admin_dashboard():
     user_id = current_user.id
     
-    # Get admin stats with error handling
     try:
         total_products = Product.query.filter_by(admin_id=user_id, is_active=True).count()
     except:
@@ -753,7 +805,6 @@ def admin_dashboard():
 # ADMIN API - NEW FEATURES
 # ============================
 
-# Products API
 @app.route('/api/products', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_products():
@@ -801,7 +852,6 @@ def update_product(id):
     db.session.commit()
     return jsonify({'status': 'success'})
 
-# Clients API
 @app.route('/api/clients', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_clients():
@@ -830,7 +880,6 @@ def api_clients():
         db.session.commit()
         return jsonify({'status': 'success'})
 
-# Sales API
 @app.route('/api/sales', methods=['GET', 'POST'])
 @login_required
 def api_sales():
@@ -881,7 +930,6 @@ def api_sales():
         
         return jsonify({'status': 'success', 'id': sale.id, 'final_amount': final_amount})
 
-# Admin Users API (SuperAdmin only)
 @app.route('/api/admin-users', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_admin_users():
@@ -947,22 +995,6 @@ def api_transactions():
         )
         db.session.add(transaction)
         db.session.commit()
-        
-        today = datetime.now()
-        budget = Budget.query.filter_by(
-            user_id=current_user.id,
-            category=data.get('category'),
-            month=today.month,
-            year=today.year
-        ).first()
-        if budget:
-            if data.get('type') == 'income':
-                budget.actual_amount += float(data.get('amount'))
-            elif data.get('type') == 'expense':
-                budget.actual_amount += float(data.get('amount'))
-            budget.calculate_difference()
-            db.session.commit()
-        
         return jsonify({'status': 'success', 'id': transaction.id})
     elif request.method == 'DELETE':
         data = request.json
@@ -1866,7 +1898,7 @@ def export_report(report_type, format):
 
 
 # ============================
-# PAGE ROUTES - ORIGINAL
+# PAGE ROUTES
 # ============================
 
 @app.route('/cashflow')
@@ -1951,7 +1983,7 @@ def notifications():
 
 
 # ============================
-# ADMIN PAGE ROUTES - NEW
+# ADMIN PAGE ROUTES
 # ============================
 
 @app.route('/admin/products')
