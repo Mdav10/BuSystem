@@ -311,7 +311,7 @@ class Notification(db.Model):
         }
 
 # ============================
-# NEW TABLES: PRODUCTS, CLIENTS, SALES
+# NEW TABLES
 # ============================
 
 class Product(db.Model):
@@ -520,13 +520,9 @@ def fix_database_schema():
 # ============================
 
 with app.app_context():
-    # First, fix the schema
     fix_database_schema()
-    
-    # Then create all tables
     db.create_all()
     
-    # Create SuperAdmin (MCM) if not exists
     if not User.query.filter_by(username='MCM').first():
         user = User(
             username='MCM', 
@@ -540,14 +536,11 @@ with app.app_context():
         db.session.commit()
         print("✅ SuperAdmin 'MCM' created")
     else:
-        # Ensure MCM is superadmin
         mcm = User.query.filter_by(username='MCM').first()
         if mcm.role != 'superadmin':
             mcm.role = 'superadmin'
             db.session.commit()
             print("✅ MCM updated to SuperAdmin")
-    
-    # NO DEFAULT ADMIN - Must be created by SuperAdmin
     
     if FinancialRule.query.count() == 0:
         rules = [
@@ -587,27 +580,11 @@ with app.app_context():
         db.session.commit()
         print("✅ Default rules created")
     
-    # Create sample notifications if none exist
     if Notification.query.count() == 0:
         notifications = [
-            Notification(
-                user_id=1,
-                title='Welcome to BuSystem! 🎉',
-                message='Start tracking your finances by adding your first transaction.',
-                type='info'
-            ),
-            Notification(
-                user_id=1,
-                title='💡 Tip: Set Your Goals',
-                message='Setting financial goals helps you stay focused. Click Goals to get started.',
-                type='success'
-            ),
-            Notification(
-                user_id=1,
-                title='📊 Dashboard Overview',
-                message='Your dashboard shows all your key financial metrics at a glance.',
-                type='info'
-            )
+            Notification(user_id=1, title='Welcome to BuSystem! 🎉', message='Start tracking your finances by adding your first transaction.', type='info'),
+            Notification(user_id=1, title='💡 Tip: Set Your Goals', message='Setting financial goals helps you stay focused. Click Goals to get started.', type='success'),
+            Notification(user_id=1, title='📊 Dashboard Overview', message='Your dashboard shows all your key financial metrics at a glance.', type='info')
         ]
         for n in notifications:
             db.session.add(n)
@@ -637,24 +614,14 @@ def serve_manifest():
         "orientation": "portrait",
         "scope": "/",
         "icons": [
-            {
-                "src": "/static/icons/icon-192.png",
-                "sizes": "192x192",
-                "type": "image/png",
-                "purpose": "any maskable"
-            },
-            {
-                "src": "/static/icons/icon-512.png",
-                "sizes": "512x512",
-                "type": "image/png",
-                "purpose": "any maskable"
-            }
+            {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
         ]
     }
     return Response(json.dumps(manifest), mimetype='application/json')
 
 # ============================
-# AUTHENTICATION - SIMPLE FIX
+# AUTHENTICATION - SIMPLE AND CLEAN
 # ============================
 
 @login_manager.user_loader
@@ -663,17 +630,20 @@ def load_user(user_id):
 
 @app.route('/')
 def index():
-    # Simple redirect - no auth check here
-    return redirect(url_for('login'))
+    if current_user.is_authenticated:
+        if current_user.role == 'superadmin':
+            return redirect('/dashboard')
+        else:
+            return redirect('/admin/dashboard')
+    return redirect('/login')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # If already logged in, go to dashboard
     if current_user.is_authenticated:
         if current_user.role == 'superadmin':
-            return redirect(url_for('dashboard'))
+            return redirect('/dashboard')
         else:
-            return redirect(url_for('admin_dashboard'))
+            return redirect('/admin/dashboard')
     
     if request.method == 'POST':
         username = request.form.get('username')
@@ -686,41 +656,37 @@ def login():
             db.session.commit()
             
             if user.role == 'superadmin':
-                return redirect(url_for('dashboard'))
+                return redirect('/dashboard')
             else:
-                return redirect(url_for('admin_dashboard'))
+                return redirect('/admin/dashboard')
         flash('Invalid username or password.')
-    
     return render_template('login.html')
 
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect('/login')
 
 # ============================
-# PROTECTED DASHBOARDS
+# SUPERADMIN DASHBOARD
 # ============================
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
     if current_user.role != 'superadmin':
-        return redirect(url_for('admin_dashboard'))
+        return redirect('/admin/dashboard')
     
-    # ... rest of dashboard code ...
     user_id = current_user.id
     today = datetime.now()
     
     total_income = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'income'
+        Transaction.user_id == user_id, Transaction.type == 'income'
     ).scalar() or 0
     
     total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'expense'
+        Transaction.user_id == user_id, Transaction.type == 'expense'
     ).scalar() or 0
     
     current_cash = total_income - total_expenses
@@ -730,22 +696,19 @@ def dashboard():
     ).scalar() or 0
     
     total_investments = db.session.query(func.sum(Investment.capital)).filter(
-        Investment.user_id == user_id,
-        Investment.status == 'Running'
+        Investment.user_id == user_id, Investment.status == 'Running'
     ).scalar() or 0
     
     net_worth = current_cash + total_assets + total_investments
     
     monthly_income = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'income',
+        Transaction.user_id == user_id, Transaction.type == 'income',
         extract('month', Transaction.date) == today.month,
         extract('year', Transaction.date) == today.year
     ).scalar() or 0
     
     monthly_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'expense',
+        Transaction.user_id == user_id, Transaction.type == 'expense',
         extract('month', Transaction.date) == today.month,
         extract('year', Transaction.date) == today.year
     ).scalar() or 0
@@ -764,8 +727,7 @@ def dashboard():
     avg_goal_progress = sum(g.progress for g in active_goals) / len(active_goals) if active_goals else 0
     
     avg_monthly_expense = db.session.query(func.avg(Transaction.amount)).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'expense'
+        Transaction.user_id == user_id, Transaction.type == 'expense'
     ).scalar() or 0
     emergency_fund_ratio = (current_cash / (avg_monthly_expense * 3)) * 100 if avg_monthly_expense > 0 else 0
     emergency_fund_ratio = min(emergency_fund_ratio, 100)
@@ -829,12 +791,15 @@ def dashboard():
         low_stock_products=low_stock_products
     )
 
+# ============================
+# ADMIN DASHBOARD
+# ============================
+
 @app.route('/admin/dashboard')
 @login_required
 def admin_dashboard():
     if current_user.role not in ['admin', 'superadmin']:
-        flash('Access denied.')
-        return redirect(url_for('login'))
+        return redirect('/login')
     
     user_id = current_user.id
     
@@ -865,10 +830,10 @@ def admin_dashboard():
     )
 
 # ============================
-# ALL API ENDPOINTS
+# API ENDPOINTS - ALL MODULES
 # ============================
 
-# Products API
+# ===== PRODUCTS =====
 @app.route('/api/products', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_products():
@@ -922,13 +887,11 @@ def update_product(id):
         product.price = float(data['price'])
     if 'name' in data:
         product.name = data['name']
-    if 'description' in data:
-        product.description = data['description']
     
     db.session.commit()
     return jsonify({'status': 'success'})
 
-# Clients API
+# ===== CLIENTS =====
 @app.route('/api/clients', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_clients():
@@ -989,7 +952,7 @@ def mark_client_trusted(id):
     
     return jsonify({'status': 'success', 'is_trusted': client.is_trusted})
 
-# Sales API
+# ===== SALES =====
 @app.route('/api/sales', methods=['GET', 'POST'])
 @login_required
 def api_sales():
@@ -1085,7 +1048,7 @@ def get_sales_report():
         'client_sales': [{'name': c[0], 'total_spent': float(c[1]), 'purchases': int(c[2])} for c in client_sales]
     })
 
-# User Management API
+# ===== USER MANAGEMENT =====
 @app.route('/api/users', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_users():
@@ -1141,7 +1104,7 @@ def api_users():
         return jsonify({'status': 'success'})
 
 # ============================
-# EXISTING API ENDPOINTS (SHORTENED)
+# EXISTING API ENDPOINTS - SIMPLIFIED
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
@@ -1815,7 +1778,7 @@ def export_sales_excel():
     return send_file(output, as_attachment=True, download_name=f"sales_report_{datetime.now().strftime('%Y%m%d')}.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 # ============================
-# PAGE ROUTES
+# PAGE ROUTES - ALL WORKING
 # ============================
 
 @app.route('/cashflow')
@@ -1904,7 +1867,7 @@ def notifications():
 def admin_products():
     if current_user.role not in ['admin', 'superadmin']:
         flash('Access denied.')
-        return redirect(url_for('login'))
+        return redirect('/login')
     return render_template('admin_products.html', user=current_user)
 
 @app.route('/admin/clients')
@@ -1912,7 +1875,7 @@ def admin_products():
 def admin_clients():
     if current_user.role not in ['admin', 'superadmin']:
         flash('Access denied.')
-        return redirect(url_for('login'))
+        return redirect('/login')
     return render_template('admin_clients.html', user=current_user)
 
 @app.route('/admin/sales')
@@ -1920,7 +1883,7 @@ def admin_clients():
 def admin_sales():
     if current_user.role not in ['admin', 'superadmin']:
         flash('Access denied.')
-        return redirect(url_for('login'))
+        return redirect('/login')
     return render_template('admin_sales.html', user=current_user)
 
 @app.route('/admin/reports')
@@ -1928,7 +1891,7 @@ def admin_sales():
 def admin_reports():
     if current_user.role not in ['admin', 'superadmin']:
         flash('Access denied.')
-        return redirect(url_for('login'))
+        return redirect('/login')
     return render_template('admin_reports.html', user=current_user)
 
 @app.route('/admin/users')
@@ -1936,7 +1899,7 @@ def admin_reports():
 def admin_users():
     if current_user.role != 'superadmin':
         flash('Access denied.')
-        return redirect(url_for('login'))
+        return redirect('/login')
     return render_template('admin_users.html', user=current_user)
 
 if __name__ == '__main__':
