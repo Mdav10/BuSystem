@@ -654,7 +654,7 @@ def serve_manifest():
     return Response(json.dumps(manifest), mimetype='application/json')
 
 # ============================
-# AUTHENTICATION - FIXED NO REDIRECT LOOP
+# AUTHENTICATION - SIMPLE FIX
 # ============================
 
 @login_manager.user_loader
@@ -663,16 +663,12 @@ def load_user(user_id):
 
 @app.route('/')
 def index():
-    if current_user.is_authenticated:
-        if current_user.role == 'superadmin':
-            return redirect(url_for('dashboard'))
-        else:
-            return redirect(url_for('admin_dashboard'))
+    # Simple redirect - no auth check here
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # If already logged in, redirect to appropriate dashboard
+    # If already logged in, go to dashboard
     if current_user.is_authenticated:
         if current_user.role == 'superadmin':
             return redirect(url_for('dashboard'))
@@ -694,6 +690,7 @@ def login():
             else:
                 return redirect(url_for('admin_dashboard'))
         flash('Invalid username or password.')
+    
     return render_template('login.html')
 
 @app.route('/logout')
@@ -703,7 +700,7 @@ def logout():
     return redirect(url_for('login'))
 
 # ============================
-# SUPERADMIN DASHBOARD
+# PROTECTED DASHBOARDS
 # ============================
 
 @app.route('/dashboard')
@@ -712,6 +709,7 @@ def dashboard():
     if current_user.role != 'superadmin':
         return redirect(url_for('admin_dashboard'))
     
+    # ... rest of dashboard code ...
     user_id = current_user.id
     today = datetime.now()
     
@@ -831,10 +829,6 @@ def dashboard():
         low_stock_products=low_stock_products
     )
 
-# ============================
-# ADMIN DASHBOARD
-# ============================
-
 @app.route('/admin/dashboard')
 @login_required
 def admin_dashboard():
@@ -871,10 +865,10 @@ def admin_dashboard():
     )
 
 # ============================
-# API ENDPOINTS - MODULES
+# ALL API ENDPOINTS
 # ============================
 
-# ===== PRODUCTS =====
+# Products API
 @app.route('/api/products', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_products():
@@ -934,7 +928,7 @@ def update_product(id):
     db.session.commit()
     return jsonify({'status': 'success'})
 
-# ===== CLIENTS =====
+# Clients API
 @app.route('/api/clients', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_clients():
@@ -995,7 +989,7 @@ def mark_client_trusted(id):
     
     return jsonify({'status': 'success', 'is_trusted': client.is_trusted})
 
-# ===== SALES =====
+# Sales API
 @app.route('/api/sales', methods=['GET', 'POST'])
 @login_required
 def api_sales():
@@ -1091,7 +1085,7 @@ def get_sales_report():
         'client_sales': [{'name': c[0], 'total_spent': float(c[1]), 'purchases': int(c[2])} for c in client_sales]
     })
 
-# ===== USER MANAGEMENT =====
+# User Management API
 @app.route('/api/users', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def api_users():
@@ -1147,7 +1141,7 @@ def api_users():
         return jsonify({'status': 'success'})
 
 # ============================
-# EXISTING API ENDPOINTS
+# EXISTING API ENDPOINTS (SHORTENED)
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
