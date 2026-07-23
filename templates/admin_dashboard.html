@@ -78,14 +78,14 @@
             <tbody>
                 {% for sale in recent_sales %}
                 <tr>
-                    <td>{{ sale.product.name }}</td>
-                    <td>{{ sale.client.name }}</td>
+                    <td>{{ sale.product.name if sale.product else 'N/A' }}</td>
+                    <td>{{ sale.client.name if sale.client else 'N/A' }}</td>
                     <td>{{ sale.quantity }}</td>
                     <td>{{ "%.0f"|format(sale.final_amount) }}</td>
-                    <td>{{ sale.sale_date.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ sale.sale_date.strftime('%Y-%m-%d') if sale.sale_date else '-' }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="5" style="text-align:center; color:#4a5a6f;">No sales yet</td></tr>
+                <tr><td colspan="5" style="text-align:center; color:#4a5a6f; padding:15px;">No sales yet</td></tr>
                 {% endfor %}
             </tbody>
         </table>
