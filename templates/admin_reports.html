@@ -2,10 +2,10 @@
 <html>
 <head>
     <title>BuSystem - Admin Reports</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#00d4ff">
     <link rel="manifest" href="/static/manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    <link rel="icon" href="/static/icons/icon-192.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
@@ -13,75 +13,120 @@
         .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
         .logo { font-size: 24px; font-weight: 700; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
         .logo-icon { width: 32px; height: 32px; border-radius: 8px; }
-        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
-        .content { background: #111a2b; border-radius: 16px; padding: 24px; border: 1px solid #1a2a3f; margin: 20px 0; }
+        .logout { background: #ff4757; color: white; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; padding: 12px; background: #0f1a2b; border-radius: 12px; }
+        .nav a { color: #7a8ba3; text-decoration: none; padding: 8px 14px; border-radius: 8px; transition: 0.2s; font-size: 13px; text-align: center; }
+        .nav a:hover { background: #1a2a3f; color: #fff; }
+        .nav a.active { background: #1a2a3f; color: #00d4ff; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; margin: 5px; }
+        .btn-primary { background: #00d4ff; color: #0a0e17; }
+        .btn-success { background: #2ecc71; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
         .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
-        h2 { color: #00d4ff; margin-bottom: 5px; }
-        .sub { color: #7a8ba3; font-size: 13px; }
-        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; text-decoration: none; display: inline-block; margin: 5px; }
-        .btn:active { transform: scale(0.95); }
-        .btn-pdf { background: #ff4757; color: #fff; }
-        .btn-excel { background: #2ecc71; color: #fff; }
-        .btn-primary { background: #00d4ff; color: #000; }
-        .stat-box { background: #0f1a2b; padding: 12px 16px; border-radius: 8px; margin: 8px 0; border-left: 3px solid #00d4ff; }
-        .stat-box .label { color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
-        .stat-box .value { font-size: 20px; font-weight: bold; margin-top: 4px; }
-        .stat-box .value.green { color: #2ecc71; }
-        .stat-box .value.red { color: #ff4757; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+        .user-info { color: #7a8ba3; font-size: 13px; }
+        .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #3498db; }
+        h2 { color: #fff; margin: 20px 0 10px 0; }
+        .card { background: #111a2b; padding: 20px; border-radius: 14px; border: 1px solid #1a2a3f; margin: 15px 0; }
+        .card h3 { color: #00d4ff; margin-bottom: 10px; }
+        .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin: 20px 0; }
+        .report-card { background: #111a2b; padding: 20px; border-radius: 14px; border: 1px solid #1a2a3f; text-align: center; transition: 0.3s; cursor: pointer; }
+        .report-card:hover { border-color: #00d4ff; transform: translateY(-3px); }
+        .report-card .icon { font-size: 40px; margin-bottom: 10px; }
+        .report-card .title { color: #fff; font-weight: 600; }
+        .report-card .desc { color: #7a8ba3; font-size: 12px; margin-top: 5px; }
+        @media (max-width: 600px) { .report-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSystem</div>
-        <a href="/admin/dashboard" class="back">← Dashboard</a>
-    </div>
-    
-    <h2>📄 Reports</h2>
-    <p class="sub">Download reports for your work</p>
-    
-    <div class="content">
-        <h3 style="color: #fff; margin-bottom: 12px;">📊 Sales Summary</h3>
-        <div id="reportData">
-            <div class="stat-box"><div class="label">Total Products Sold</div><div class="value green" id="repProductsSold">0</div></div>
-            <div class="stat-box"><div class="label">Total Revenue</div><div class="value green" id="repRevenue">0 FCFA</div></div>
-            <div class="stat-box"><div class="label">Total Sales</div><div class="value" id="repSalesCount">0</div></div>
-        </div>
-        <button class="btn" onclick="loadReport()">🔄 Refresh</button>
-    </div>
-    
-    <div class="content">
-        <h3 style="color: #fff; margin-bottom: 12px;">📥 Export Reports</h3>
-        <div class="btn-group">
-            <a href="/api/reports/export/sales/pdf" class="btn btn-pdf">📄 PDF Report</a>
-            <a href="/api/reports/export/sales/excel" class="btn btn-excel">📊 Excel Report</a>
+        <div>
+            <span class="user-info">👤 {{ user.username }}</span>
+            <span class="role-badge">{% if user.role == 'superadmin' %}SuperAdmin{% else %}Admin{% endif %}</span>
+            <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
+                <button class="logout">Logout</button>
+            </form>
         </div>
     </div>
-    
-    <div class="footer">Every Franc Must Have a Job</div>
+
+    <div class="nav">
+        <a href="/admin">📊 Dashboard</a>
+        <a href="/admin/products">📦 Products</a>
+        <a href="/admin/clients">👥 Clients</a>
+        <a href="/admin/sales">💰 Sales</a>
+        <a href="/admin/reports" class="active">📄 Reports</a>
+        {% if user.role == 'superadmin' %}
+        <a href="/admin/users" style="color:#f39c12; border:1px solid #3a3a1a;">👑 Admin Users</a>
+        <a href="/dashboard" style="color:#f39c12; border:1px solid #3a3a1a;">📊 SuperAdmin</a>
+        {% endif %}
+    </div>
+
+    <h2>📄 Admin Reports</h2>
+    <p style="color:#7a8ba3; margin-bottom:20px;">Export sales data for your records</p>
+
+    <div class="report-grid">
+        <div class="report-card" onclick="exportReport('pdf')">
+            <div class="icon">📄</div>
+            <div class="title">Export PDF</div>
+            <div class="desc">Download sales report as PDF</div>
+        </div>
+        <div class="report-card" onclick="exportReport('excel')">
+            <div class="icon">📊</div>
+            <div class="title">Export Excel</div>
+            <div class="desc">Download sales report as Excel</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📊 Sales Summary</h3>
+        <div id="summaryContent" style="color:#7a8ba3;">Loading summary...</div>
+    </div>
+
+    <div class="footer">BuSystem • Every Franc Must Have a Job</div>
 </div>
 
 <script>
-    loadReport();
-    
-    function loadReport() {
-        fetch('/api/sales/report')
-            .then(res => res.json())
-            .then(data => {
-                let totalRevenue = 0;
-                let totalProducts = 0;
-                data.product_sales.forEach(p => {
-                    totalRevenue += p.revenue;
-                    totalProducts += p.quantity;
-                });
-                document.getElementById('repProductsSold').textContent = totalProducts;
-                document.getElementById('repRevenue').textContent = totalRevenue.toLocaleString() + ' FCFA';
-                document.getElementById('repSalesCount').textContent = data.product_sales.length;
-            });
+    async function exportReport(format) {
+        try {
+            const res = await fetch(`/api/admin/sales/export/${format}`);
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Sales_Report_${new Date().toISOString().slice(0,10)}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } else {
+                alert('Error exporting report');
+            }
+        } catch (e) {
+            alert('Error exporting report');
+        }
     }
+
+    async function loadSummary() {
+        try {
+            const res = await fetch('/api/admin/sales/stats');
+            const stats = await res.json();
+            document.getElementById('summaryContent').innerHTML = `
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:15px;">
+                    <div><span style="color:#7a8ba3;">Total Revenue:</span><br><span style="color:#2ecc71; font-size:20px; font-weight:bold;">${stats.total_revenue ? stats.total_revenue.toFixed(0) : '0'}</span></div>
+                    <div><span style="color:#7a8ba3;">Total Profit:</span><br><span style="color:#3498db; font-size:20px; font-weight:bold;">${stats.total_profit ? stats.total_profit.toFixed(0) : '0'}</span></div>
+                    <div><span style="color:#7a8ba3;">Total Sales:</span><br><span style="color:#f39c12; font-size:20px; font-weight:bold;">${stats.total_sales || '0'}</span></div>
+                    <div><span style="color:#7a8ba3;">Products:</span><br><span style="color:#00d4ff; font-size:20px; font-weight:bold;">${stats.total_products || '0'}</span></div>
+                    <div><span style="color:#7a8ba3;">Clients:</span><br><span style="color:#9b59b6; font-size:20px; font-weight:bold;">${stats.total_clients || '0'}</span></div>
+                </div>
+            `;
+        } catch (e) {
+            document.getElementById('summaryContent').textContent = 'Error loading summary';
+        }
+    }
+
+    loadSummary();
 </script>
 </body>
 </html>

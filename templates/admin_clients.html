@@ -2,10 +2,10 @@
 <html>
 <head>
     <title>BuSystem - Clients</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#00d4ff">
     <link rel="manifest" href="/static/manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    <link rel="icon" href="/static/icons/icon-192.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
@@ -13,174 +13,230 @@
         .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
         .logo { font-size: 24px; font-weight: 700; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
         .logo-icon { width: 32px; height: 32px; border-radius: 8px; }
-        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
-        .form-card { background: #111a2b; border-radius: 16px; padding: 20px; border: 1px solid #1a2a3f; margin: 20px 0; }
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; margin-bottom: 4px; color: #7a8ba3; font-size: 12px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
-        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; }
-        .btn:active { transform: scale(0.95); }
-        .btn::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(255,255,255,0.3); transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s; pointer-events: none; }
-        .btn:active::before { width: 400px; height: 400px; }
-        .btn-danger { background: #ff4757; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
-        .btn-success { background: #2ecc71; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
-        .btn-warning { background: #f39c12; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .logout { background: #ff4757; color: white; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; padding: 12px; background: #0f1a2b; border-radius: 12px; }
+        .nav a { color: #7a8ba3; text-decoration: none; padding: 8px 14px; border-radius: 8px; transition: 0.2s; font-size: 13px; text-align: center; }
+        .nav a:hover { background: #1a2a3f; color: #fff; }
+        .nav a.active { background: #1a2a3f; color: #00d4ff; }
+        .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; }
+        .btn-primary { background: #00d4ff; color: #0a0e17; }
+        .btn-danger { background: #ff4757; color: white; }
+        .btn-success { background: #2ecc71; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a2a3f; padding: 10px; text-align: left; color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
         td { padding: 8px 10px; border-bottom: 1px solid #1a2332; font-size: 13px; }
-        .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
-        .badge.trusted { background: #1a3a2a; color: #2ecc71; }
-        .badge.normal { background: #1a2a3f; color: #7a8ba3; }
-        .badge.high { background: #3a3a1a; color: #f39c12; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; justify-content: center; align-items: center; }
+        .modal-content { background: #111a2b; padding: 30px; border-radius: 16px; max-width: 500px; width: 90%; border: 1px solid #1a2a3f; max-height: 90vh; overflow-y: auto; }
+        .modal-content h2 { color: #fff; margin-bottom: 20px; }
+        .modal-content input, .modal-content select, .modal-content textarea { width: 100%; padding: 10px; margin: 8px 0; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #e0e6ed; font-size: 14px; }
+        .modal-content input:focus, .modal-content select:focus, .modal-content textarea:focus { outline: none; border-color: #00d4ff; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end; }
         .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
-        h2 { color: #00d4ff; margin-bottom: 5px; }
-        .sub { color: #7a8ba3; font-size: 13px; }
-        .action-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
-        .action-buttons button { padding: 3px 10px; font-size: 10px; border: none; border-radius: 4px; cursor: pointer; }
-        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
-        .trust-score { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
-        .trust-score.high { background: #1a3a2a; color: #2ecc71; }
-        .trust-score.medium { background: #3a3a1a; color: #f39c12; }
-        .trust-score.low { background: #3a1a1a; color: #ff4757; }
+        .user-info { color: #7a8ba3; font-size: 13px; }
+        .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #3498db; }
+        h2 { color: #fff; margin: 20px 0 10px 0; }
+        .actions { display: flex; gap: 5px; flex-wrap: wrap; }
+        .actions button { padding: 4px 10px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; }
+        .trusted { color: #2ecc71; }
+        .not-trusted { color: #7a8ba3; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSystem</div>
-        <a href="/admin/dashboard" class="back">← Dashboard</a>
-    </div>
-    
-    <h2>👥 Clients</h2>
-    <p class="sub">Manage your clients</p>
-    
-    <div class="form-card">
-        <h3 style="color: #fff; margin-bottom: 12px; font-size: 16px;">Add Client</h3>
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Client Name</label>
-                <input type="text" id="clientName" placeholder="Enter client name">
-            </div>
-            <div class="form-group">
-                <label>Phone</label>
-                <input type="text" id="clientPhone" placeholder="Phone number">
-            </div>
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="clientEmail" placeholder="Email address">
-            </div>
-            <div class="form-group">
-                <label>Location</label>
-                <input type="text" id="clientLocation" placeholder="Location">
-            </div>
-            <div class="form-group" style="grid-column: 1 / -1;">
-                <label>Notes</label>
-                <input type="text" id="clientNotes" placeholder="Additional notes">
-            </div>
+        <div>
+            <span class="user-info">👤 {{ user.username }}</span>
+            <span class="role-badge">{% if user.role == 'superadmin' %}SuperAdmin{% else %}Admin{% endif %}</span>
+            <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
+                <button class="logout">Logout</button>
+            </form>
         </div>
-        <button class="btn" onclick="addClient()">➕ Add Client</button>
     </div>
-    
+
+    <div class="nav">
+        <a href="/admin">📊 Dashboard</a>
+        <a href="/admin/products">📦 Products</a>
+        <a href="/admin/clients" class="active">👥 Clients</a>
+        <a href="/admin/sales">💰 Sales</a>
+        <a href="/admin/reports">📄 Reports</a>
+        {% if user.role == 'superadmin' %}
+        <a href="/admin/users" style="color:#f39c12; border:1px solid #3a3a1a;">👑 Admin Users</a>
+        <a href="/dashboard" style="color:#f39c12; border:1px solid #3a3a1a;">📊 SuperAdmin</a>
+        {% endif %}
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
+        <h2 style="margin:0;">👥 Clients</h2>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add Client</button>
+    </div>
+
     <div class="table-wrap">
-        <h3 style="color: #fff; margin-bottom: 10px;">Your Clients</h3>
         <table>
             <thead>
-                <tr><th>Name</th><th>Phone</th><th>Location</th><th>Purchases</th><th>Total Spent</th><th>Trust Score</th><th>Status</th><th>Actions</th></tr>
+                <tr><th>Name</th><th>Phone</th><th>Email</th><th>Location</th><th>Trust Score</th><th>Total Purchases</th><th>Actions</th></tr>
             </thead>
-            <tbody id="clientsList">
-                <tr><td colspan="8" style="text-align:center; color:#4a5a6f; padding:20px;">No clients yet</td></tr>
+            <tbody id="clientsTable">
+                <tr><td colspan="7" style="text-align:center; padding:20px; color:#4a5a6f;">Loading clients...</td></tr>
             </tbody>
         </table>
     </div>
-    
-    <div class="footer">Every Franc Must Have a Job</div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal" id="clientModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Add Client</h2>
+            <input type="hidden" id="clientId">
+            <input type="text" id="clientName" placeholder="Client Name">
+            <input type="text" id="clientPhone" placeholder="Phone Number">
+            <input type="email" id="clientEmail" placeholder="Email">
+            <input type="text" id="clientLocation" placeholder="Location">
+            <textarea id="clientNotes" placeholder="Notes" rows="3"></textarea>
+            <div style="margin:10px 0;">
+                <label style="color:#7a8ba3; font-size:13px;">
+                    <input type="checkbox" id="clientTrusted"> Trusted Client
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-success" onclick="saveClient()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">BuSystem • Every Franc Must Have a Job</div>
 </div>
 
 <script>
-    loadClients();
-    
-    function loadClients() {
-        fetch('/api/clients')
-            .then(res => res.json())
-            .then(data => {
-                const tbody = document.getElementById('clientsList');
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#4a5a6f; padding:20px;">No clients yet</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = data.map(c => {
-                    const trustClass = c.trust_score >= 70 ? 'high' : c.trust_score >= 40 ? 'medium' : 'low';
-                    const statusClass = c.is_trusted ? 'trusted' : 'normal';
-                    const statusText = c.is_trusted ? '⭐ Trusted' : 'Normal';
-                    return `<tr>
-                        <td><strong>${c.name}</strong></td>
-                        <td>${c.phone || '-'}</td>
-                        <td>${c.location || '-'}</td>
-                        <td>${c.purchase_count}</td>
-                        <td>${Number(c.total_purchases).toLocaleString()} FCFA</td>
-                        <td><span class="trust-score ${trustClass}">${c.trust_score}%</span></td>
-                        <td><span class="badge ${statusClass}">${statusText}</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                ${!c.is_trusted && c.purchase_count >= 5 ? `<button class="btn-success" onclick="markTrusted(${c.id})">⭐ Trust</button>` : ''}
-                                <button class="btn-danger" onclick="deleteClient(${c.id})">Delete</button>
-                            </div>
-                        </td>
-                    </tr>`;
-                }).join('');
-            });
+    let clients = [];
+
+    async function loadClients() {
+        try {
+            const res = await fetch('/api/admin/clients');
+            clients = await res.json();
+            renderClients();
+        } catch (e) {
+            document.getElementById('clientsTable').innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#ff4757;">Error loading clients</td></tr>';
+        }
     }
-    
-    function addClient() {
-        const name = document.getElementById('clientName').value;
-        const phone = document.getElementById('clientPhone').value;
-        const email = document.getElementById('clientEmail').value;
-        const location = document.getElementById('clientLocation').value;
-        const notes = document.getElementById('clientNotes').value;
-        
-        if (!name) {
-            alert('Please enter client name');
+
+    function renderClients() {
+        const tbody = document.getElementById('clientsTable');
+        if (clients.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#4a5a6f;">No clients found</td></tr>';
             return;
         }
-        
-        fetch('/api/clients', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, phone, email, location, notes })
-        })
-        .then(res => res.json())
-        .then(() => {
-            document.getElementById('clientName').value = '';
-            document.getElementById('clientPhone').value = '';
-            document.getElementById('clientEmail').value = '';
-            document.getElementById('clientLocation').value = '';
-            document.getElementById('clientNotes').value = '';
-            loadClients();
-        });
+        tbody.innerHTML = clients.map(c => `
+            <tr>
+                <td>${c.name}</td>
+                <td>${c.phone || '-'}</td>
+                <td>${c.email || '-'}</td>
+                <td>${c.location || '-'}</td>
+                <td>${c.trust_score || 0}</td>
+                <td>${c.total_purchases ? c.total_purchases.toFixed(0) : '0'}</td>
+                <td class="actions">
+                    <button class="btn btn-warning" onclick="editClient(${c.id})" style="color:#fff;padding:4px 8px;">✏️</button>
+                    <button class="btn btn-danger" onclick="deleteClient(${c.id})" style="padding:4px 8px;">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
     }
-    
-    function markTrusted(id) {
-        if (!confirm('Mark this client as TRUSTED?')) return;
-        fetch(`/api/clients/${id}/trust`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_trusted: true, reason: 'Manual trust by admin' })
-        })
-        .then(() => loadClients());
+
+    function openAddModal() {
+        document.getElementById('modalTitle').textContent = 'Add Client';
+        document.getElementById('clientId').value = '';
+        document.getElementById('clientName').value = '';
+        document.getElementById('clientPhone').value = '';
+        document.getElementById('clientEmail').value = '';
+        document.getElementById('clientLocation').value = '';
+        document.getElementById('clientNotes').value = '';
+        document.getElementById('clientTrusted').checked = false;
+        document.getElementById('clientModal').style.display = 'flex';
     }
-    
-    function deleteClient(id) {
+
+    function editClient(id) {
+        const c = clients.find(x => x.id === id);
+        if (!c) return;
+        document.getElementById('modalTitle').textContent = 'Edit Client';
+        document.getElementById('clientId').value = c.id;
+        document.getElementById('clientName').value = c.name;
+        document.getElementById('clientPhone').value = c.phone || '';
+        document.getElementById('clientEmail').value = c.email || '';
+        document.getElementById('clientLocation').value = c.location || '';
+        document.getElementById('clientNotes').value = c.notes || '';
+        document.getElementById('clientTrusted').checked = c.is_trusted || false;
+        document.getElementById('clientModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('clientModal').style.display = 'none';
+    }
+
+    async function saveClient() {
+        const id = document.getElementById('clientId').value;
+        const data = {
+            name: document.getElementById('clientName').value,
+            phone: document.getElementById('clientPhone').value,
+            email: document.getElementById('clientEmail').value,
+            location: document.getElementById('clientLocation').value,
+            notes: document.getElementById('clientNotes').value,
+            is_trusted: document.getElementById('clientTrusted').checked
+        };
+
+        if (!data.name) {
+            alert('Client name is required');
+            return;
+        }
+
+        try {
+            const url = id ? `/api/admin/clients` : '/api/admin/clients';
+            const method = id ? 'PUT' : 'POST';
+            if (id) data.id = parseInt(id);
+            
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                closeModal();
+                loadClients();
+            } else {
+                alert('Error: ' + (result.error || 'Unknown error'));
+            }
+        } catch (e) {
+            alert('Error saving client');
+        }
+    }
+
+    async function deleteClient(id) {
         if (!confirm('Delete this client?')) return;
-        fetch('/api/clients', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id })
-        })
-        .then(() => loadClients());
+        try {
+            const res = await fetch('/api/admin/clients', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                loadClients();
+            } else {
+                alert('Error deleting client');
+            }
+        } catch (e) {
+            alert('Error deleting client');
+        }
     }
+
+    document.getElementById('clientModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    loadClients();
 </script>
 </body>
 </html>

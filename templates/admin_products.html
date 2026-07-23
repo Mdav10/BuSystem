@@ -8,98 +8,236 @@
     <link rel="icon" href="/static/icons/icon-192.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; }
-        .container { max-width: 1000px; margin: 0 auto; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
+        .container { max-width: 1200px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
         .logo { font-size: 24px; font-weight: 700; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
         .logo-icon { width: 32px; height: 32px; border-radius: 8px; }
-        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
-        .form-card { background: #111a2b; border-radius: 16px; padding: 20px; border: 1px solid #1a2a3f; margin: 20px 0; }
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; margin-bottom: 4px; color: #7a8ba3; font-size: 12px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
-        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .btn:hover { background: #00ff88; }
-        .btn-danger { background: #ff4757; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
-        .btn-warning { background: #f39c12; color: #fff; padding: 4px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .logout { background: #ff4757; color: white; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; padding: 12px; background: #0f1a2b; border-radius: 12px; }
+        .nav a { color: #7a8ba3; text-decoration: none; padding: 8px 14px; border-radius: 8px; transition: 0.2s; font-size: 13px; text-align: center; }
+        .nav a:hover { background: #1a2a3f; color: #fff; }
+        .nav a.active { background: #1a2a3f; color: #00d4ff; }
+        .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; }
+        .btn-primary { background: #00d4ff; color: #0a0e17; }
+        .btn-danger { background: #ff4757; color: white; }
+        .btn-success { background: #2ecc71; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a2a3f; padding: 10px; text-align: left; color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
         td { padding: 8px 10px; border-bottom: 1px solid #1a2332; font-size: 13px; }
-        .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
-        .badge.low { background: #3a1a1a; color: #ff4757; }
-        .badge.ok { background: #1a3a2a; color: #2ecc71; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; justify-content: center; align-items: center; }
+        .modal-content { background: #111a2b; padding: 30px; border-radius: 16px; max-width: 500px; width: 90%; border: 1px solid #1a2a3f; max-height: 90vh; overflow-y: auto; }
+        .modal-content h2 { color: #fff; margin-bottom: 20px; }
+        .modal-content input, .modal-content select { width: 100%; padding: 10px; margin: 8px 0; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #e0e6ed; font-size: 14px; }
+        .modal-content input:focus, .modal-content select:focus { outline: none; border-color: #00d4ff; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end; }
         .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
-        h2 { color: #00d4ff; margin-bottom: 5px; }
-        .sub { color: #7a8ba3; font-size: 13px; }
-        @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+        .user-info { color: #7a8ba3; font-size: 13px; }
+        .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #3498db; }
+        h2 { color: #fff; margin: 20px 0 10px 0; }
+        .actions { display: flex; gap: 5px; flex-wrap: wrap; }
+        .actions button { padding: 4px 10px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; }
+        .stock-low { color: #ff4757; font-weight: bold; }
+        .stock-ok { color: #2ecc71; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSystem</div>
-        <a href="/admin/dashboard" class="back">← Dashboard</a>
-    </div>
-    
-    <h2>📦 Products</h2>
-    <p class="sub">Manage your products</p>
-    
-    <div class="form-card">
-        <h3 style="color: #fff; margin-bottom: 12px; font-size: 16px;">Add Product</h3>
-        <div class="grid-2">
-            <div class="form-group"><label>Product Name</label><input type="text" id="prodName" placeholder="Enter product name"></div>
-            <div class="form-group"><label>Category</label><select id="prodCategory"><option value="Livestock">Livestock</option><option value="Crops">Crops</option><option value="Goods">Goods</option><option value="Other">Other</option></select></div>
-            <div class="form-group"><label>Price (FCFA)</label><input type="number" id="prodPrice" placeholder="0" step="0.01"></div>
-            <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" placeholder="0"></div>
-            <div class="form-group"><label>Min Stock Level</label><input type="number" id="prodMinStock" placeholder="5"></div>
-            <div class="form-group"><label>Unit</label><select id="prodUnit"><option value="piece">Piece</option><option value="kg">KG</option><option value="liter">Liter</option><option value="box">Box</option></select></div>
-            <div class="form-group" style="grid-column:1/-1;"><label>Description</label><input type="text" id="prodDesc" placeholder="Optional description"></div>
+        <div>
+            <span class="user-info">👤 {{ user.username }}</span>
+            <span class="role-badge">{% if user.role == 'superadmin' %}SuperAdmin{% else %}Admin{% endif %}</span>
+            <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
+                <button class="logout">Logout</button>
+            </form>
         </div>
-        <button class="btn" onclick="addProduct()">➕ Add Product</button>
     </div>
-    
+
+    <div class="nav">
+        <a href="/admin">📊 Dashboard</a>
+        <a href="/admin/products" class="active">📦 Products</a>
+        <a href="/admin/clients">👥 Clients</a>
+        <a href="/admin/sales">💰 Sales</a>
+        <a href="/admin/reports">📄 Reports</a>
+        {% if user.role == 'superadmin' %}
+        <a href="/admin/users" style="color:#f39c12; border:1px solid #3a3a1a;">👑 Admin Users</a>
+        <a href="/dashboard" style="color:#f39c12; border:1px solid #3a3a1a;">📊 SuperAdmin</a>
+        {% endif %}
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
+        <h2 style="margin:0;">📦 Products</h2>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add Product</button>
+    </div>
+
     <div class="table-wrap">
-        <h3 style="color: #fff; margin-bottom: 10px;">Your Products</h3>
         <table>
-            <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="productsList"><tr><td colspan="6" style="text-align:center; color:#4a5a6f; padding:20px;">No products yet</td></tr></tbody>
+            <thead>
+                <tr><th>Name</th><th>Category</th><th>Price</th><th>Cost</th><th>Stock</th><th>Unit</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="productsTable">
+                <tr><td colspan="7" style="text-align:center; padding:20px; color:#4a5a6f;">Loading products...</td></tr>
+            </tbody>
         </table>
     </div>
-    
-    <div class="footer">Every Franc Must Have a Job</div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal" id="productModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Add Product</h2>
+            <input type="hidden" id="productId">
+            <input type="text" id="productName" placeholder="Product Name">
+            <input type="text" id="productCategory" placeholder="Category">
+            <input type="number" id="productPrice" placeholder="Selling Price" step="0.01">
+            <input type="number" id="productCost" placeholder="Cost Price" step="0.01">
+            <input type="number" id="productStock" placeholder="Stock Quantity">
+            <input type="number" id="productMinStock" placeholder="Min Stock Level">
+            <input type="text" id="productUnit" placeholder="Unit (e.g., piece, kg, liter)" value="unit">
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-success" onclick="saveProduct()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">BuSystem • Every Franc Must Have a Job</div>
 </div>
 
 <script>
-function loadProducts() {
-    fetch('/api/products').then(r=>r.json()).then(data=>{
-        const tbody=document.getElementById('productsList');
-        if(data.length===0){tbody.innerHTML='<tr><td colspan="6" style="text-align:center; color:#4a5a6f; padding:20px;">No products yet</td></tr>';return;}
-        tbody.innerHTML=data.map(p=>{
-            const status=p.stock_quantity<=p.min_stock_level?'Low Stock':'In Stock';
-            const cls=p.stock_quantity<=p.min_stock_level?'low':'ok';
-            return `<tr><td><strong>${p.name}</strong></td><td>${p.category}</td><td>${Number(p.price).toLocaleString()} FCFA</td><td>${p.stock_quantity}</td><td><span class="badge ${cls}">${status}</span></td>
-            <td><button class="btn-warning" onclick="updateStock(${p.id})">✏️</button><button class="btn-danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`;
-        }).join('');
+    let products = [];
+
+    async function loadProducts() {
+        try {
+            const res = await fetch('/api/admin/products');
+            products = await res.json();
+            renderProducts();
+        } catch (e) {
+            document.getElementById('productsTable').innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#ff4757;">Error loading products</td></tr>';
+        }
+    }
+
+    function renderProducts() {
+        const tbody = document.getElementById('productsTable');
+        if (products.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#4a5a6f;">No products found</td></tr>';
+            return;
+        }
+        tbody.innerHTML = products.map(p => `
+            <tr>
+                <td>${p.name}</td>
+                <td>${p.category}</td>
+                <td>${p.price.toFixed(2)}</td>
+                <td>${p.cost_price.toFixed(2)}</td>
+                <td class="${p.stock <= p.min_stock ? 'stock-low' : 'stock-ok'}">${p.stock}</td>
+                <td>${p.unit}</td>
+                <td class="actions">
+                    <button class="btn btn-warning" onclick="editProduct(${p.id})" style="color:#fff;padding:4px 8px;">✏️</button>
+                    <button class="btn btn-danger" onclick="deleteProduct(${p.id})" style="padding:4px 8px;">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function openAddModal() {
+        document.getElementById('modalTitle').textContent = 'Add Product';
+        document.getElementById('productId').value = '';
+        document.getElementById('productName').value = '';
+        document.getElementById('productCategory').value = '';
+        document.getElementById('productPrice').value = '';
+        document.getElementById('productCost').value = '';
+        document.getElementById('productStock').value = '';
+        document.getElementById('productMinStock').value = '5';
+        document.getElementById('productUnit').value = 'unit';
+        document.getElementById('productModal').style.display = 'flex';
+    }
+
+    function editProduct(id) {
+        const p = products.find(x => x.id === id);
+        if (!p) return;
+        document.getElementById('modalTitle').textContent = 'Edit Product';
+        document.getElementById('productId').value = p.id;
+        document.getElementById('productName').value = p.name;
+        document.getElementById('productCategory').value = p.category;
+        document.getElementById('productPrice').value = p.price;
+        document.getElementById('productCost').value = p.cost_price;
+        document.getElementById('productStock').value = p.stock;
+        document.getElementById('productMinStock').value = p.min_stock;
+        document.getElementById('productUnit').value = p.unit;
+        document.getElementById('productModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('productModal').style.display = 'none';
+    }
+
+    async function saveProduct() {
+        const id = document.getElementById('productId').value;
+        const data = {
+            name: document.getElementById('productName').value,
+            category: document.getElementById('productCategory').value,
+            price: parseFloat(document.getElementById('productPrice').value),
+            cost_price: parseFloat(document.getElementById('productCost').value),
+            stock: parseInt(document.getElementById('productStock').value),
+            min_stock: parseInt(document.getElementById('productMinStock').value),
+            unit: document.getElementById('productUnit').value
+        };
+
+        if (!data.name || !data.category || isNaN(data.price)) {
+            alert('Please fill all required fields');
+            return;
+        }
+
+        try {
+            const url = id ? `/api/admin/products` : '/api/admin/products';
+            const method = id ? 'PUT' : 'POST';
+            if (id) data.id = parseInt(id);
+            
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                closeModal();
+                loadProducts();
+            } else {
+                alert('Error: ' + (result.error || 'Unknown error'));
+            }
+        } catch (e) {
+            alert('Error saving product');
+        }
+    }
+
+    async function deleteProduct(id) {
+        if (!confirm('Delete this product?')) return;
+        try {
+            const res = await fetch('/api/admin/products', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                loadProducts();
+            } else {
+                alert('Error deleting product');
+            }
+        } catch (e) {
+            alert('Error deleting product');
+        }
+    }
+
+    // Close modal on click outside
+    document.getElementById('productModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
     });
-}
-function addProduct(){
-    const name=document.getElementById('prodName').value;
-    const category=document.getElementById('prodCategory').value;
-    const price=document.getElementById('prodPrice').value;
-    const stock_quantity=document.getElementById('prodStock').value;
-    const min_stock_level=document.getElementById('prodMinStock').value;
-    const unit=document.getElementById('prodUnit').value;
-    const description=document.getElementById('prodDesc').value;
-    if(!name||!price||price<=0){alert('Please enter product name and valid price');return;}
-    fetch('/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,category,price:parseFloat(price),stock_quantity:parseInt(stock_quantity)||0,min_stock_level:parseInt(min_stock_level)||0,unit,description})})
-    .then(()=>{document.getElementById('prodName').value='';document.getElementById('prodPrice').value='';document.getElementById('prodStock').value='';document.getElementById('prodMinStock').value='';document.getElementById('prodDesc').value='';loadProducts();});
-}
-function updateStock(id){const newStock=prompt('Enter new stock quantity:');if(!newStock||parseInt(newStock)<0)return;fetch(`/api/products/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({stock_quantity:parseInt(newStock)})}).then(()=>loadProducts());}
-function deleteProduct(id){if(!confirm('Delete this product?'))return;fetch('/api/products',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})}).then(()=>loadProducts());}
-loadProducts();
+
+    loadProducts();
 </script>
 </body>
 </html>

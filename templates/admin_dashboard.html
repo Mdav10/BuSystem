@@ -27,6 +27,7 @@
         .card .value.blue { color: #3498db; }
         .card .value.orange { color: #f39c12; }
         .card .value.cyan { color: #00d4ff; }
+        .card .value.purple { color: #9b59b6; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a2a3f; padding: 10px; text-align: left; color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
@@ -34,6 +35,7 @@
         .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
         .user-info { color: #7a8ba3; font-size: 13px; }
         .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #3498db; }
+        h2 { color: #fff; margin: 20px 0 10px 0; }
         @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
@@ -43,15 +45,15 @@
         <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSystem</div>
         <div>
             <span class="user-info">👤 {{ user.username }}</span>
-            <span class="role-badge">Admin</span>
+            <span class="role-badge">{% if user.role == 'superadmin' %}SuperAdmin{% else %}Admin{% endif %}</span>
             <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
                 <button class="logout">Logout</button>
             </form>
         </div>
     </div>
-    
+
     <div class="nav">
-        <a href="/admin/dashboard" class="active">📊 Dashboard</a>
+        <a href="/admin" class="active">📊 Dashboard</a>
         <a href="/admin/products">📦 Products</a>
         <a href="/admin/clients">👥 Clients</a>
         <a href="/admin/sales">💰 Sales</a>
@@ -61,16 +63,16 @@
         <a href="/dashboard" style="color:#f39c12; border:1px solid #3a3a1a;">📊 SuperAdmin</a>
         {% endif %}
     </div>
-    
+
     <div class="grid">
         <div class="card"><div class="label">📦 Products</div><div class="value blue">{{ total_products }}</div></div>
         <div class="card"><div class="label">👥 Clients</div><div class="value cyan">{{ total_clients }}</div></div>
         <div class="card"><div class="label">💰 Sales</div><div class="value orange">{{ total_sales }}</div></div>
         <div class="card"><div class="label">💰 Revenue</div><div class="value green">{{ "%.0f"|format(total_revenue) }}</div></div>
     </div>
-    
+
+    <h2>Recent Sales</h2>
     <div class="table-wrap">
-        <h3 style="color: #fff; margin-bottom: 12px;">Recent Sales</h3>
         <table>
             <thead>
                 <tr><th>Product</th><th>Client</th><th>Quantity</th><th>Amount</th><th>Date</th></tr>
@@ -90,7 +92,7 @@
             </tbody>
         </table>
     </div>
-    
+
     <div class="footer">BuSystem • Every Franc Must Have a Job</div>
 </div>
 </body>

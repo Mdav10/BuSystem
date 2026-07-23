@@ -723,7 +723,7 @@ def dashboard():
 
 
 # ============================
-# TRANSACTIONS API
+# ALL ORIGINAL API ROUTES WITH superadmin_required
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
@@ -773,10 +773,6 @@ def api_transactions():
         db.session.commit()
         return jsonify({'status': 'success'})
 
-
-# ============================
-# INVESTMENTS API
-# ============================
 
 @app.route('/api/investments', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -844,10 +840,6 @@ def sell_investment(id):
     })
 
 
-# ============================
-# LIVESTOCK API
-# ============================
-
 @app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -909,10 +901,6 @@ def sell_livestock(id):
     })
 
 
-# ============================
-# ASSETS API
-# ============================
-
 @app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -946,10 +934,6 @@ def api_assets():
         db.session.commit()
         return jsonify({'status': 'success'})
 
-
-# ============================
-# GOALS API
-# ============================
 
 @app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
@@ -1020,10 +1004,6 @@ def add_goal_amount(id):
     })
 
 
-# ============================
-# BUDGET API
-# ============================
-
 @app.route('/api/budget', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1092,10 +1072,6 @@ def update_budget_status(id):
         'updated_at': budget.status_updated_at.strftime('%Y-%m-%d %H:%M')
     })
 
-
-# ============================
-# LIABILITIES API
-# ============================
 
 @app.route('/api/liabilities', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -1195,10 +1171,6 @@ def get_liability_summary():
     })
 
 
-# ============================
-# RULES API
-# ============================
-
 @app.route('/api/rules', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1276,10 +1248,6 @@ def check_rules():
     return jsonify(alerts)
 
 
-# ============================
-# RATIOS API
-# ============================
-
 @app.route('/api/ratios')
 @login_required
 @superadmin_required
@@ -1305,10 +1273,6 @@ def calculate_ratios():
         'capital_turnover': (total_income / total_assets) if total_assets > 0 else 0
     })
 
-
-# ============================
-# RISK API
-# ============================
 
 @app.route('/api/risk')
 @login_required
@@ -1336,10 +1300,6 @@ def get_risk_analysis():
     })
 
 
-# ============================
-# ANALYTICS API
-# ============================
-
 @app.route('/api/analytics/<chart_type>')
 @login_required
 @superadmin_required
@@ -1363,10 +1323,6 @@ def get_analytics(chart_type):
         return jsonify([{'category': i[0], 'total': float(i[1])} for i in data])
     return jsonify([])
 
-
-# ============================
-# TIMELINE API
-# ============================
 
 @app.route('/api/timeline')
 @login_required
@@ -1409,10 +1365,6 @@ def get_timeline():
     events.sort(key=lambda x: x['date'], reverse=True)
     return jsonify(events[:100])
 
-
-# ============================
-# DECISIONS API
-# ============================
 
 @app.route('/api/decisions')
 @login_required
@@ -1457,10 +1409,6 @@ def get_decisions():
         })
     return jsonify(recommendations[:5])
 
-
-# ============================
-# NOTIFICATIONS API
-# ============================
 
 @app.route('/api/notifications')
 @login_required
@@ -1535,14 +1483,12 @@ def export_report(report_type, format):
         styles = getSampleStyleSheet()
         story = []
         
-        # TITLE
         title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, alignment=1, textColor=colors.HexColor('#00d4ff'))
         story.append(Paragraph("💰 BuSystem - Complete Financial Report", title_style))
         story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
         story.append(Paragraph(f"User: {current_user.username}", styles['Normal']))
         story.append(Spacer(1, 0.3*inch))
         
-        # EXECUTIVE SUMMARY
         story.append(Paragraph("<b>📊 EXECUTIVE SUMMARY</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
         
@@ -1597,7 +1543,6 @@ def export_report(report_type, format):
         story.append(summary_table)
         story.append(Spacer(1, 0.3*inch))
         
-        # TRANSACTIONS
         story.append(PageBreak())
         story.append(Paragraph("<b>💰 TRANSACTIONS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1629,7 +1574,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No transactions found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # INVESTMENTS
         story.append(PageBreak())
         story.append(Paragraph("<b>📈 INVESTMENTS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1662,7 +1606,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No investments found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # LIVESTOCK
         story.append(PageBreak())
         story.append(Paragraph("<b>🐄 LIVESTOCK</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1695,7 +1638,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No livestock found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # ASSETS
         story.append(PageBreak())
         story.append(Paragraph("<b>🏦 ASSETS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1727,7 +1669,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No assets found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # GOALS
         story.append(PageBreak())
         story.append(Paragraph("<b>🎯 GOALS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1759,7 +1700,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No goals found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # BUDGETS
         story.append(PageBreak())
         story.append(Paragraph("<b>📋 BUDGETS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1794,7 +1734,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No budgets found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # LIABILITIES
         story.append(PageBreak())
         story.append(Paragraph("<b>📋 LIABILITIES</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1827,7 +1766,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No liabilities found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # RULES
         story.append(PageBreak())
         story.append(Paragraph("<b>📏 FINANCIAL RULES</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1857,7 +1795,6 @@ def export_report(report_type, format):
         else:
             story.append(Paragraph("No rules found.", styles['Normal']))
         
-        # FOOTER
         story.append(Spacer(1, 0.5*inch))
         footer_style = ParagraphStyle('Footer', fontSize=10, alignment=1, textColor=colors.HexColor('#4a5a6f'))
         story.append(Paragraph("BuSystem v1.0 • Every Franc Must Have a Job", footer_style))
@@ -1873,7 +1810,6 @@ def export_report(report_type, format):
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output)
         
-        # Transactions sheet
         worksheet1 = workbook.add_worksheet('Transactions')
         headers = ['Date', 'Type', 'Category', 'Amount', 'Description']
         for col, header in enumerate(headers):
@@ -1886,7 +1822,6 @@ def export_report(report_type, format):
             worksheet1.write(row, 3, t.amount)
             worksheet1.write(row, 4, t.description or '')
         
-        # Investments sheet
         worksheet2 = workbook.add_worksheet('Investments')
         headers2 = ['ID', 'Type', 'Sub Type', 'Capital', 'Status', 'Profit', 'ROI']
         for col, header in enumerate(headers2):
@@ -1901,7 +1836,6 @@ def export_report(report_type, format):
             worksheet2.write(row, 5, i.profit)
             worksheet2.write(row, 6, i.roi_actual)
         
-        # Livestock sheet
         worksheet3 = workbook.add_worksheet('Livestock')
         headers3 = ['Tag', 'Type', 'Breed', 'Purchase Price', 'Status', 'Profit']
         for col, header in enumerate(headers3):
@@ -1915,7 +1849,6 @@ def export_report(report_type, format):
             worksheet3.write(row, 4, l.status)
             worksheet3.write(row, 5, l.profit or 0)
         
-        # Assets sheet
         worksheet4 = workbook.add_worksheet('Assets')
         headers4 = ['Name', 'Category', 'Purchase Price', 'Current Value', 'Condition']
         for col, header in enumerate(headers4):
@@ -1928,7 +1861,6 @@ def export_report(report_type, format):
             worksheet4.write(row, 3, a.current_value)
             worksheet4.write(row, 4, a.condition)
         
-        # Goals sheet
         worksheet5 = workbook.add_worksheet('Goals')
         headers5 = ['Name', 'Target', 'Current', 'Progress', 'Status']
         for col, header in enumerate(headers5):
@@ -1941,7 +1873,6 @@ def export_report(report_type, format):
             worksheet5.write(row, 3, g.progress)
             worksheet5.write(row, 4, g.status)
         
-        # Budgets sheet
         worksheet6 = workbook.add_worksheet('Budgets')
         headers6 = ['Category', 'Type', 'Month', 'Year', 'Expected', 'Actual', 'Difference', 'Status']
         for col, header in enumerate(headers6):
@@ -1957,7 +1888,6 @@ def export_report(report_type, format):
             worksheet6.write(row, 6, b.difference)
             worksheet6.write(row, 7, b.status or 'pending')
         
-        # Liabilities sheet
         worksheet7 = workbook.add_worksheet('Liabilities')
         headers7 = ['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']
         for col, header in enumerate(headers7):
@@ -1971,7 +1901,6 @@ def export_report(report_type, format):
             worksheet7.write(row, 4, l.due_date.strftime('%Y-%m-%d') if l.due_date else '')
             worksheet7.write(row, 5, l.status)
         
-        # Rules sheet
         worksheet8 = workbook.add_worksheet('Rules')
         headers8 = ['Name', 'Category', 'Condition Type', 'Condition Value', 'Operator', 'Message']
         for col, header in enumerate(headers8):
@@ -1993,7 +1922,7 @@ def export_report(report_type, format):
 
 
 # ============================
-# PAGE ROUTES - SUPERADMIN ONLY
+# PAGE ROUTES - SUPERADMIN ONLY (ORIGINAL FEATURES)
 # ============================
 
 @app.route('/cashflow')
@@ -2341,10 +2270,6 @@ def admin_sales_stats():
     })
 
 
-# ============================
-# ADMIN USER MANAGEMENT - SUPERADMIN ONLY
-# ============================
-
 @app.route('/api/admin/users')
 @login_required
 @superadmin_required
@@ -2375,7 +2300,6 @@ def admin_create_user():
     currency = data.get('currency', 'FCFA')
     role = data.get('role', 'admin')
     
-    # Validate
     if not username or not password:
         return jsonify({'error': 'Username and password are required'}), 400
     
@@ -2406,56 +2330,15 @@ def admin_create_user():
     })
 
 
-@app.route('/api/admin/users/<int:user_id>', methods=['PUT'])
-@login_required
-@superadmin_required
-def admin_update_user(user_id):
-    user = User.query.get_or_404(user_id)
-    
-    # Prevent modifying superadmin
-    if user.role == 'superadmin' and user.id != current_user.id:
-        return jsonify({'error': 'Cannot modify SuperAdmin'}), 403
-    
-    data = request.json
-    
-    if 'username' in data:
-        existing = User.query.filter_by(username=data['username']).first()
-        if existing and existing.id != user_id:
-            return jsonify({'error': 'Username already exists'}), 400
-        user.username = data['username']
-    
-    if 'email' in data:
-        user.email = data['email']
-    
-    if 'currency' in data:
-        user.currency = data['currency']
-    
-    if 'role' in data:
-        if data['role'] not in ['user', 'admin']:
-            return jsonify({'error': 'Invalid role'}), 400
-        # Only superadmin can change roles to admin
-        if data['role'] == 'admin' and not current_user.is_superadmin():
-            return jsonify({'error': 'Only SuperAdmin can assign admin role'}), 403
-        user.role = data['role']
-    
-    if 'password' in data and data['password']:
-        user.set_password(data['password'])
-    
-    db.session.commit()
-    return jsonify({'status': 'success', 'id': user.id, 'role': user.role})
-
-
 @app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
 @login_required
 @superadmin_required
 def admin_delete_user(user_id):
     user = User.query.get_or_404(user_id)
     
-    # Prevent deleting superadmin
     if user.role == 'superadmin':
         return jsonify({'error': 'Cannot delete SuperAdmin'}), 403
     
-    # Prevent deleting yourself
     if user.id == current_user.id:
         return jsonify({'error': 'Cannot delete yourself'}), 403
     

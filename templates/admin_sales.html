@@ -2,10 +2,10 @@
 <html>
 <head>
     <title>BuSystem - Sales</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#00d4ff">
     <link rel="manifest" href="/static/manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    <link rel="icon" href="/static/icons/icon-192.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
@@ -13,182 +13,288 @@
         .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
         .logo { font-size: 24px; font-weight: 700; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
         .logo-icon { width: 32px; height: 32px; border-radius: 8px; }
-        .back { color: #7a8ba3; text-decoration: none; padding: 8px 16px; background: #1a2a3f; border-radius: 8px; }
-        .form-card { background: #111a2b; border-radius: 16px; padding: 20px; border: 1px solid #1a2a3f; margin: 20px 0; }
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; margin-bottom: 4px; color: #7a8ba3; font-size: 12px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #fff; font-size: 14px; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
-        .btn { background: #00d4ff; color: #0a0e17; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; }
-        .btn:active { transform: scale(0.95); }
-        .btn::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(255,255,255,0.3); transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s; pointer-events: none; }
-        .btn:active::before { width: 400px; height: 400px; }
+        .logout { background: #ff4757; color: white; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; padding: 12px; background: #0f1a2b; border-radius: 12px; }
+        .nav a { color: #7a8ba3; text-decoration: none; padding: 8px 14px; border-radius: 8px; transition: 0.2s; font-size: 13px; text-align: center; }
+        .nav a:hover { background: #1a2a3f; color: #fff; }
+        .nav a.active { background: #1a2a3f; color: #00d4ff; }
+        .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; }
+        .btn-primary { background: #00d4ff; color: #0a0e17; }
+        .btn-danger { background: #ff4757; color: white; }
+        .btn-success { background: #2ecc71; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a2a3f; padding: 10px; text-align: left; color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
         td { padding: 8px 10px; border-bottom: 1px solid #1a2332; font-size: 13px; }
-        .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
-        .badge.paid { background: #1a3a2a; color: #2ecc71; }
-        .badge.pending { background: #3a3a1a; color: #f39c12; }
-        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; justify-content: center; align-items: center; }
+        .modal-content { background: #111a2b; padding: 30px; border-radius: 16px; max-width: 500px; width: 90%; border: 1px solid #1a2a3f; max-height: 90vh; overflow-y: auto; }
+        .modal-content h2 { color: #fff; margin-bottom: 20px; }
+        .modal-content input, .modal-content select { width: 100%; padding: 10px; margin: 8px 0; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #e0e6ed; font-size: 14px; }
+        .modal-content input:focus, .modal-content select:focus { outline: none; border-color: #00d4ff; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end; }
         .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
-        h2 { color: #00d4ff; margin-bottom: 5px; }
-        .sub { color: #7a8ba3; font-size: 13px; }
-        .amount-positive { color: #2ecc71; }
-        @media (max-width: 600px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
+        .user-info { color: #7a8ba3; font-size: 13px; }
+        .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #3498db; }
+        h2 { color: #fff; margin: 20px 0 10px 0; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: #111a2b; padding: 15px; border-radius: 12px; border: 1px solid #1a2a3f; text-align: center; }
+        .stat-card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; }
+        .stat-card .value { font-size: 20px; font-weight: bold; margin-top: 4px; }
+        .stat-card .value.green { color: #2ecc71; }
+        .stat-card .value.orange { color: #f39c12; }
+        .stat-card .value.blue { color: #3498db; }
+        .stat-card .value.cyan { color: #00d4ff; }
+        @media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSystem</div>
-        <a href="/admin/dashboard" class="back">← Dashboard</a>
-    </div>
-    
-    <h2>💰 Sales</h2>
-    <p class="sub">Record and manage sales</p>
-    
-    <div class="form-card">
-        <h3 style="color: #fff; margin-bottom: 12px; font-size: 16px;">Record Sale</h3>
-        <div class="grid-3">
-            <div class="form-group">
-                <label>Product</label>
-                <select id="saleProduct"></select>
-            </div>
-            <div class="form-group">
-                <label>Client</label>
-                <select id="saleClient"></select>
-            </div>
-            <div class="form-group">
-                <label>Quantity</label>
-                <input type="number" id="saleQuantity" placeholder="1" value="1">
-            </div>
-            <div class="form-group">
-                <label>Discount (FCFA)</label>
-                <input type="number" id="saleDiscount" placeholder="0" value="0">
-            </div>
-            <div class="form-group">
-                <label>Payment Method</label>
-                <select id="salePayment">
-                    <option value="Cash">Cash</option>
-                    <option value="Mobile Money">Mobile Money</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Credit">Credit</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Payment Status</label>
-                <select id="saleStatus">
-                    <option value="Paid">Paid</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Partial">Partial</option>
-                </select>
-            </div>
-            <div class="form-group" style="grid-column: 1 / -1;">
-                <label>Notes</label>
-                <input type="text" id="saleNotes" placeholder="Optional notes">
-            </div>
+        <div>
+            <span class="user-info">👤 {{ user.username }}</span>
+            <span class="role-badge">{% if user.role == 'superadmin' %}SuperAdmin{% else %}Admin{% endif %}</span>
+            <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
+                <button class="logout">Logout</button>
+            </form>
         </div>
-        <button class="btn" onclick="recordSale()">💰 Record Sale</button>
-        <span id="salePreview" style="color:#7a8ba3; margin-left:15px;"></span>
     </div>
-    
+
+    <div class="nav">
+        <a href="/admin">📊 Dashboard</a>
+        <a href="/admin/products">📦 Products</a>
+        <a href="/admin/clients">👥 Clients</a>
+        <a href="/admin/sales" class="active">💰 Sales</a>
+        <a href="/admin/reports">📄 Reports</a>
+        {% if user.role == 'superadmin' %}
+        <a href="/admin/users" style="color:#f39c12; border:1px solid #3a3a1a;">👑 Admin Users</a>
+        <a href="/dashboard" style="color:#f39c12; border:1px solid #3a3a1a;">📊 SuperAdmin</a>
+        {% endif %}
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="label">💰 Total Revenue</div><div class="value green" id="totalRevenue">0</div></div>
+        <div class="stat-card"><div class="label">📈 Total Profit</div><div class="value blue" id="totalProfit">0</div></div>
+        <div class="stat-card"><div class="label">🛒 Total Sales</div><div class="value orange" id="totalSales">0</div></div>
+        <div class="stat-card"><div class="label">📦 Products</div><div class="value cyan" id="totalProducts">0</div></div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
+        <h2 style="margin:0;">💰 Sales History</h2>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Record Sale</button>
+    </div>
+
     <div class="table-wrap">
-        <h3 style="color: #fff; margin-bottom: 10px;">Sales History</h3>
         <table>
             <thead>
-                <tr><th>Product</th><th>Client</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>Date</th><th>Status</th></tr>
+                <tr><th>Product</th><th>Client</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>Discount</th><th>Final</th><th>Profit</th><th>Date</th></tr>
             </thead>
-            <tbody id="salesList">
-                <tr><td colspan="7" style="text-align:center; color:#4a5a6f; padding:20px;">No sales yet</td></tr>
+            <tbody id="salesTable">
+                <tr><td colspan="9" style="text-align:center; padding:20px; color:#4a5a6f;">Loading sales...</td></tr>
             </tbody>
         </table>
     </div>
-    
-    <div class="footer">Every Franc Must Have a Job</div>
+
+    <!-- Add Sale Modal -->
+    <div class="modal" id="saleModal">
+        <div class="modal-content">
+            <h2>Record Sale</h2>
+            <select id="saleProduct"><option value="">Select Product</option></select>
+            <select id="saleClient"><option value="">Select Client (Optional)</option></select>
+            <input type="number" id="saleQuantity" placeholder="Quantity" value="1" min="1">
+            <input type="number" id="saleUnitPrice" placeholder="Unit Price" step="0.01">
+            <input type="number" id="saleDiscount" placeholder="Discount" value="0" step="0.01">
+            <input type="text" id="saleNotes" placeholder="Notes (optional)">
+            <div style="margin-top:10px; padding:10px; background:#0f1a2b; border-radius:8px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#7a8ba3;">Total:</span>
+                    <span id="saleTotalDisplay" style="color:#00d4ff; font-weight:bold;">0</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#7a8ba3;">Final Total:</span>
+                    <span id="saleFinalDisplay" style="color:#2ecc71; font-weight:bold;">0</span>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-success" onclick="saveSale()">Record Sale</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">BuSystem • Every Franc Must Have a Job</div>
 </div>
 
 <script>
-    loadProducts();
-    loadClients();
-    loadSales();
-    
-    function loadProducts() {
-        fetch('/api/products')
-            .then(res => res.json())
-            .then(data => {
-                const select = document.getElementById('saleProduct');
-                select.innerHTML = data.map(p => `<option value="${p.id}">${p.name} - ${p.price} FCFA (Stock: ${p.stock_quantity})</option>`).join('');
-            });
+    let products = [];
+    let clients = [];
+    let sales = [];
+    let stats = {};
+
+    async function loadData() {
+        await Promise.all([loadProducts(), loadClients(), loadSales(), loadStats()]);
     }
-    
-    function loadClients() {
-        fetch('/api/clients')
-            .then(res => res.json())
-            .then(data => {
-                const select = document.getElementById('saleClient');
-                select.innerHTML = data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-            });
+
+    async function loadProducts() {
+        try {
+            const res = await fetch('/api/admin/products');
+            products = await res.json();
+            populateProductSelect();
+        } catch (e) { console.error('Error loading products'); }
     }
-    
-    function loadSales() {
-        fetch('/api/sales')
-            .then(res => res.json())
-            .then(data => {
-                const tbody = document.getElementById('salesList');
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#4a5a6f; padding:20px;">No sales yet</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = data.map(s => `
-                    <tr>
-                        <td><strong>${s.product_name}</strong></td>
-                        <td>${s.client_name}</td>
-                        <td>${s.quantity}</td>
-                        <td>${Number(s.unit_price).toLocaleString()} FCFA</td>
-                        <td class="amount-positive">${Number(s.final_amount).toLocaleString()} FCFA</td>
-                        <td>${s.sale_date ? s.sale_date.split(' ')[0] : ''}</td>
-                        <td><span class="badge ${s.payment_status.toLowerCase()}">${s.payment_status}</span></td>
-                    </tr>
-                `).join('');
-            });
+
+    async function loadClients() {
+        try {
+            const res = await fetch('/api/admin/clients');
+            clients = await res.json();
+            populateClientSelect();
+        } catch (e) { console.error('Error loading clients'); }
     }
-    
-    function recordSale() {
-        const product_id = document.getElementById('saleProduct').value;
-        const client_id = document.getElementById('saleClient').value;
-        const quantity = document.getElementById('saleQuantity').value;
-        const discount = document.getElementById('saleDiscount').value;
-        const payment_method = document.getElementById('salePayment').value;
-        const payment_status = document.getElementById('saleStatus').value;
-        const notes = document.getElementById('saleNotes').value;
-        
-        if (!product_id || !client_id || !quantity || quantity <= 0) {
-            alert('Please select product, client and enter valid quantity');
+
+    function populateProductSelect() {
+        const sel = document.getElementById('saleProduct');
+        sel.innerHTML = '<option value="">Select Product</option>' + 
+            products.map(p => `<option value="${p.id}" data-price="${p.price}">${p.name} (Stock: ${p.stock})</option>`).join('');
+    }
+
+    function populateClientSelect() {
+        const sel = document.getElementById('saleClient');
+        sel.innerHTML = '<option value="">Select Client (Optional)</option>' + 
+            clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    }
+
+    async function loadSales() {
+        try {
+            const res = await fetch('/api/admin/sales');
+            sales = await res.json();
+            renderSales();
+        } catch (e) {
+            document.getElementById('salesTable').innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#ff4757;">Error loading sales</td></tr>';
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const res = await fetch('/api/admin/sales/stats');
+            stats = await res.json();
+            document.getElementById('totalRevenue').textContent = stats.total_revenue ? stats.total_revenue.toFixed(0) : '0';
+            document.getElementById('totalProfit').textContent = stats.total_profit ? stats.total_profit.toFixed(0) : '0';
+            document.getElementById('totalSales').textContent = stats.total_sales || '0';
+            document.getElementById('totalProducts').textContent = stats.total_products || '0';
+        } catch (e) { console.error('Error loading stats'); }
+    }
+
+    function renderSales() {
+        const tbody = document.getElementById('salesTable');
+        if (sales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#4a5a6f;">No sales yet</td></tr>';
             return;
         }
-        
-        fetch('/api/sales', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ product_id: parseInt(product_id), client_id: parseInt(client_id), quantity: parseInt(quantity), discount: parseFloat(discount) || 0, payment_method, payment_status, notes })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert(`✅ Sale recorded!\nProduct: ${data.product_name}\nClient: ${data.client_name}\nAmount: ${data.final_amount.toLocaleString()} FCFA`);
-                document.getElementById('saleQuantity').value = 1;
-                document.getElementById('saleDiscount').value = 0;
-                document.getElementById('saleNotes').value = '';
-                loadSales();
-                loadProducts();
-            }
-        })
-        .catch(err => {
-            alert('❌ Error recording sale');
-            console.error(err);
-        });
+        tbody.innerHTML = sales.map(s => `
+            <tr>
+                <td>${s.product_name}</td>
+                <td>${s.client_name}</td>
+                <td>${s.quantity}</td>
+                <td>${s.unit_price.toFixed(2)}</td>
+                <td>${s.total.toFixed(2)}</td>
+                <td>${s.discount ? s.discount.toFixed(2) : '0'}</td>
+                <td style="color:#2ecc71;font-weight:bold;">${s.final_total.toFixed(2)}</td>
+                <td style="color:#3498db;">${s.profit ? s.profit.toFixed(2) : '0'}</td>
+                <td>${s.sale_date}</td>
+            </tr>
+        `).join('');
     }
+
+    function openAddModal() {
+        document.getElementById('saleProduct').value = '';
+        document.getElementById('saleClient').value = '';
+        document.getElementById('saleQuantity').value = '1';
+        document.getElementById('saleUnitPrice').value = '';
+        document.getElementById('saleDiscount').value = '0';
+        document.getElementById('saleNotes').value = '';
+        document.getElementById('saleTotalDisplay').textContent = '0';
+        document.getElementById('saleFinalDisplay').textContent = '0';
+        document.getElementById('saleModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('saleModal').style.display = 'none';
+    }
+
+    // Calculate totals
+    document.getElementById('saleProduct').addEventListener('change', function() {
+        const sel = this.options[this.selectedIndex];
+        if (sel && sel.dataset.price) {
+            document.getElementById('saleUnitPrice').value = sel.dataset.price;
+        }
+        calculateTotal();
+    });
+
+    document.getElementById('saleQuantity').addEventListener('input', calculateTotal);
+    document.getElementById('saleUnitPrice').addEventListener('input', calculateTotal);
+    document.getElementById('saleDiscount').addEventListener('input', calculateTotal);
+
+    function calculateTotal() {
+        const qty = parseFloat(document.getElementById('saleQuantity').value) || 0;
+        const price = parseFloat(document.getElementById('saleUnitPrice').value) || 0;
+        const discount = parseFloat(document.getElementById('saleDiscount').value) || 0;
+        const total = qty * price;
+        const final = total - discount;
+        document.getElementById('saleTotalDisplay').textContent = total.toFixed(2);
+        document.getElementById('saleFinalDisplay').textContent = final.toFixed(2);
+    }
+
+    async function saveSale() {
+        const productId = document.getElementById('saleProduct').value;
+        const clientId = document.getElementById('saleClient').value;
+        const quantity = parseInt(document.getElementById('saleQuantity').value) || 1;
+        const unitPrice = parseFloat(document.getElementById('saleUnitPrice').value);
+        const discount = parseFloat(document.getElementById('saleDiscount').value) || 0;
+        const notes = document.getElementById('saleNotes').value;
+
+        if (!productId) {
+            alert('Please select a product');
+            return;
+        }
+        if (!unitPrice || unitPrice <= 0) {
+            alert('Please enter a valid unit price');
+            return;
+        }
+
+        const data = {
+            product_id: parseInt(productId),
+            client_id: clientId ? parseInt(clientId) : null,
+            quantity: quantity,
+            unit_price: unitPrice,
+            discount: discount,
+            notes: notes
+        };
+
+        try {
+            const res = await fetch('/api/admin/sales', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                closeModal();
+                await loadData();
+            } else {
+                alert('Error: ' + (result.error || 'Unknown error'));
+            }
+        } catch (e) {
+            alert('Error recording sale');
+        }
+    }
+
+    document.getElementById('saleModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    loadData();
 </script>
 </body>
 </html>
