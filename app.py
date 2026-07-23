@@ -55,7 +55,6 @@ class User(UserMixin, db.Model):
         return self.role == 'superadmin'
 
 
-# YOUR ORIGINAL MODELS - EXACTLY AS YOU HAD THEM
 class Transaction(db.Model):
     __tablename__ = 'transactions'
     id = db.Column(db.Integer, primary_key=True)
@@ -446,59 +445,12 @@ def admin_required(f):
 
 
 # ============================
-# INITIALIZE DATABASE - WITH MIGRATION
+# INITIALIZE DATABASE
 # ============================
 
-def add_column_if_not_exists(table, column, col_type, default=None):
-    """Add column to table if it doesn't exist"""
-    try:
-        # Check if column exists
-        result = db.session.execute(text(f"""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = '{table}' AND column_name = '{column}'
-        """))
-        exists = result.fetchone() is not None
-        
-        if not exists:
-            print(f"⚠️ Adding column {table}.{column}...")
-            sql = f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
-            if default:
-                if col_type == 'INTEGER':
-                    sql += f" DEFAULT {default}"
-                else:
-                    sql += f" DEFAULT '{default}'"
-            db.session.execute(text(sql))
-            db.session.commit()
-            print(f"✅ Added {table}.{column}")
-        else:
-            print(f"✅ {table}.{column} already exists")
-    except Exception as e:
-        print(f"⚠️ Error with {table}.{column}: {e}")
-        db.session.rollback()
-
-
 with app.app_context():
-    # Create all tables if they don't exist
     db.create_all()
     print("✅ Database tables created/verified")
-    
-    # Add missing columns to users table
-    add_column_if_not_exists('users', 'role', 'VARCHAR(20)', 'user')
-    add_column_if_not_exists('users', 'created_by', 'INTEGER')
-    
-    # Add missing columns to transactions table
-    add_column_if_not_exists('transactions', 'type', 'VARCHAR(20)', 'income')
-    add_column_if_not_exists('transactions', 'category', 'VARCHAR(50)', 'Other')
-    add_column_if_not_exists('transactions', 'description', 'VARCHAR(200)')
-    add_column_if_not_exists('transactions', 'date', 'TIMESTAMP')
-    add_column_if_not_exists('transactions', 'created_at', 'TIMESTAMP')
-    
-    # Add missing columns to budgets table
-    add_column_if_not_exists('budgets', 'status', 'VARCHAR(20)', 'pending')
-    add_column_if_not_exists('budgets', 'status_updated_at', 'TIMESTAMP')
-    
-    print("✅ Schema migration complete!")
     
     # Create SuperAdmin
     if not User.query.filter_by(username='MCM').first():
@@ -1564,15 +1516,6 @@ def get_report_data(report_type):
             'net_worth': total_assets + total_income - total_expenses
         })
     return jsonify({'error': 'Invalid report type'}), 400
-
-
-@app.route('/api/reports/export/<report_type>/<format>')
-@login_required
-@superadmin_required
-def export_report(report_type, format):
-    # [COPY YOUR ORIGINAL FULL PDF/EXPORT CODE HERE]
-    # This function should be identical to your original
-    return jsonify({'error': 'Please copy your original export code here'}), 400
 
 
 # ============================
