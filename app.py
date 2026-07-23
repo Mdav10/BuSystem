@@ -448,34 +448,57 @@ def admin_required(f):
 # INITIALIZE DATABASE WITH PROPER MIGRATION
 # ============================
 
+def column_exists(table, column):
+    """Check if a column exists in a table"""
+    try:
+        # Rollback any existing transaction
+        db.session.rollback()
+        # Use a fresh connection
+        with db.engine.connect() as conn:
+            result = conn.execute(text(f"""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = '{table}' AND column_name = '{column}'
+            """))
+            return result.fetchone() is not None
+    except Exception as e:
+        print(f"⚠️ Error checking {table}.{column}: {e}")
+        return False
+
+
 def safe_add_column(table, column, col_type, default=None):
     """Safely add a column to a table if it doesn't exist"""
     try:
+        # Rollback any existing transaction
+        db.session.rollback()
+        
+        if column_exists(table, column):
+            print(f"✅ {table}.{column} already exists")
+            return True
+        
+        print(f"⚠️ Adding {table}.{column}...")
         with db.engine.connect() as conn:
-            # Check if column exists
-            try:
-                conn.execute(text(f"SELECT {column} FROM {table} LIMIT 1"))
-                print(f"✅ {table}.{column} already exists")
-                return True
-            except Exception:
-                # Column doesn't exist, add it
-                sql = f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
-                if default:
+            sql = f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+            if default:
+                if col_type == 'INTEGER':
+                    sql += f" DEFAULT {default}"
+                else:
                     sql += f" DEFAULT '{default}'"
-                conn.execute(text(sql))
-                conn.commit()
-                print(f"✅ Added {table}.{column}")
-                return True
+            conn.execute(text(sql))
+            conn.commit()
+            print(f"✅ Added {table}.{column}")
+            return True
     except Exception as e:
         print(f"⚠️ Could not add {table}.{column}: {e}")
+        db.session.rollback()
         return False
 
 
 with app.app_context():
-    # Create all tables if they don't exist
+    print("🔄 Creating tables if they don't exist...")
     db.create_all()
     
-    print("🔄 Running database migrations...")
+    print("🔄 Running migrations...")
     
     # Add transactions columns
     safe_add_column('transactions', 'type', 'VARCHAR(20)', 'income')
@@ -496,6 +519,7 @@ with app.app_context():
     
     # Create SuperAdmin if not exists
     try:
+        db.session.rollback()
         if not User.query.filter_by(username='MCM').first():
             user = User(username='MCM', currency='FCFA', email='admin@busystem.com', role='superadmin')
             user.set_password('0880Mcm+_+')
@@ -510,9 +534,11 @@ with app.app_context():
                 print("✅ MCM upgraded to SuperAdmin")
     except Exception as e:
         print(f"⚠️ Error creating SuperAdmin: {e}")
+        db.session.rollback()
     
     # Create default rules
     try:
+        db.session.rollback()
         if FinancialRule.query.count() == 0:
             rules = [
                 FinancialRule(
@@ -552,9 +578,11 @@ with app.app_context():
             print("✅ Default rules created")
     except Exception as e:
         print(f"⚠️ Error creating rules: {e}")
+        db.session.rollback()
     
     # Create sample notifications
     try:
+        db.session.rollback()
         if Notification.query.count() == 0:
             notifications = [
                 Notification(
@@ -582,6 +610,7 @@ with app.app_context():
             print("✅ Sample notifications created")
     except Exception as e:
         print(f"⚠️ Error creating notifications: {e}")
+        db.session.rollback()
     
     print("🎉 Database ready!")
 
@@ -2447,8 +2476,7 @@ def analytics():
 
 
 @app.route('/risk')
-@login_required
-@superadmin_required
+@login_required@superadmin_required
 def risk():
     return render_template('risk.html', user=current_user)
 
