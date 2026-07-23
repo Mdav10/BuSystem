@@ -432,6 +432,7 @@ def superadmin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 def admin_required(f):
     from functools import wraps
     @wraps(f)
@@ -444,60 +445,111 @@ def admin_required(f):
 
 
 # ============================
-# INITIALIZE DATABASE
+# INITIALIZE DATABASE WITH PROPER MIGRATION
 # ============================
 
 def run_migrations():
-    """Run database migrations for existing tables"""
+    """Run database migrations for existing tables with proper transaction handling"""
     with app.app_context():
-        # Check if transactions table exists and add missing columns
+        # Check and add transactions columns
         try:
-            # Check if type column exists
+            # First check if the column exists by trying to select from it
             db.session.execute(text("SELECT type FROM transactions LIMIT 1"))
             print("✅ transactions.type column exists")
-        except Exception:
-            print("⚠️ transactions.type column missing - adding...")
-            try:
-                db.session.execute(text("ALTER TABLE transactions ADD COLUMN type VARCHAR(20) DEFAULT 'income'"))
-                db.session.execute(text("ALTER TABLE transactions ADD COLUMN category VARCHAR(50) DEFAULT 'Other'"))
-                db.session.execute(text("ALTER TABLE transactions ADD COLUMN description VARCHAR(200)"))
-                db.session.execute(text("ALTER TABLE transactions ADD COLUMN date TIMESTAMP DEFAULT NOW()"))
-                db.session.execute(text("ALTER TABLE transactions ADD COLUMN created_at TIMESTAMP DEFAULT NOW()"))
-                db.session.commit()
-                print("✅ Transactions columns added successfully")
-            except Exception as e:
-                print(f"⚠️ Error adding transactions columns: {e}")
-                db.session.rollback()
+        except Exception as e:
+            if 'column "type" does not exist' in str(e) or 'UndefinedColumn' in str(e):
+                print("⚠️ transactions.type column missing - adding...")
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE transactions ADD COLUMN type VARCHAR(20) DEFAULT 'income'"))
+                        conn.commit()
+                    print("✅ Added type column")
+                except Exception as e2:
+                    print(f"⚠️ Could not add type column: {e2}")
+                
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE transactions ADD COLUMN category VARCHAR(50) DEFAULT 'Other'"))
+                        conn.commit()
+                    print("✅ Added category column")
+                except Exception as e2:
+                    print(f"⚠️ Could not add category column: {e2}")
+                
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE transactions ADD COLUMN description VARCHAR(200)"))
+                        conn.commit()
+                    print("✅ Added description column")
+                except Exception as e2:
+                    print(f"⚠️ Could not add description column: {e2}")
+                
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE transactions ADD COLUMN date TIMESTAMP DEFAULT NOW()"))
+                        conn.commit()
+                    print("✅ Added date column")
+                except Exception as e2:
+                    print(f"⚠️ Could not add date column: {e2}")
+                
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE transactions ADD COLUMN created_at TIMESTAMP DEFAULT NOW()"))
+                        conn.commit()
+                    print("✅ Added created_at column")
+                except Exception as e2:
+                    print(f"⚠️ Could not add created_at column: {e2}")
+            else:
+                print(f"⚠️ Error checking transactions.type: {e}")
         
-        # Check if budgets table has status columns
+        # Check and add budgets status columns
         try:
             db.session.execute(text("SELECT status FROM budgets LIMIT 1"))
             print("✅ budgets.status column exists")
-        except Exception:
-            print("⚠️ budgets.status column missing - adding...")
-            try:
-                db.session.execute(text("ALTER TABLE budgets ADD COLUMN status VARCHAR(20) DEFAULT 'pending'"))
-                db.session.execute(text("ALTER TABLE budgets ADD COLUMN status_updated_at TIMESTAMP"))
-                db.session.commit()
-                print("✅ Budget status columns added")
-            except Exception as e:
-                print(f"⚠️ Error adding budget columns: {e}")
-                db.session.rollback()
+        except Exception as e:
+            if 'column "status" does not exist' in str(e) or 'UndefinedColumn' in str(e):
+                print("⚠️ budgets.status column missing - adding...")
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE budgets ADD COLUMN status VARCHAR(20) DEFAULT 'pending'"))
+                        conn.commit()
+                    print("✅ Added budget status column")
+                except Exception as e2:
+                    print(f"⚠️ Could not add budget status: {e2}")
+                
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE budgets ADD COLUMN status_updated_at TIMESTAMP"))
+                        conn.commit()
+                    print("✅ Added budget status_updated_at column")
+                except Exception as e2:
+                    print(f"⚠️ Could not add budget status_updated_at: {e2}")
+            else:
+                print(f"⚠️ Error checking budgets.status: {e}")
         
-        # Check if users table has role column
+        # Check and add users role columns
         try:
             db.session.execute(text("SELECT role FROM users LIMIT 1"))
             print("✅ users.role column exists")
-        except Exception:
-            print("⚠️ users.role column missing - adding...")
-            try:
-                db.session.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user'"))
-                db.session.execute(text("ALTER TABLE users ADD COLUMN created_by INTEGER"))
-                db.session.commit()
-                print("✅ User role columns added")
-            except Exception as e:
-                print(f"⚠️ Error adding user columns: {e}")
-                db.session.rollback()
+        except Exception as e:
+            if 'column "role" does not exist' in str(e) or 'UndefinedColumn' in str(e):
+                print("⚠️ users.role column missing - adding...")
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user'"))
+                        conn.commit()
+                    print("✅ Added role column")
+                except Exception as e2:
+                    print(f"⚠️ Could not add role column: {e2}")
+                
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN created_by INTEGER"))
+                        conn.commit()
+                    print("✅ Added created_by column")
+                except Exception as e2:
+                    print(f"⚠️ Could not add created_by column: {e2}")
+            else:
+                print(f"⚠️ Error checking users.role: {e}")
 
 
 with app.app_context():
@@ -508,84 +560,93 @@ with app.app_context():
     run_migrations()
     
     # Create SuperAdmin if not exists
-    if not User.query.filter_by(username='MCM').first():
-        user = User(username='MCM', currency='FCFA', email='admin@busystem.com', role='superadmin')
-        user.set_password('0880Mcm+_+')
-        db.session.add(user)
-        db.session.commit()
-        print("✅ SuperAdmin 'MCM' created")
-    else:
-        user = User.query.filter_by(username='MCM').first()
-        if user.role != 'superadmin':
-            user.role = 'superadmin'
+    try:
+        if not User.query.filter_by(username='MCM').first():
+            user = User(username='MCM', currency='FCFA', email='admin@busystem.com', role='superadmin')
+            user.set_password('0880Mcm+_+')
+            db.session.add(user)
             db.session.commit()
-            print("✅ MCM upgraded to SuperAdmin")
+            print("✅ SuperAdmin 'MCM' created")
+        else:
+            user = User.query.filter_by(username='MCM').first()
+            if user.role != 'superadmin':
+                user.role = 'superadmin'
+                db.session.commit()
+                print("✅ MCM upgraded to SuperAdmin")
+    except Exception as e:
+        print(f"⚠️ Error creating SuperAdmin: {e}")
     
     # Create default rules
-    if FinancialRule.query.count() == 0:
-        rules = [
-            FinancialRule(
-                user_id=1,
-                name='Investment Diversification',
-                category='investment',
-                condition_type='percentage',
-                condition_value=40,
-                condition_operator='>',
-                action_type='warn',
-                action_message='Do not invest more than 40% in one type'
-            ),
-            FinancialRule(
-                user_id=1,
-                name='Emergency Fund Minimum',
-                category='emergency',
-                condition_type='months',
-                condition_value=3,
-                condition_operator='<',
-                action_type='warn',
-                action_message='Keep at least 3 months of expenses'
-            ),
-            FinancialRule(
-                user_id=1,
-                name='Monthly Spending Limit',
-                category='spending',
-                condition_type='percentage',
-                condition_value=80,
-                condition_operator='>',
-                action_type='warn',
-                action_message='Do not spend more than 80% of income'
-            )
-        ]
-        for rule in rules:
-            db.session.add(rule)
-        db.session.commit()
-        print("✅ Default rules created")
+    try:
+        if FinancialRule.query.count() == 0:
+            rules = [
+                FinancialRule(
+                    user_id=1,
+                    name='Investment Diversification',
+                    category='investment',
+                    condition_type='percentage',
+                    condition_value=40,
+                    condition_operator='>',
+                    action_type='warn',
+                    action_message='Do not invest more than 40% in one type'
+                ),
+                FinancialRule(
+                    user_id=1,
+                    name='Emergency Fund Minimum',
+                    category='emergency',
+                    condition_type='months',
+                    condition_value=3,
+                    condition_operator='<',
+                    action_type='warn',
+                    action_message='Keep at least 3 months of expenses'
+                ),
+                FinancialRule(
+                    user_id=1,
+                    name='Monthly Spending Limit',
+                    category='spending',
+                    condition_type='percentage',
+                    condition_value=80,
+                    condition_operator='>',
+                    action_type='warn',
+                    action_message='Do not spend more than 80% of income'
+                )
+            ]
+            for rule in rules:
+                db.session.add(rule)
+            db.session.commit()
+            print("✅ Default rules created")
+    except Exception as e:
+        print(f"⚠️ Error creating rules: {e}")
     
     # Create sample notifications
-    if Notification.query.count() == 0:
-        notifications = [
-            Notification(
-                user_id=1,
-                title='Welcome to BuSystem! 🎉',
-                message='Start tracking your finances by adding your first transaction.',
-                type='info'
-            ),
-            Notification(
-                user_id=1,
-                title='💡 Tip: Set Your Goals',
-                message='Setting financial goals helps you stay focused. Click Goals to get started.',
-                type='success'
-            ),
-            Notification(
-                user_id=1,
-                title='📊 Dashboard Overview',
-                message='Your dashboard shows all your key financial metrics at a glance.',
-                type='info'
-            )
-        ]
-        for n in notifications:
-            db.session.add(n)
-        db.session.commit()
-        print("✅ Sample notifications created")
+    try:
+        if Notification.query.count() == 0:
+            notifications = [
+                Notification(
+                    user_id=1,
+                    title='Welcome to BuSystem! 🎉',
+                    message='Start tracking your finances by adding your first transaction.',
+                    type='info'
+                ),
+                Notification(
+                    user_id=1,
+                    title='💡 Tip: Set Your Goals',
+                    message='Setting financial goals helps you stay focused. Click Goals to get started.',
+                    type='success'
+                ),
+                Notification(
+                    user_id=1,
+                    title='📊 Dashboard Overview',
+                    message='Your dashboard shows all your key financial metrics at a glance.',
+                    type='info'
+                )
+            ]
+            for n in notifications:
+                db.session.add(n)
+            db.session.commit()
+            print("✅ Sample notifications created")
+    except Exception as e:
+        print(f"⚠️ Error creating notifications: {e}")
     
     print("🎉 Database ready!")
 
@@ -2499,7 +2560,6 @@ def admin_panel():
     total_revenue = db.session.query(func.sum(Sale.final_total)).scalar() or 0
     recent_sales = Sale.query.order_by(Sale.sale_date.desc()).limit(10).all()
     
-    # Get product and client names for each sale
     for sale in recent_sales:
         sale.product = Product.query.get(sale.product_id)
         sale.client = Client.query.get(sale.client_id) if sale.client_id else None
