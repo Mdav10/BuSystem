@@ -26,6 +26,7 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
 CORS(app)
 
 # ============================
@@ -443,7 +444,6 @@ class SalesHistory(db.Model):
 def fix_database_schema():
     """Fix missing columns in existing tables"""
     try:
-        # Check if users table has currency column
         db.session.execute(text("SELECT currency FROM users LIMIT 1"))
         print("✅ currency column exists")
     except Exception:
@@ -456,7 +456,6 @@ def fix_database_schema():
             print(f"⚠️ Could not add currency: {e}")
     
     try:
-        # Check if users table has role column
         db.session.execute(text("SELECT role FROM users LIMIT 1"))
         print("✅ role column exists")
     except Exception:
@@ -469,7 +468,6 @@ def fix_database_schema():
             print(f"⚠️ Could not add role: {e}")
     
     try:
-        # Check if users table has created_by column
         db.session.execute(text("SELECT created_by FROM users LIMIT 1"))
         print("✅ created_by column exists")
     except Exception:
@@ -482,7 +480,6 @@ def fix_database_schema():
             print(f"⚠️ Could not add created_by: {e}")
     
     try:
-        # Check if users table has is_active column
         db.session.execute(text("SELECT is_active FROM users LIMIT 1"))
         print("✅ is_active column exists")
     except Exception:
@@ -495,7 +492,6 @@ def fix_database_schema():
             print(f"⚠️ Could not add is_active: {e}")
     
     try:
-        # Check if users table has last_login column
         db.session.execute(text("SELECT last_login FROM users LIMIT 1"))
         print("✅ last_login column exists")
     except Exception:
@@ -507,7 +503,6 @@ def fix_database_schema():
         except Exception as e:
             print(f"⚠️ Could not add last_login: {e}")
     
-    # Add budget status columns
     try:
         db.session.execute(text("SELECT status FROM budgets LIMIT 1"))
         print("✅ budget status column exists")
@@ -552,20 +547,7 @@ with app.app_context():
             db.session.commit()
             print("✅ MCM updated to SuperAdmin")
     
-    # Create sample admin account
-    if not User.query.filter_by(username='admin1').first():
-        admin = User(
-            username='admin1',
-            currency='FCFA',
-            email='admin1@busystem.com',
-            role='admin',
-            created_by=1,
-            is_active=True
-        )
-        admin.set_password('admin123')
-        db.session.add(admin)
-        db.session.commit()
-        print("✅ Sample Admin 'admin1' created")
+    # NO DEFAULT ADMIN - Must be created by SuperAdmin
     
     if FinancialRule.query.count() == 0:
         rules = [
@@ -672,7 +654,7 @@ def serve_manifest():
     return Response(json.dumps(manifest), mimetype='application/json')
 
 # ============================
-# AUTHENTICATION
+# AUTHENTICATION - FIXED NO REDIRECT LOOP
 # ============================
 
 @login_manager.user_loader
@@ -681,10 +663,16 @@ def load_user(user_id):
 
 @app.route('/')
 def index():
+    if current_user.is_authenticated:
+        if current_user.role == 'superadmin':
+            return redirect(url_for('dashboard'))
+        else:
+            return redirect(url_for('admin_dashboard'))
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # If already logged in, redirect to appropriate dashboard
     if current_user.is_authenticated:
         if current_user.role == 'superadmin':
             return redirect(url_for('dashboard'))
