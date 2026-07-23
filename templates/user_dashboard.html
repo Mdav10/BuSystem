@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BuSystem - My Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#00d4ff">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" href="/static/icons/icon-192.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e17; color: #e0e6ed; padding: 16px; -webkit-tap-highlight-color: transparent; min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #1a2332; flex-wrap: wrap; gap: 10px; }
+        .logo { font-size: 24px; font-weight: 700; color: #00d4ff; display: flex; align-items: center; gap: 8px; }
+        .logo-icon { width: 32px; height: 32px; border-radius: 8px; }
+        .logout { background: #ff4757; color: white; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; padding: 12px; background: #0f1a2b; border-radius: 12px; }
+        .nav a { color: #7a8ba3; text-decoration: none; padding: 8px 14px; border-radius: 8px; transition: 0.2s; font-size: 13px; text-align: center; }
+        .nav a:hover { background: #1a2a3f; color: #fff; }
+        .nav a.active { background: #1a2a3f; color: #00d4ff; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .card { background: #111a2b; padding: 20px; border-radius: 14px; border: 1px solid #1a2a3f; transition: 0.3s; }
+        .card:hover { border-color: #00d4ff; transform: translateY(-3px); }
+        .card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; letter-spacing: 1px; }
+        .card .value { font-size: 24px; font-weight: bold; margin-top: 6px; }
+        .card .value.green { color: #2ecc71; }
+        .card .value.blue { color: #3498db; }
+        .card .value.orange { color: #f39c12; }
+        .card .value.cyan { color: #00d4ff; }
+        .card .value.purple { color: #9b59b6; }
+        .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
+        .user-info { color: #7a8ba3; font-size: 13px; }
+        .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #7a8ba3; }
+        h2 { color: #fff; margin: 20px 0 10px 0; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSystem</div>
+        <div>
+            <span class="user-info">👤 {{ user.username }}</span>
+            <span class="role-badge">User</span>
+            <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
+                <button class="logout">Logout</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="nav">
+        <a href="/user/dashboard" class="active">📊 My Dashboard</a>
+        <a href="/user/cashflow">💰 Cash Flow</a>
+    </div>
+
+    <div class="grid">
+        <div class="card"><div class="label">💰 Current Cash</div><div class="value green">{{ "%.0f"|format(current_cash) }}</div></div>
+        <div class="card"><div class="label">🏦 Total Assets</div><div class="value blue">{{ "%.0f"|format(total_assets) }}</div></div>
+        <div class="card"><div class="label">📈 Total Investments</div><div class="value orange">{{ "%.0f"|format(total_investments) }}</div></div>
+        <div class="card"><div class="label">💎 Net Worth</div><div class="value cyan">{{ "%.0f"|format(net_worth) }}</div></div>
+        <div class="card"><div class="label">📊 Monthly Income</div><div class="value green">{{ "%.0f"|format(monthly_income) }}</div></div>
+        <div class="card"><div class="label">📊 Monthly Expenses</div><div class="value red" style="color:#ff6b6b;">{{ "%.0f"|format(monthly_expenses) }}</div></div>
+    </div>
+
+    <div style="margin-top:30px; padding:20px; background:#0f1a2b; border-radius:12px; border:1px solid #1a2a3f;">
+        <h3 style="color:#7a8ba3; font-size:14px;">💡 Quick Actions</h3>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <a href="/user/cashflow" style="background:#1a2a3f; color:#00d4ff; padding:10px 20px; border-radius:8px; text-decoration:none;">💰 Add Transaction</a>
+        </div>
+    </div>
+
+    <div class="footer">BuSystem • Every Franc Must Have a Job</div>
+</div>
+</body>
+</html>
