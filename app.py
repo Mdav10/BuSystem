@@ -312,26 +312,121 @@ class Notification(db.Model):
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M')
         }
 
+# ============================
+# NEW ADMIN MODELS
+# ============================
+
+class Product(db.Model):
+    __tablename__ = 'products'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    cost_price = db.Column(db.Float, nullable=False)
+    stock = db.Column(db.Integer, default=0)
+    min_stock = db.Column(db.Integer, default=5)
+    unit = db.Column(db.String(20), default='unit')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'category': self.category,
+            'price': self.price,
+            'cost_price': self.cost_price,
+            'stock': self.stock,
+            'min_stock': self.min_stock,
+            'unit': self.unit,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M')
+        }
+
+class Client(db.Model):
+    __tablename__ = 'clients'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20))
+    email = db.Column(db.String(100))
+    location = db.Column(db.String(200))
+    notes = db.Column(db.Text)
+    trust_score = db.Column(db.Integer, default=0)
+    is_trusted = db.Column(db.Boolean, default=False)
+    total_purchases = db.Column(db.Float, default=0)
+    purchase_count = db.Column(db.Integer, default=0)
+    last_purchase = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'phone': self.phone,
+            'email': self.email,
+            'location': self.location,
+            'trust_score': self.trust_score,
+            'is_trusted': self.is_trusted,
+            'total_purchases': self.total_purchases,
+            'purchase_count': self.purchase_count,
+            'last_purchase': self.last_purchase.strftime('%Y-%m-%d') if self.last_purchase else None,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M')
+        }
+
+class Sale(db.Model):
+    __tablename__ = 'sales'
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=True)
+    quantity = db.Column(db.Integer, nullable=False)
+    unit_price = db.Column(db.Float, nullable=False)
+    total = db.Column(db.Float, nullable=False)
+    discount = db.Column(db.Float, default=0)
+    final_total = db.Column(db.Float, nullable=False)
+    profit = db.Column(db.Float, default=0)
+    sale_date = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    notes = db.Column(db.Text)
+    
+    def to_dict(self):
+        product = Product.query.get(self.product_id)
+        client = Client.query.get(self.client_id) if self.client_id else None
+        return {
+            'id': self.id,
+            'product_name': product.name if product else 'Unknown',
+            'client_name': client.name if client else 'Walk-in',
+            'quantity': self.quantity,
+            'unit_price': self.unit_price,
+            'total': self.total,
+            'discount': self.discount,
+            'final_total': self.final_total,
+            'profit': self.profit,
+            'sale_date': self.sale_date.strftime('%Y-%m-%d %H:%M'),
+            'created_by': self.created_by
+        }
+
 
 # ============================
-# ADMIN DECORATOR
+# DECORATORS
 # ============================
-
-def admin_required(f):
-    from functools import wraps
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin():
-            abort(403)
-        return f(*args, **kwargs)
-    return decorated_function
 
 def superadmin_required(f):
     from functools import wraps
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.is_superadmin():
-            abort(403)
+            flash('Access denied. SuperAdmin only.')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin():
+            flash('Access denied. Admin only.')
+            return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -369,7 +464,6 @@ with app.app_context():
         db.session.commit()
         print("✅ SuperAdmin 'MCM' created")
     else:
-        # Ensure MCM is superadmin
         user = User.query.filter_by(username='MCM').first()
         if user.role != 'superadmin':
             user.role = 'superadmin'
@@ -414,7 +508,6 @@ with app.app_context():
         db.session.commit()
         print("✅ Default rules created")
     
-    # Create sample notifications if none exist
     if Notification.query.count() == 0:
         notifications = [
             Notification(
@@ -514,12 +607,14 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+
 # ============================
-# DASHBOARD
+# SUPERADMIN ONLY ROUTES (Original Features)
 # ============================
 
 @app.route('/dashboard')
 @login_required
+@superadmin_required
 def dashboard():
     user_id = current_user.id
     today = datetime.now()
@@ -607,6 +702,12 @@ def dashboard():
     if emergency_fund_ratio < 30:
         alerts.append(f"🛡️ Emergency fund is low ({emergency_fund_ratio:.0f}%)")
     
+    # Get admin stats
+    total_products = Product.query.count()
+    total_clients = Client.query.count()
+    total_sales = Sale.query.count()
+    total_revenue = db.session.query(func.sum(Sale.final_total)).scalar() or 0
+    
     return render_template('dashboard.html',
         current_cash=current_cash,
         total_assets=total_assets,
@@ -619,15 +720,20 @@ def dashboard():
         goal_progress=avg_goal_progress,
         emergency_fund=emergency_fund_ratio,
         alerts=alerts[:10],
+        total_products=total_products,
+        total_clients=total_clients,
+        total_sales=total_sales,
+        total_revenue=total_revenue,
         user=current_user
     )
 
 # ============================
-# TRANSACTIONS API
+# SUPERADMIN ONLY API ROUTES (Original Features)
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
 @login_required
+@superadmin_required
 def api_transactions():
     if request.method == 'GET':
         transactions = Transaction.query.filter_by(
@@ -672,12 +778,9 @@ def api_transactions():
         db.session.commit()
         return jsonify({'status': 'success'})
 
-# ============================
-# INVESTMENTS API
-# ============================
-
 @app.route('/api/investments', methods=['GET', 'POST', 'DELETE'])
 @login_required
+@superadmin_required
 def api_investments():
     if request.method == 'GET':
         investments = Investment.query.filter_by(
@@ -713,6 +816,7 @@ def api_investments():
 
 @app.route('/api/investments/<int:id>/sell', methods=['POST'])
 @login_required
+@superadmin_required
 def sell_investment(id):
     investment = Investment.query.get_or_404(id)
     if investment.user_id != current_user.id:
@@ -738,12 +842,9 @@ def sell_investment(id):
         'sell_price': investment.sell_price
     })
 
-# ============================
-# LIVESTOCK API
-# ============================
-
 @app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
 @login_required
+@superadmin_required
 def api_livestock():
     if request.method == 'GET':
         livestock = Livestock.query.filter_by(
@@ -777,6 +878,7 @@ def api_livestock():
 
 @app.route('/api/livestock/<int:id>/sell', methods=['POST'])
 @login_required
+@superadmin_required
 def sell_livestock(id):
     animal = Livestock.query.get_or_404(id)
     if animal.user_id != current_user.id:
@@ -799,12 +901,9 @@ def sell_livestock(id):
         'sell_price': animal.actual_sell_price
     })
 
-# ============================
-# ASSETS API
-# ============================
-
 @app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
 @login_required
+@superadmin_required
 def api_assets():
     if request.method == 'GET':
         assets = Asset.query.filter_by(user_id=current_user.id).all()
@@ -835,12 +934,9 @@ def api_assets():
         db.session.commit()
         return jsonify({'status': 'success'})
 
-# ============================
-# GOALS API
-# ============================
-
 @app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
+@superadmin_required
 def api_goals():
     if request.method == 'GET':
         goals = Goal.query.filter_by(user_id=current_user.id).all()
@@ -882,6 +978,7 @@ def api_goals():
 
 @app.route('/api/goals/<int:id>/add', methods=['POST'])
 @login_required
+@superadmin_required
 def add_goal_amount(id):
     goal = Goal.query.get_or_404(id)
     if goal.user_id != current_user.id:
@@ -904,12 +1001,9 @@ def add_goal_amount(id):
         'remaining': goal.target_amount - goal.current_amount
     })
 
-# ============================
-# BUDGET API
-# ============================
-
 @app.route('/api/budget', methods=['GET', 'POST', 'DELETE'])
 @login_required
+@superadmin_required
 def api_budget():
     if request.method == 'GET':
         today = datetime.now()
@@ -952,6 +1046,7 @@ def api_budget():
 
 @app.route('/api/budget/<int:id>/status', methods=['POST'])
 @login_required
+@superadmin_required
 def update_budget_status(id):
     budget = Budget.query.get_or_404(id)
     if budget.user_id != current_user.id:
@@ -973,12 +1068,9 @@ def update_budget_status(id):
         'updated_at': budget.status_updated_at.strftime('%Y-%m-%d %H:%M')
     })
 
-# ============================
-# LIABILITIES API
-# ============================
-
 @app.route('/api/liabilities', methods=['GET', 'POST', 'DELETE'])
 @login_required
+@superadmin_required
 def api_liabilities():
     if request.method == 'GET':
         liabilities = Liability.query.filter_by(
@@ -1011,6 +1103,7 @@ def api_liabilities():
 
 @app.route('/api/liabilities/<int:id>/paid', methods=['POST'])
 @login_required
+@superadmin_required
 def mark_liability_paid(id):
     liability = Liability.query.get_or_404(id)
     if liability.user_id != current_user.id:
@@ -1029,6 +1122,7 @@ def mark_liability_paid(id):
 
 @app.route('/api/liabilities/summary')
 @login_required
+@superadmin_required
 def get_liability_summary():
     user_id = current_user.id
     
@@ -1069,12 +1163,9 @@ def get_liability_summary():
         'net_position': total_owed_to_me - total_i_owe
     })
 
-# ============================
-# RULES API
-# ============================
-
 @app.route('/api/rules', methods=['GET', 'POST', 'DELETE'])
 @login_required
+@superadmin_required
 def api_rules():
     if request.method == 'GET':
         rules = FinancialRule.query.filter_by(
@@ -1108,6 +1199,7 @@ def api_rules():
 
 @app.route('/api/rules/check')
 @login_required
+@superadmin_required
 def check_rules():
     alerts = []
     user_id = current_user.id
@@ -1146,12 +1238,9 @@ def check_rules():
                 alerts.append(f"⚠️ {rule.name}: Emergency fund covers {emergency_months:.1f} months")
     return jsonify(alerts)
 
-# ============================
-# RATIOS API
-# ============================
-
 @app.route('/api/ratios')
 @login_required
+@superadmin_required
 def calculate_ratios():
     user_id = current_user.id
     total_income = db.session.query(func.sum(Transaction.amount)).filter(
@@ -1174,12 +1263,9 @@ def calculate_ratios():
         'capital_turnover': (total_income / total_assets) if total_assets > 0 else 0
     })
 
-# ============================
-# RISK API
-# ============================
-
 @app.route('/api/risk')
 @login_required
+@superadmin_required
 def get_risk_analysis():
     user_id = current_user.id
     investments = Investment.query.filter_by(user_id=user_id).all()
@@ -1202,12 +1288,9 @@ def get_risk_analysis():
         'overall_risk': 'Low' if high_risk < 2 else 'Medium' if high_risk < 5 else 'High'
     })
 
-# ============================
-# ANALYTICS API
-# ============================
-
 @app.route('/api/analytics/<chart_type>')
 @login_required
+@superadmin_required
 def get_analytics(chart_type):
     user_id = current_user.id
     if chart_type == 'monthly_income':
@@ -1228,12 +1311,9 @@ def get_analytics(chart_type):
         return jsonify([{'category': i[0], 'total': float(i[1])} for i in data])
     return jsonify([])
 
-# ============================
-# TIMELINE API
-# ============================
-
 @app.route('/api/timeline')
 @login_required
+@superadmin_required
 def get_timeline():
     user_id = current_user.id
     events = []
@@ -1272,12 +1352,9 @@ def get_timeline():
     events.sort(key=lambda x: x['date'], reverse=True)
     return jsonify(events[:100])
 
-# ============================
-# DECISIONS API
-# ============================
-
 @app.route('/api/decisions')
 @login_required
+@superadmin_required
 def get_decisions():
     recommendations = []
     user_id = current_user.id
@@ -1318,12 +1395,9 @@ def get_decisions():
         })
     return jsonify(recommendations[:5])
 
-# ============================
-# NOTIFICATIONS API
-# ============================
-
 @app.route('/api/notifications')
 @login_required
+@superadmin_required
 def get_notifications():
     notifications = Notification.query.filter_by(
         user_id=current_user.id,
@@ -1331,12 +1405,9 @@ def get_notifications():
     ).order_by(Notification.created_at.desc()).limit(20).all()
     return jsonify([n.to_dict() for n in notifications])
 
-# ============================
-# REPORTS API - FULL PDF WITH ALL DATA
-# ============================
-
 @app.route('/api/reports/<report_type>')
 @login_required
+@superadmin_required
 def get_report_data(report_type):
     user_id = current_user.id
     if report_type == 'income_statement':
@@ -1376,6 +1447,7 @@ def get_report_data(report_type):
 
 @app.route('/api/reports/export/<report_type>/<format>')
 @login_required
+@superadmin_required
 def export_report(report_type, format):
     user_id = current_user.id
     if format == 'pdf':
@@ -1390,14 +1462,12 @@ def export_report(report_type, format):
         styles = getSampleStyleSheet()
         story = []
         
-        # ===== TITLE =====
         title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, alignment=1, textColor=colors.HexColor('#00d4ff'))
         story.append(Paragraph("💰 BuSystem - Complete Financial Report", title_style))
         story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
         story.append(Paragraph(f"User: {current_user.username}", styles['Normal']))
         story.append(Spacer(1, 0.3*inch))
         
-        # ===== 1. EXECUTIVE SUMMARY =====
         story.append(Paragraph("<b>📊 EXECUTIVE SUMMARY</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
         
@@ -1452,7 +1522,6 @@ def export_report(report_type, format):
         story.append(summary_table)
         story.append(Spacer(1, 0.3*inch))
         
-        # ===== 2. TRANSACTIONS =====
         story.append(PageBreak())
         story.append(Paragraph("<b>💰 TRANSACTIONS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1484,7 +1553,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No transactions found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 3. INVESTMENTS =====
         story.append(PageBreak())
         story.append(Paragraph("<b>📈 INVESTMENTS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1517,7 +1585,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No investments found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 4. LIVESTOCK =====
         story.append(PageBreak())
         story.append(Paragraph("<b>🐄 LIVESTOCK</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1550,7 +1617,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No livestock found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 5. ASSETS =====
         story.append(PageBreak())
         story.append(Paragraph("<b>🏦 ASSETS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1582,7 +1648,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No assets found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 6. GOALS =====
         story.append(PageBreak())
         story.append(Paragraph("<b>🎯 GOALS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1614,7 +1679,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No goals found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 7. BUDGETS =====
         story.append(PageBreak())
         story.append(Paragraph("<b>📋 BUDGETS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1649,7 +1713,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No budgets found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 8. LIABILITIES =====
         story.append(PageBreak())
         story.append(Paragraph("<b>📋 LIABILITIES</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1682,7 +1745,6 @@ def export_report(report_type, format):
             story.append(Paragraph("No liabilities found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # ===== 9. RULES =====
         story.append(PageBreak())
         story.append(Paragraph("<b>📏 FINANCIAL RULES</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
@@ -1712,7 +1774,6 @@ def export_report(report_type, format):
         else:
             story.append(Paragraph("No rules found.", styles['Normal']))
         
-        # ===== FOOTER =====
         story.append(Spacer(1, 0.5*inch))
         footer_style = ParagraphStyle('Footer', fontSize=10, alignment=1, textColor=colors.HexColor('#4a5a6f'))
         story.append(Paragraph("BuSystem v1.0 • Every Franc Must Have a Job", footer_style))
@@ -1728,7 +1789,6 @@ def export_report(report_type, format):
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output)
         
-        # Transactions sheet
         worksheet1 = workbook.add_worksheet('Transactions')
         headers = ['Date', 'Type', 'Category', 'Amount', 'Description']
         for col, header in enumerate(headers):
@@ -1741,7 +1801,6 @@ def export_report(report_type, format):
             worksheet1.write(row, 3, t.amount)
             worksheet1.write(row, 4, t.description or '')
         
-        # Investments sheet
         worksheet2 = workbook.add_worksheet('Investments')
         headers2 = ['ID', 'Type', 'Sub Type', 'Capital', 'Status', 'Profit', 'ROI']
         for col, header in enumerate(headers2):
@@ -1756,7 +1815,6 @@ def export_report(report_type, format):
             worksheet2.write(row, 5, i.profit)
             worksheet2.write(row, 6, i.roi_actual)
         
-        # Livestock sheet
         worksheet3 = workbook.add_worksheet('Livestock')
         headers3 = ['Tag', 'Type', 'Breed', 'Purchase Price', 'Status', 'Profit']
         for col, header in enumerate(headers3):
@@ -1770,7 +1828,6 @@ def export_report(report_type, format):
             worksheet3.write(row, 4, l.status)
             worksheet3.write(row, 5, l.profit or 0)
         
-        # Assets sheet
         worksheet4 = workbook.add_worksheet('Assets')
         headers4 = ['Name', 'Category', 'Purchase Price', 'Current Value', 'Condition']
         for col, header in enumerate(headers4):
@@ -1783,7 +1840,6 @@ def export_report(report_type, format):
             worksheet4.write(row, 3, a.current_value)
             worksheet4.write(row, 4, a.condition)
         
-        # Goals sheet
         worksheet5 = workbook.add_worksheet('Goals')
         headers5 = ['Name', 'Target', 'Current', 'Progress', 'Status']
         for col, header in enumerate(headers5):
@@ -1796,7 +1852,6 @@ def export_report(report_type, format):
             worksheet5.write(row, 3, g.progress)
             worksheet5.write(row, 4, g.status)
         
-        # Budgets sheet
         worksheet6 = workbook.add_worksheet('Budgets')
         headers6 = ['Category', 'Type', 'Month', 'Year', 'Expected', 'Actual', 'Difference', 'Status']
         for col, header in enumerate(headers6):
@@ -1812,7 +1867,6 @@ def export_report(report_type, format):
             worksheet6.write(row, 6, b.difference)
             worksheet6.write(row, 7, b.status or 'pending')
         
-        # Liabilities sheet
         worksheet7 = workbook.add_worksheet('Liabilities')
         headers7 = ['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']
         for col, header in enumerate(headers7):
@@ -1826,7 +1880,6 @@ def export_report(report_type, format):
             worksheet7.write(row, 4, l.due_date.strftime('%Y-%m-%d') if l.due_date else '')
             worksheet7.write(row, 5, l.status)
         
-        # Rules sheet
         worksheet8 = workbook.add_worksheet('Rules')
         headers8 = ['Name', 'Category', 'Condition Type', 'Condition Value', 'Operator', 'Message']
         for col, header in enumerate(headers8):
@@ -1848,14 +1901,334 @@ def export_report(report_type, format):
 
 
 # ============================
-# ADMIN API ROUTES
+# ADMIN ROUTES (Products, Clients, Sales)
+# ============================
+
+# --- Products ---
+@app.route('/admin/products')
+@login_required
+@admin_required
+def admin_products():
+    return render_template('admin_products.html', user=current_user)
+
+@app.route('/api/admin/products', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@login_required
+@admin_required
+def api_admin_products():
+    if request.method == 'GET':
+        products = Product.query.all()
+        return jsonify([p.to_dict() for p in products])
+    elif request.method == 'POST':
+        data = request.json
+        product = Product(
+            name=data.get('name'),
+            category=data.get('category'),
+            price=float(data.get('price')),
+            cost_price=float(data.get('cost_price', 0)),
+            stock=int(data.get('stock', 0)),
+            min_stock=int(data.get('min_stock', 5)),
+            unit=data.get('unit', 'unit'),
+            created_by=current_user.id
+        )
+        db.session.add(product)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': product.id})
+    elif request.method == 'PUT':
+        data = request.json
+        product = Product.query.get_or_404(data.get('id'))
+        if 'name' in data: product.name = data['name']
+        if 'category' in data: product.category = data['category']
+        if 'price' in data: product.price = float(data['price'])
+        if 'cost_price' in data: product.cost_price = float(data['cost_price'])
+        if 'stock' in data: product.stock = int(data['stock'])
+        if 'min_stock' in data: product.min_stock = int(data['min_stock'])
+        if 'unit' in data: product.unit = data['unit']
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    elif request.method == 'DELETE':
+        data = request.json
+        product = Product.query.get_or_404(data.get('id'))
+        db.session.delete(product)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+@app.route('/api/admin/products/low-stock')
+@login_required
+@admin_required
+def admin_low_stock():
+    products = Product.query.filter(Product.stock <= Product.min_stock).all()
+    return jsonify([p.to_dict() for p in products])
+
+# --- Clients ---
+@app.route('/admin/clients')
+@login_required
+@admin_required
+def admin_clients():
+    return render_template('admin_clients.html', user=current_user)
+
+@app.route('/api/admin/clients', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@login_required
+@admin_required
+def api_admin_clients():
+    if request.method == 'GET':
+        clients = Client.query.all()
+        return jsonify([c.to_dict() for c in clients])
+    elif request.method == 'POST':
+        data = request.json
+        client = Client(
+            name=data.get('name'),
+            phone=data.get('phone'),
+            email=data.get('email'),
+            location=data.get('location'),
+            notes=data.get('notes'),
+            created_by=current_user.id
+        )
+        db.session.add(client)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': client.id})
+    elif request.method == 'PUT':
+        data = request.json
+        client = Client.query.get_or_404(data.get('id'))
+        if 'name' in data: client.name = data['name']
+        if 'phone' in data: client.phone = data['phone']
+        if 'email' in data: client.email = data['email']
+        if 'location' in data: client.location = data['location']
+        if 'notes' in data: client.notes = data['notes']
+        if 'is_trusted' in data: client.is_trusted = data['is_trusted']
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    elif request.method == 'DELETE':
+        data = request.json
+        client = Client.query.get_or_404(data.get('id'))
+        db.session.delete(client)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+@app.route('/api/admin/clients/trusted')
+@login_required
+@admin_required
+def admin_trusted_clients():
+    clients = Client.query.filter_by(is_trusted=True).all()
+    return jsonify([c.to_dict() for c in clients])
+
+# --- Sales ---
+@app.route('/admin/sales')
+@login_required
+@admin_required
+def admin_sales():
+    return render_template('admin_sales.html', user=current_user)
+
+@app.route('/api/admin/sales', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def api_admin_sales():
+    if request.method == 'GET':
+        sales = Sale.query.order_by(Sale.sale_date.desc()).all()
+        return jsonify([s.to_dict() for s in sales])
+    elif request.method == 'POST':
+        data = request.json
+        product = Product.query.get_or_404(data.get('product_id'))
+        quantity = int(data.get('quantity', 1))
+        unit_price = float(data.get('unit_price', product.price))
+        total = quantity * unit_price
+        discount = float(data.get('discount', 0))
+        final_total = total - discount
+        cost_total = quantity * product.cost_price
+        profit = final_total - cost_total
+        
+        # Update stock
+        if product.stock < quantity:
+            return jsonify({'error': 'Insufficient stock'}), 400
+        product.stock -= quantity
+        
+        sale = Sale(
+            product_id=product.id,
+            client_id=data.get('client_id') if data.get('client_id') else None,
+            quantity=quantity,
+            unit_price=unit_price,
+            total=total,
+            discount=discount,
+            final_total=final_total,
+            profit=profit,
+            created_by=current_user.id,
+            notes=data.get('notes')
+        )
+        db.session.add(sale)
+        db.session.commit()
+        
+        # Update client
+        if data.get('client_id'):
+            client = Client.query.get(data.get('client_id'))
+            if client:
+                client.total_purchases += final_total
+                client.purchase_count += 1
+                client.last_purchase = datetime.utcnow()
+                client.trust_score = min(client.trust_score + 1, 100)
+                if client.trust_score >= 80 and not client.is_trusted:
+                    client.is_trusted = True
+                db.session.commit()
+        
+        # Create income transaction for SuperAdmin
+        if current_user.is_superadmin():
+            transaction = Transaction(
+                user_id=current_user.id,
+                type='income',
+                category='Sales',
+                amount=final_total,
+                description=f"Sale: {product.name} x{quantity}",
+                date=datetime.utcnow()
+            )
+            db.session.add(transaction)
+            db.session.commit()
+        else:
+            # If admin made sale, find superadmin and create transaction for them
+            superadmin = User.query.filter_by(role='superadmin').first()
+            if superadmin:
+                transaction = Transaction(
+                    user_id=superadmin.id,
+                    type='income',
+                    category='Sales',
+                    amount=final_total,
+                    description=f"Sale: {product.name} x{quantity} (by {current_user.username})",
+                    date=datetime.utcnow()
+                )
+                db.session.add(transaction)
+                db.session.commit()
+        
+        return jsonify({'status': 'success', 'id': sale.id, 'profit': profit})
+
+@app.route('/api/admin/sales/stats')
+@login_required
+@admin_required
+def admin_sales_stats():
+    today = datetime.now()
+    month_start = datetime(today.year, today.month, 1)
+    
+    total_revenue = db.session.query(func.sum(Sale.final_total)).scalar() or 0
+    total_profit = db.session.query(func.sum(Sale.profit)).scalar() or 0
+    total_sales = Sale.query.count()
+    total_products = Product.query.count()
+    total_clients = Client.query.count()
+    
+    monthly_revenue = db.session.query(func.sum(Sale.final_total)).filter(
+        Sale.sale_date >= month_start
+    ).scalar() or 0
+    
+    monthly_sales = Sale.query.filter(Sale.sale_date >= month_start).count()
+    
+    return jsonify({
+        'total_revenue': total_revenue,
+        'total_profit': total_profit,
+        'total_sales': total_sales,
+        'total_products': total_products,
+        'total_clients': total_clients,
+        'monthly_revenue': monthly_revenue,
+        'monthly_sales': monthly_sales
+    })
+
+@app.route('/api/admin/sales/export/<format>')
+@login_required
+@admin_required
+def admin_export_sales(format):
+    sales = Sale.query.order_by(Sale.sale_date.desc()).all()
+    
+    if format == 'pdf':
+        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, alignment=1, textColor=colors.HexColor('#00d4ff'))
+        story.append(Paragraph("📊 Sales Report", title_style))
+        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+        story.append(Spacer(1, 0.3*inch))
+        
+        data = [['Date', 'Product', 'Client', 'Quantity', 'Unit Price', 'Total', 'Discount', 'Final Total', 'Profit']]
+        total_final = 0
+        total_profit = 0
+        for s in sales:
+            product = Product.query.get(s.product_id)
+            client = Client.query.get(s.client_id) if s.client_id else None
+            data.append([
+                s.sale_date.strftime('%Y-%m-%d %H:%M'),
+                product.name if product else 'Unknown',
+                client.name if client else 'Walk-in',
+                str(s.quantity),
+                f"{s.unit_price:,.0f}",
+                f"{s.total:,.0f}",
+                f"{s.discount:,.0f}",
+                f"{s.final_total:,.0f}",
+                f"{s.profit:,.0f}"
+            ])
+            total_final += s.final_total
+            total_profit += s.profit
+        
+        data.append(['', '', '', '', '', '', 'TOTAL', f"{total_final:,.0f}", f"{total_profit:,.0f}"])
+        
+        table = Table(data, colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 0.8*inch, 0.8*inch, 1*inch, 0.8*inch, 1.2*inch, 1*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+            ('BACKGROUND', (0, 1), (-1, -2), colors.HexColor('#111a2b')),
+            ('TEXTCOLOR', (0, 1), (-1, -2), colors.whitesmoke),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#1a3a2f')),
+            ('TEXTCOLOR', (0, -1), (-1, -1), colors.whitesmoke),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ]))
+        story.append(table)
+        
+        doc.build(story)
+        buffer.seek(0)
+        return send_file(buffer, as_attachment=True, download_name=f"Sales_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf")
+    
+    elif format == 'excel':
+        import xlsxwriter
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet('Sales')
+        
+        headers = ['Date', 'Product', 'Client', 'Quantity', 'Unit Price', 'Total', 'Discount', 'Final Total', 'Profit']
+        for col, header in enumerate(headers):
+            worksheet.write(0, col, header)
+        
+        for row, s in enumerate(sales, 1):
+            product = Product.query.get(s.product_id)
+            client = Client.query.get(s.client_id) if s.client_id else None
+            worksheet.write(row, 0, s.sale_date.strftime('%Y-%m-%d %H:%M'))
+            worksheet.write(row, 1, product.name if product else 'Unknown')
+            worksheet.write(row, 2, client.name if client else 'Walk-in')
+            worksheet.write(row, 3, s.quantity)
+            worksheet.write(row, 4, s.unit_price)
+            worksheet.write(row, 5, s.total)
+            worksheet.write(row, 6, s.discount)
+            worksheet.write(row, 7, s.final_total)
+            worksheet.write(row, 8, s.profit)
+        
+        workbook.close()
+        output.seek(0)
+        return send_file(output, as_attachment=True, download_name=f"Sales_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx")
+    
+    return jsonify({'error': 'Invalid format'}), 400
+
+
+# ============================
+# ADMIN USER MANAGEMENT (SuperAdmin Only)
 # ============================
 
 @app.route('/api/admin/users')
 @login_required
-@admin_required
+@superadmin_required
 def admin_get_users():
-    """Get all users (admin view)"""
     users = User.query.all()
     result = []
     for user in users:
@@ -1865,26 +2238,23 @@ def admin_get_users():
             'email': user.email,
             'currency': user.currency,
             'role': user.role,
-            'created_at': user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else None,
-            'created_by': user.created_by
+            'created_at': user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else None
         })
     return jsonify(result)
 
 @app.route('/api/admin/users', methods=['POST'])
 @login_required
-@admin_required
+@superadmin_required
 def admin_create_user():
-    """Create a new user (admin or superadmin)"""
     data = request.json
     username = data.get('username')
     password = data.get('password')
     email = data.get('email')
     currency = data.get('currency', 'FCFA')
-    role = data.get('role', 'user')
+    role = data.get('role', 'admin')  # Default to admin
     
-    # Only superadmin can create admin roles
-    if role in ['superadmin', 'admin'] and not current_user.is_superadmin():
-        return jsonify({'error': 'Only SuperAdmin can create admin or superadmin users'}), 403
+    if role not in ['admin', 'user']:
+        return jsonify({'error': 'Invalid role. Only admin or user allowed.'}), 400
     
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already exists'}), 400
@@ -1907,61 +2277,15 @@ def admin_create_user():
         'role': user.role
     })
 
-@app.route('/api/admin/users/<int:user_id>', methods=['PUT'])
-@login_required
-@admin_required
-def admin_update_user(user_id):
-    """Update user details"""
-    user = User.query.get_or_404(user_id)
-    
-    # Only superadmin can modify admin roles or create admins
-    if user.role in ['superadmin', 'admin'] and not current_user.is_superadmin():
-        return jsonify({'error': 'Only SuperAdmin can modify admin users'}), 403
-    
-    data = request.json
-    if 'username' in data:
-        existing = User.query.filter_by(username=data['username']).first()
-        if existing and existing.id != user_id:
-            return jsonify({'error': 'Username already exists'}), 400
-        user.username = data['username']
-    if 'email' in data:
-        user.email = data['email']
-    if 'currency' in data:
-        user.currency = data['currency']
-    if 'role' in data:
-        # Only superadmin can change roles
-        if not current_user.is_superadmin():
-            return jsonify({'error': 'Only SuperAdmin can change roles'}), 403
-        if data['role'] not in ['user', 'admin', 'superadmin']:
-            return jsonify({'error': 'Invalid role'}), 400
-        # Prevent changing the last superadmin
-        if user.role == 'superadmin' and data['role'] != 'superadmin':
-            superadmin_count = User.query.filter_by(role='superadmin').count()
-            if superadmin_count <= 1:
-                return jsonify({'error': 'Cannot remove the last SuperAdmin'}), 400
-        user.role = data['role']
-    if 'password' in data and data['password']:
-        user.set_password(data['password'])
-    
-    db.session.commit()
-    return jsonify({'status': 'success', 'id': user.id, 'role': user.role})
-
 @app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
 @login_required
-@admin_required
+@superadmin_required
 def admin_delete_user(user_id):
-    """Delete a user"""
     user = User.query.get_or_404(user_id)
     
-    # Prevent deleting superadmin
     if user.role == 'superadmin':
         return jsonify({'error': 'Cannot delete SuperAdmin'}), 403
     
-    # Only superadmin can delete admin users
-    if user.role == 'admin' and not current_user.is_superadmin():
-        return jsonify({'error': 'Only SuperAdmin can delete admin users'}), 403
-    
-    # Don't allow deleting yourself
     if user.id == current_user.id:
         return jsonify({'error': 'Cannot delete yourself'}), 403
     
@@ -1980,152 +2304,122 @@ def admin_delete_user(user_id):
     db.session.commit()
     return jsonify({'status': 'success', 'message': f'User {user.username} deleted'})
 
-@app.route('/api/admin/dashboard')
-@login_required
-@admin_required
-def admin_dashboard_data():
-    """Admin dashboard statistics"""
-    total_users = User.query.count()
-    total_transactions = Transaction.query.count()
-    total_investments = Investment.query.count()
-    total_livestock = Livestock.query.count()
-    total_assets = Asset.query.count()
-    total_goals = Goal.query.count()
-    
-    # Total money across all users
-    total_income = db.session.query(func.sum(Transaction.amount)).filter(Transaction.type == 'income').scalar() or 0
-    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(Transaction.type == 'expense').scalar() or 0
-    total_cash = total_income - total_expenses
-    
-    # Users by role
-    superadmin_count = User.query.filter_by(role='superadmin').count()
-    admin_count = User.query.filter_by(role='admin').count()
-    user_count = User.query.filter_by(role='user').count()
-    
-    # Recent signups (last 7 days)
-    week_ago = datetime.utcnow() - timedelta(days=7)
-    recent_users = User.query.filter(User.created_at >= week_ago).count()
-    
-    return jsonify({
-        'total_users': total_users,
-        'total_transactions': total_transactions,
-        'total_investments': total_investments,
-        'total_livestock': total_livestock,
-        'total_assets': total_assets,
-        'total_goals': total_goals,
-        'total_cash': total_cash,
-        'superadmin_count': superadmin_count,
-        'admin_count': admin_count,
-        'user_count': user_count,
-        'recent_users': recent_users
-    })
-
 
 # ============================
-# PAGE ROUTES
+# PAGE ROUTES (SuperAdmin Only)
 # ============================
 
 @app.route('/cashflow')
 @login_required
+@superadmin_required
 def cashflow():
-    # Admin users cannot access cash flow
-    if current_user.is_admin() and not current_user.is_superadmin():
-        flash('Admin users cannot access cash flow functionality.')
-        return redirect(url_for('dashboard'))
     return render_template('cashflow.html', user=current_user)
 
 @app.route('/investments')
 @login_required
+@superadmin_required
 def investments():
     return render_template('investments.html', user=current_user)
 
 @app.route('/livestock')
 @login_required
+@superadmin_required
 def livestock():
     return render_template('livestock.html', user=current_user)
 
 @app.route('/assets')
 @login_required
+@superadmin_required
 def assets():
     return render_template('assets.html', user=current_user)
 
 @app.route('/goals')
 @login_required
+@superadmin_required
 def goals():
     return render_template('goals.html', user=current_user)
 
 @app.route('/budget')
 @login_required
+@superadmin_required
 def budget():
     return render_template('budget.html', user=current_user)
 
 @app.route('/liability')
 @login_required
+@superadmin_required
 def liability():
     return render_template('liability.html', user=current_user)
 
 @app.route('/rules')
 @login_required
+@superadmin_required
 def rules():
     return render_template('rules.html', user=current_user)
 
 @app.route('/reports')
 @login_required
+@superadmin_required
 def reports():
     return render_template('reports.html', user=current_user)
 
 @app.route('/ratios')
 @login_required
+@superadmin_required
 def ratios():
     return render_template('ratios.html', user=current_user)
 
 @app.route('/analytics')
 @login_required
+@superadmin_required
 def analytics():
     return render_template('analytics.html', user=current_user)
 
 @app.route('/risk')
 @login_required
+@superadmin_required
 def risk():
     return render_template('risk.html', user=current_user)
 
 @app.route('/timeline')
 @login_required
+@superadmin_required
 def timeline():
     return render_template('timeline.html', user=current_user)
 
 @app.route('/decisions')
 @login_required
+@superadmin_required
 def decisions():
     return render_template('decisions.html', user=current_user)
 
 @app.route('/exports')
 @login_required
+@superadmin_required
 def exports():
     return render_template('exports.html', user=current_user)
 
 @app.route('/notifications')
 @login_required
+@superadmin_required
 def notifications():
     return render_template('notifications.html', user=current_user)
 
 
 # ============================
-# ADMIN PAGE ROUTES
+# ADMIN PAGE ROUTES (Admin + SuperAdmin)
 # ============================
 
 @app.route('/admin')
 @login_required
 @admin_required
 def admin_panel():
-    """Admin panel dashboard"""
-    return render_template('admin.html', user=current_user)
+    return render_template('admin_dashboard.html', user=current_user)
 
 @app.route('/admin/users')
 @login_required
-@admin_required
+@superadmin_required
 def admin_users():
-    """Admin user management page"""
     return render_template('admin_users.html', user=current_user)
 
 
