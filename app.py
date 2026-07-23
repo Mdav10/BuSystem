@@ -423,11 +423,10 @@ class Sale(db.Model):
 def init_database():
     with app.app_context():
         try:
-            # Don't drop tables - just create if missing
             db.create_all()
             print("✅ Tables verified")
             
-            # Fix missing columns without dropping data
+            # Fix missing columns
             try:
                 db.session.execute(text("SELECT currency FROM users LIMIT 1"))
             except Exception:
@@ -513,7 +512,7 @@ def init_database():
                     db.session.commit()
                     print("✅ MCM password reset")
             
-            # Create sample data only if empty
+            # Default rules
             if FinancialRule.query.count() == 0:
                 rules = [
                     FinancialRule(user_id=1, name='Investment Diversification', category='investment', condition_type='percentage', condition_value=40, condition_operator='>', action_type='warn', action_message='Do not invest more than 40% in one type'),
@@ -574,7 +573,7 @@ def serve_manifest():
     return Response(json.dumps(manifest), mimetype='application/json')
 
 # ============================
-# AUTHENTICATION
+# AUTHENTICATION - FIXED
 # ============================
 
 @login_manager.user_loader
@@ -622,7 +621,7 @@ def logout():
     return redirect('/login')
 
 # ============================
-# DASHBOARD - WITH ADMIN USERS BUTTON
+# SUPERADMIN DASHBOARD
 # ============================
 
 @app.route('/dashboard')
@@ -778,237 +777,7 @@ def admin_dashboard():
     )
 
 # ============================
-# API ENDPOINTS - ALL MODULES
-# ============================
-
-# Products
-@app.route('/api/products', methods=['GET', 'POST', 'DELETE'])
-@login_required
-def api_products():
-    if current_user.role not in ['admin', 'superadmin']:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    if request.method == 'GET':
-        if current_user.role == 'superadmin':
-            products = Product.query.filter_by(is_active=True).all()
-        else:
-            products = Product.query.filter_by(admin_id=current_user.id, is_active=True).all()
-        return jsonify([p.to_dict() for p in products])
-    elif request.method == 'POST':
-        data = request.json
-        product = Product(
-            admin_id=current_user.id if current_user.role == 'admin' else 1,
-            name=data.get('name'),
-            description=data.get('description'),
-            price=float(data.get('price', 0)),
-            cost_price=float(data.get('cost_price', 0)),
-            category=data.get('category'),
-            stock_quantity=int(data.get('stock_quantity', 0)),
-            min_stock_level=int(data.get('min_stock_level', 0)),
-            unit=data.get('unit', 'piece')
-        )
-        db.session.add(product)
-        db.session.commit()
-        return jsonify({'status': 'success', 'id': product.id})
-    elif request.method == 'DELETE':
-        data = request.json
-        product = Product.query.get_or_404(data.get('id'))
-        if current_user.role != 'superadmin' and product.admin_id != current_user.id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        product.is_active = False
-        db.session.commit()
-        return jsonify({'status': 'success'})
-
-@app.route('/api/products/<int:id>', methods=['PUT'])
-@login_required
-def update_product(id):
-    product = Product.query.get_or_404(id)
-    if current_user.role != 'superadmin' and product.admin_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    data = request.json
-    if 'stock_quantity' in data:
-        product.stock_quantity = int(data['stock_quantity'])
-    if 'price' in data:
-        product.price = float(data['price'])
-    if 'name' in data:
-        product.name = data['name']
-    db.session.commit()
-    return jsonify({'status': 'success'})
-
-# Clients
-@app.route('/api/clients', methods=['GET', 'POST', 'DELETE'])
-@login_required
-def api_clients():
-    if current_user.role not in ['admin', 'superadmin']:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    if request.method == 'GET':
-        if current_user.role == 'superadmin':
-            clients = Client.query.all()
-        else:
-            clients = Client.query.filter_by(created_by=current_user.id).all()
-        return jsonify([c.to_dict() for c in clients])
-    elif request.method == 'POST':
-        data = request.json
-        client = Client(
-            created_by=current_user.id if current_user.role == 'admin' else 1,
-            name=data.get('name'),
-            phone=data.get('phone'),
-            email=data.get('email'),
-            location=data.get('location'),
-            notes=data.get('notes')
-        )
-        db.session.add(client)
-        db.session.commit()
-        return jsonify({'status': 'success', 'id': client.id})
-    elif request.method == 'DELETE':
-        data = request.json
-        client = Client.query.get_or_404(data.get('id'))
-        if current_user.role != 'superadmin' and client.created_by != current_user.id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        db.session.delete(client)
-        db.session.commit()
-        return jsonify({'status': 'success'})
-
-@app.route('/api/clients/<int:id>/trust', methods=['POST'])
-@login_required
-def mark_client_trusted(id):
-    if current_user.role != 'superadmin':
-        return jsonify({'error': 'Only SuperAdmin can mark trusted'}), 403
-    client = Client.query.get_or_404(id)
-    data = request.json
-    client.is_trusted = data.get('is_trusted', True)
-    if client.is_trusted:
-        client.trust_score = 100
-    db.session.commit()
-    return jsonify({'status': 'success', 'is_trusted': client.is_trusted})
-
-# Sales
-@app.route('/api/sales', methods=['GET', 'POST'])
-@login_required
-def api_sales():
-    if current_user.role not in ['admin', 'superadmin']:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    if request.method == 'GET':
-        if current_user.role == 'superadmin':
-            sales = Sale.query.order_by(Sale.sale_date.desc()).limit(100).all()
-        else:
-            sales = Sale.query.filter_by(admin_id=current_user.id).order_by(Sale.sale_date.desc()).limit(100).all()
-        return jsonify([s.to_dict() for s in sales])
-    elif request.method == 'POST':
-        data = request.json
-        product = Product.query.get_or_404(data.get('product_id'))
-        client = Client.query.get_or_404(data.get('client_id'))
-        quantity = int(data.get('quantity', 1))
-        unit_price = float(product.price)
-        total_amount = quantity * unit_price
-        discount = float(data.get('discount', 0))
-        final_amount = total_amount - discount
-        
-        sale = Sale(
-            product_id=product.id,
-            client_id=client.id,
-            admin_id=current_user.id if current_user.role == 'admin' else 1,
-            quantity=quantity,
-            unit_price=unit_price,
-            total_amount=total_amount,
-            discount=discount,
-            final_amount=final_amount,
-            payment_method=data.get('payment_method', 'Cash'),
-            payment_status=data.get('payment_status', 'Paid'),
-            notes=data.get('notes')
-        )
-        db.session.add(sale)
-        product.stock_quantity -= quantity
-        client.total_purchases += final_amount
-        client.purchase_count += 1
-        client.last_purchase_date = datetime.utcnow()
-        if client.purchase_count >= 5:
-            client.trust_score = min(client.trust_score + 20, 100)
-        
-        # Income transaction
-        transaction = Transaction(
-            user_id=1,
-            type='income',
-            category='Product Sales',
-            amount=final_amount,
-            description=f"Sale of {product.name} x{quantity} to {client.name}"
-        )
-        db.session.add(transaction)
-        db.session.commit()
-        
-        return jsonify({'status': 'success', 'id': sale.id, 'final_amount': final_amount})
-
-@app.route('/api/sales/report')
-@login_required
-def get_sales_report():
-    user_id = current_user.id
-    is_superadmin = current_user.role == 'superadmin'
-    
-    product_sales = db.session.query(
-        Product.name,
-        func.sum(Sale.quantity).label('total_quantity'),
-        func.sum(Sale.final_amount).label('total_revenue')
-    ).join(Sale, Sale.product_id == Product.id).filter(
-        Sale.admin_id == user_id if not is_superadmin else True
-    ).group_by(Product.id).order_by(func.sum(Sale.final_amount).desc()).all()
-    
-    return jsonify({
-        'product_sales': [{'name': p[0], 'quantity': int(p[1]), 'revenue': float(p[2])} for p in product_sales]
-    })
-
-# Users Management
-@app.route('/api/users', methods=['GET', 'POST', 'DELETE'])
-@login_required
-def api_users():
-    if current_user.role != 'superadmin':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    if request.method == 'GET':
-        users = User.query.all()
-        return jsonify([{
-            'id': u.id,
-            'username': u.username,
-            'email': u.email,
-            'role': u.role,
-            'is_active': u.is_active,
-            'created_at': u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else None
-        } for u in users])
-    elif request.method == 'POST':
-        data = request.json
-        username = data.get('username')
-        password = data.get('password')
-        email = data.get('email')
-        role = data.get('role', 'admin')
-        
-        if not username or not password:
-            return jsonify({'error': 'Username and password required'}), 400
-        if User.query.filter_by(username=username).first():
-            return jsonify({'error': 'Username already exists'}), 400
-        
-        user = User(
-            username=username,
-            email=email,
-            role=role,
-            created_by=current_user.id,
-            is_active=True
-        )
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        return jsonify({'status': 'success', 'id': user.id})
-    elif request.method == 'DELETE':
-        data = request.json
-        user = User.query.get_or_404(data.get('id'))
-        if user.username == 'MCM':
-            return jsonify({'error': 'Cannot delete SuperAdmin'}), 400
-        db.session.delete(user)
-        db.session.commit()
-        return jsonify({'status': 'success'})
-
-# ============================
-# EXISTING API ENDPOINTS
+# OLD FEATURES API - ALL WORKING
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
@@ -1563,6 +1332,232 @@ def export_report(report_type, format):
         output.seek(0)
         return send_file(output, as_attachment=True, download_name=f"{report_type}_{datetime.now().strftime('%Y%m%d')}.xlsx")
     return jsonify({'error': 'Invalid format'}), 400
+
+# ============================
+# NEW FEATURES API - PRODUCTS, CLIENTS, SALES, USERS
+# ============================
+
+@app.route('/api/products', methods=['GET', 'POST', 'DELETE'])
+@login_required
+def api_products():
+    if current_user.role not in ['admin', 'superadmin']:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if request.method == 'GET':
+        if current_user.role == 'superadmin':
+            products = Product.query.filter_by(is_active=True).all()
+        else:
+            products = Product.query.filter_by(admin_id=current_user.id, is_active=True).all()
+        return jsonify([p.to_dict() for p in products])
+    elif request.method == 'POST':
+        data = request.json
+        product = Product(
+            admin_id=current_user.id if current_user.role == 'admin' else 1,
+            name=data.get('name'),
+            description=data.get('description'),
+            price=float(data.get('price', 0)),
+            cost_price=float(data.get('cost_price', 0)),
+            category=data.get('category'),
+            stock_quantity=int(data.get('stock_quantity', 0)),
+            min_stock_level=int(data.get('min_stock_level', 0)),
+            unit=data.get('unit', 'piece')
+        )
+        db.session.add(product)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': product.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        product = Product.query.get_or_404(data.get('id'))
+        if current_user.role != 'superadmin' and product.admin_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        product.is_active = False
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+@app.route('/api/products/<int:id>', methods=['PUT'])
+@login_required
+def update_product(id):
+    product = Product.query.get_or_404(id)
+    if current_user.role != 'superadmin' and product.admin_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.json
+    if 'stock_quantity' in data:
+        product.stock_quantity = int(data['stock_quantity'])
+    if 'price' in data:
+        product.price = float(data['price'])
+    if 'name' in data:
+        product.name = data['name']
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+@app.route('/api/clients', methods=['GET', 'POST', 'DELETE'])
+@login_required
+def api_clients():
+    if current_user.role not in ['admin', 'superadmin']:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if request.method == 'GET':
+        if current_user.role == 'superadmin':
+            clients = Client.query.all()
+        else:
+            clients = Client.query.filter_by(created_by=current_user.id).all()
+        return jsonify([c.to_dict() for c in clients])
+    elif request.method == 'POST':
+        data = request.json
+        client = Client(
+            created_by=current_user.id if current_user.role == 'admin' else 1,
+            name=data.get('name'),
+            phone=data.get('phone'),
+            email=data.get('email'),
+            location=data.get('location'),
+            notes=data.get('notes')
+        )
+        db.session.add(client)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': client.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        client = Client.query.get_or_404(data.get('id'))
+        if current_user.role != 'superadmin' and client.created_by != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(client)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+@app.route('/api/clients/<int:id>/trust', methods=['POST'])
+@login_required
+def mark_client_trusted(id):
+    if current_user.role != 'superadmin':
+        return jsonify({'error': 'Only SuperAdmin can mark trusted'}), 403
+    client = Client.query.get_or_404(id)
+    data = request.json
+    client.is_trusted = data.get('is_trusted', True)
+    if client.is_trusted:
+        client.trust_score = 100
+    db.session.commit()
+    return jsonify({'status': 'success', 'is_trusted': client.is_trusted})
+
+@app.route('/api/sales', methods=['GET', 'POST'])
+@login_required
+def api_sales():
+    if current_user.role not in ['admin', 'superadmin']:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if request.method == 'GET':
+        if current_user.role == 'superadmin':
+            sales = Sale.query.order_by(Sale.sale_date.desc()).limit(100).all()
+        else:
+            sales = Sale.query.filter_by(admin_id=current_user.id).order_by(Sale.sale_date.desc()).limit(100).all()
+        return jsonify([s.to_dict() for s in sales])
+    elif request.method == 'POST':
+        data = request.json
+        product = Product.query.get_or_404(data.get('product_id'))
+        client = Client.query.get_or_404(data.get('client_id'))
+        quantity = int(data.get('quantity', 1))
+        unit_price = float(product.price)
+        total_amount = quantity * unit_price
+        discount = float(data.get('discount', 0))
+        final_amount = total_amount - discount
+        
+        sale = Sale(
+            product_id=product.id,
+            client_id=client.id,
+            admin_id=current_user.id if current_user.role == 'admin' else 1,
+            quantity=quantity,
+            unit_price=unit_price,
+            total_amount=total_amount,
+            discount=discount,
+            final_amount=final_amount,
+            payment_method=data.get('payment_method', 'Cash'),
+            payment_status=data.get('payment_status', 'Paid'),
+            notes=data.get('notes')
+        )
+        db.session.add(sale)
+        product.stock_quantity -= quantity
+        client.total_purchases += final_amount
+        client.purchase_count += 1
+        client.last_purchase_date = datetime.utcnow()
+        if client.purchase_count >= 5:
+            client.trust_score = min(client.trust_score + 20, 100)
+        
+        # Income transaction for SuperAdmin
+        transaction = Transaction(
+            user_id=1,
+            type='income',
+            category='Product Sales',
+            amount=final_amount,
+            description=f"Sale of {product.name} x{quantity} to {client.name}"
+        )
+        db.session.add(transaction)
+        db.session.commit()
+        
+        return jsonify({'status': 'success', 'id': sale.id, 'final_amount': final_amount})
+
+@app.route('/api/sales/report')
+@login_required
+def get_sales_report():
+    user_id = current_user.id
+    is_superadmin = current_user.role == 'superadmin'
+    
+    product_sales = db.session.query(
+        Product.name,
+        func.sum(Sale.quantity).label('total_quantity'),
+        func.sum(Sale.final_amount).label('total_revenue')
+    ).join(Sale, Sale.product_id == Product.id).filter(
+        Sale.admin_id == user_id if not is_superadmin else True
+    ).group_by(Product.id).order_by(func.sum(Sale.final_amount).desc()).all()
+    
+    return jsonify({
+        'product_sales': [{'name': p[0], 'quantity': int(p[1]), 'revenue': float(p[2])} for p in product_sales]
+    })
+
+@app.route('/api/users', methods=['GET', 'POST', 'DELETE'])
+@login_required
+def api_users():
+    if current_user.role != 'superadmin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if request.method == 'GET':
+        users = User.query.all()
+        return jsonify([{
+            'id': u.id,
+            'username': u.username,
+            'email': u.email,
+            'role': u.role,
+            'is_active': u.is_active,
+            'created_at': u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else None
+        } for u in users])
+    elif request.method == 'POST':
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+        email = data.get('email')
+        role = data.get('role', 'admin')
+        
+        if not username or not password:
+            return jsonify({'error': 'Username and password required'}), 400
+        if User.query.filter_by(username=username).first():
+            return jsonify({'error': 'Username already exists'}), 400
+        
+        user = User(
+            username=username,
+            email=email,
+            role=role,
+            created_by=current_user.id,
+            is_active=True
+        )
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': user.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        user = User.query.get_or_404(data.get('id'))
+        if user.username == 'MCM':
+            return jsonify({'error': 'Cannot delete SuperAdmin'}), 400
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'status': 'success'})
 
 # ============================
 # PAGE ROUTES - ALL MODULES
