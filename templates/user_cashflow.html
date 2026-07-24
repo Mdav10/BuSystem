@@ -22,7 +22,6 @@
         .btn-primary { background: #00d4ff; color: #0a0e17; }
         .btn-danger { background: #ff4757; color: white; }
         .btn-success { background: #2ecc71; color: white; }
-        .btn-warning { background: #f39c12; color: white; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a2a3f; padding: 10px; text-align: left; color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
@@ -110,7 +109,6 @@
 
 <script>
     let transactions = [];
-    let summary = {};
 
     async function loadData() {
         await Promise.all([loadTransactions(), loadSummary()]);
