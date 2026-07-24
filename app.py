@@ -323,7 +323,7 @@ class Notification(db.Model):
 
 
 # ============================
-# NEW ADMIN MODELS
+# ADMIN MODELS
 # ============================
 
 class Product(db.Model):
@@ -483,7 +483,7 @@ with app.app_context():
             db.session.commit()
             print("✅ MCM upgraded to SuperAdmin")
     
-    # Create default rules if none exist
+    # Create default rules
     if FinancialRule.query.count() == 0:
         rules = [
             FinancialRule(
@@ -522,7 +522,7 @@ with app.app_context():
         db.session.commit()
         print("✅ Default rules created")
     
-    # Create sample notifications if none exist
+    # Create sample notifications
     if Notification.query.count() == 0:
         notifications = [
             Notification(
@@ -619,9 +619,6 @@ def login():
         
         if user and user.check_password(password):
             login_user(user, remember=True)
-            next_page = request.args.get('next')
-            if next_page:
-                return redirect(next_page)
             if user.is_superadmin():
                 return redirect(url_for('superadmin_dashboard'))
             elif user.is_admin():
@@ -640,7 +637,7 @@ def logout():
 
 
 # ============================
-# USER DASHBOARD - FOR REGULAR USERS
+# USER ROUTES
 # ============================
 
 @app.route('/user/dashboard')
@@ -735,7 +732,7 @@ def user_api_transactions():
 
 
 # ============================
-# SUPERADMIN DASHBOARD - FULL ACCESS
+# SUPERADMIN DASHBOARD
 # ============================
 
 @app.route('/dashboard')
@@ -828,7 +825,6 @@ def superadmin_dashboard():
     if emergency_fund_ratio < 30:
         alerts.append(f"🛡️ Emergency fund is low ({emergency_fund_ratio:.0f}%)")
     
-    # Admin stats
     total_products = Product.query.count()
     total_clients = Client.query.count()
     total_sales = Sale.query.count()
@@ -855,7 +851,7 @@ def superadmin_dashboard():
 
 
 # ============================
-# SUPERADMIN API ROUTES (SHORTENED - ADD ALL YOUR ORIGINAL ROUTES HERE)
+# SUPERADMIN API ROUTES
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
@@ -938,8 +934,7 @@ def sell_investment(id):
     sell_price = float(data.get('sell_price', 0))
     if sell_price <= 0:
         return jsonify({'error': 'Sell price must be greater than 0'}), 400
-    investment.sell_price = sell_price
-    investment.sell_date = datetime.utcnow()
+    investment.sell_price = sell_price    investment.sell_date = datetime.utcnow()
     investment.status = 'Sold'
     investment.profit = sell_price - investment.capital
     investment.roi_actual = (investment.profit / investment.capital) * 100 if investment.capital > 0 else 0
@@ -947,7 +942,493 @@ def sell_investment(id):
     return jsonify({'status': 'success', 'roi': investment.roi_actual, 'profit': investment.profit})
 
 
-# [ADD ALL YOUR OTHER ORIGINAL API ROUTES HERE WITH @superadmin_required]
+@app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
+@login_required
+@superadmin_required
+def api_livestock():
+    if request.method == 'GET':
+        livestock = Livestock.query.filter_by(
+            user_id=current_user.id
+        ).order_by(Livestock.purchase_date.desc()).all()
+        return jsonify([l.to_dict() for l in livestock])
+    elif request.method == 'POST':
+        data = request.json
+        animal = Livestock(
+            user_id=current_user.id,
+            tag=data.get('tag'),
+            type=data.get('type'),
+            breed=data.get('breed'),
+            purchase_price=float(data.get('purchase_price')),
+            current_value=float(data.get('purchase_price')),
+            expected_sell_price=float(data.get('expected_sell_price', 0)),
+            expected_sell_date=datetime.strptime(data.get('expected_sell_date'), '%Y-%m-%d') if data.get('expected_sell_date') else None,
+            notes=data.get('notes')
+        )
+        db.session.add(animal)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': animal.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        animal = Livestock.query.get_or_404(data.get('id'))
+        if animal.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(animal)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+
+@app.route('/api/livestock/<int:id>/sell', methods=['POST'])
+@login_required
+@superadmin_required
+def sell_livestock(id):
+    animal = Livestock.query.get_or_404(id)
+    if animal.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.json
+    sell_price = float(data.get('sell_price', 0))
+    if sell_price <= 0:
+        return jsonify({'error': 'Sell price must be greater than 0'}), 400
+    animal.actual_sell_price = sell_price
+    animal.status = 'Sold'
+    animal.profit = sell_price - animal.purchase_price
+    db.session.commit()
+    return jsonify({'status': 'success', 'profit': animal.profit})
+
+
+@app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
+@login_required
+@superadmin_required
+def api_assets():
+    if request.method == 'GET':
+        assets = Asset.query.filter_by(user_id=current_user.id).all()
+        return jsonify([a.to_dict() for a in assets])
+    elif request.method == 'POST':
+        data = request.json
+        asset = Asset(
+            user_id=current_user.id,
+            name=data.get('name'),
+            category=data.get('category'),
+            sub_category=data.get('sub_category'),
+            purchase_price=float(data.get('purchase_price')),
+            current_value=float(data.get('purchase_price')),
+            depreciation_rate=float(data.get('depreciation_rate', 0)),
+            location=data.get('location'),
+            condition=data.get('condition', 'Good'),
+            notes=data.get('notes')
+        )
+        db.session.add(asset)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': asset.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        asset = Asset.query.get_or_404(data.get('id'))
+        if asset.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(asset)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+
+@app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@login_required
+@superadmin_required
+def api_goals():
+    if request.method == 'GET':
+        goals = Goal.query.filter_by(user_id=current_user.id).all()
+        return jsonify([g.to_dict() for g in goals])
+    elif request.method == 'POST':
+        data = request.json
+        goal = Goal(
+            user_id=current_user.id,
+            name=data.get('name'),
+            target_amount=float(data.get('target_amount')),
+            current_amount=float(data.get('current_amount', 0)),
+            deadline=datetime.strptime(data.get('deadline'), '%Y-%m-%d') if data.get('deadline') else None,
+            category=data.get('category'),
+            priority=int(data.get('priority', 1))
+        )
+        goal.update_progress()
+        db.session.add(goal)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': goal.id})
+    elif request.method == 'PUT':
+        data = request.json
+        goal = Goal.query.get_or_404(data.get('id'))
+        if goal.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        if 'current_amount' in data:
+            goal.current_amount = float(data['current_amount'])
+            goal.update_progress()
+            db.session.commit()
+            return jsonify({'status': 'success', 'progress': goal.progress})
+        return jsonify({'error': 'No update data'}), 400
+    elif request.method == 'DELETE':
+        data = request.json
+        goal = Goal.query.get_or_404(data.get('id'))
+        if goal.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(goal)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+
+@app.route('/api/goals/<int:id>/add', methods=['POST'])
+@login_required
+@superadmin_required
+def add_goal_amount(id):
+    goal = Goal.query.get_or_404(id)
+    if goal.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.json
+    amount = float(data.get('amount', 0))
+    if amount <= 0:
+        return jsonify({'error': 'Amount must be greater than 0'}), 400
+    goal.current_amount += amount
+    goal.update_progress()
+    db.session.commit()
+    return jsonify({'status': 'success', 'current_amount': goal.current_amount, 'progress': goal.progress})
+
+
+@app.route('/api/budget', methods=['GET', 'POST', 'DELETE'])
+@login_required
+@superadmin_required
+def api_budget():
+    if request.method == 'GET':
+        today = datetime.now()
+        budgets = Budget.query.filter_by(
+            user_id=current_user.id,
+            month=today.month,
+            year=today.year
+        ).all()
+        return jsonify([b.to_dict() for b in budgets])
+    elif request.method == 'POST':
+        data = request.json
+        budget = Budget.query.filter_by(
+            user_id=current_user.id,
+            category=data.get('category'),
+            month=data.get('month'),
+            year=data.get('year')
+        ).first()
+        if budget:
+            budget.expected_amount = float(data.get('expected_amount'))
+        else:
+            budget = Budget(
+                user_id=current_user.id,
+                category=data.get('category'),
+                type=data.get('type'),
+                expected_amount=float(data.get('expected_amount')),
+                month=data.get('month'),
+                year=data.get('year')
+            )
+            db.session.add(budget)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    elif request.method == 'DELETE':
+        data = request.json
+        budget = Budget.query.get_or_404(data.get('id'))
+        if budget.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(budget)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+
+@app.route('/api/budget/<int:id>/status', methods=['POST'])
+@login_required
+@superadmin_required
+def update_budget_status(id):
+    budget = Budget.query.get_or_404(id)
+    if budget.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.json
+    status = data.get('status')
+    if status not in ['done', 'not_done', 'pending']:
+        return jsonify({'error': 'Invalid status'}), 400
+    budget.status = status
+    budget.status_updated_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'status': 'success', 'new_status': status})
+
+
+@app.route('/api/liabilities', methods=['GET', 'POST', 'DELETE'])
+@login_required
+@superadmin_required
+def api_liabilities():
+    if request.method == 'GET':
+        liabilities = Liability.query.filter_by(
+            user_id=current_user.id
+        ).order_by(Liability.created_at.desc()).all()
+        return jsonify([l.to_dict() for l in liabilities])
+    elif request.method == 'POST':
+        data = request.json
+        liability = Liability(
+            user_id=current_user.id,
+            type=data.get('type'),
+            name=data.get('name'),
+            description=data.get('description'),
+            amount=float(data.get('amount')),
+            due_date=datetime.strptime(data.get('due_date'), '%Y-%m-%d') if data.get('due_date') else None,
+            status=data.get('status', 'Pending'),
+            notes=data.get('notes')
+        )
+        db.session.add(liability)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': liability.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        liability = Liability.query.get_or_404(data.get('id'))
+        if liability.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(liability)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+
+@app.route('/api/liabilities/<int:id>/paid', methods=['POST'])
+@login_required
+@superadmin_required
+def mark_liability_paid(id):
+    liability = Liability.query.get_or_404(id)
+    if liability.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    liability.status = 'Paid'
+    liability.paid_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+
+@app.route('/api/liabilities/summary')
+@login_required
+@superadmin_required
+def get_liability_summary():
+    user_id = current_user.id
+    total_owed_to_me = db.session.query(func.sum(Liability.amount)).filter(
+        Liability.user_id == user_id, Liability.type == 'owes_me', Liability.status != 'Paid'
+    ).scalar() or 0
+    total_i_owe = db.session.query(func.sum(Liability.amount)).filter(
+        Liability.user_id == user_id, Liability.type == 'i_owe', Liability.status != 'Paid'
+    ).scalar() or 0
+    total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
+    total_income = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'income'
+    ).scalar() or 0
+    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'expense'
+    ).scalar() or 0
+    total_cash = total_income - total_expenses
+    total_equity = total_assets + total_cash - total_i_owe + total_owed_to_me
+    return jsonify({'total_owed_to_me': total_owed_to_me, 'total_i_owe': total_i_owe, 'total_assets': total_assets, 'total_cash': total_cash, 'total_equity': total_equity})
+
+
+@app.route('/api/rules', methods=['GET', 'POST', 'DELETE'])
+@login_required
+@superadmin_required
+def api_rules():
+    if request.method == 'GET':
+        rules = FinancialRule.query.filter_by(user_id=current_user.id, is_active=True).all()
+        return jsonify([r.to_dict() for r in rules])
+    elif request.method == 'POST':
+        data = request.json
+        rule = FinancialRule(
+            user_id=current_user.id,
+            name=data.get('name'),
+            category=data.get('category'),
+            condition_type=data.get('condition_type'),
+            condition_value=float(data.get('condition_value')),
+            condition_operator=data.get('condition_operator'),
+            action_type=data.get('action_type', 'warn'),
+            action_message=data.get('action_message')
+        )
+        db.session.add(rule)
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': rule.id})
+    elif request.method == 'DELETE':
+        data = request.json
+        rule = FinancialRule.query.get_or_404(data.get('id'))
+        if rule.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(rule)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+
+@app.route('/api/rules/check')
+@login_required
+@superadmin_required
+def check_rules():
+    alerts = []
+    user_id = current_user.id
+    today = datetime.now()
+    rules = FinancialRule.query.filter_by(user_id=user_id, is_active=True).all()
+    for rule in rules:
+        if rule.category == 'investment':
+            investments = Investment.query.filter_by(user_id=user_id, status='Running').all()
+            total_capital = sum(i.capital for i in investments)
+            if total_capital > 0:
+                for inv in investments:
+                    percentage = (inv.capital / total_capital) * 100
+                    if rule.condition_operator == '>' and percentage > rule.condition_value:
+                        alerts.append(f"⚠️ {rule.name}: {inv.type} ({inv.investment_id}) exceeds {rule.condition_value}%")
+        elif rule.category == 'spending':
+            monthly_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+                Transaction.user_id == user_id, Transaction.type == 'expense',
+                extract('month', Transaction.date) == today.month
+            ).scalar() or 0
+            monthly_income = db.session.query(func.sum(Transaction.amount)).filter(
+                Transaction.user_id == user_id, Transaction.type == 'income',
+                extract('month', Transaction.date) == today.month
+            ).scalar() or 1
+            spending_ratio = (monthly_expenses / monthly_income) * 100
+            if rule.condition_operator == '>' and spending_ratio > rule.condition_value:
+                alerts.append(f"⚠️ {rule.name}: Spending at {spending_ratio:.1f}% (limit: {rule.condition_value}%)")
+        elif rule.category == 'emergency':
+            total_cash = db.session.query(func.sum(Transaction.amount)).filter(
+                Transaction.user_id == user_id, Transaction.type == 'income'
+            ).scalar() or 0
+            avg_monthly = db.session.query(func.avg(Transaction.amount)).filter(
+                Transaction.user_id == user_id, Transaction.type == 'expense'
+            ).scalar() or 1
+            emergency_months = total_cash / (avg_monthly * 3) if avg_monthly > 0 else 0
+            if rule.condition_operator == '<' and emergency_months < rule.condition_value:
+                alerts.append(f"⚠️ {rule.name}: Emergency fund covers {emergency_months:.1f} months")
+    return jsonify(alerts)
+
+
+@app.route('/api/ratios')
+@login_required
+@superadmin_required
+def calculate_ratios():
+    user_id = current_user.id
+    total_income = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'income'
+    ).scalar() or 1
+    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'expense'
+    ).scalar() or 0
+    total_assets = db.session.query(func.sum(Asset.current_value)).filter(
+        Asset.user_id == user_id
+    ).scalar() or 0
+    sold_investments = Investment.query.filter_by(user_id=user_id, status='Sold').all()
+    total_profit = sum(i.profit for i in sold_investments)
+    total_capital = sum(i.capital for i in sold_investments) or 1
+    savings = total_income - total_expenses
+    return jsonify({
+        'roi': (total_profit / total_capital) * 100,
+        'profit_margin': (savings / total_income) * 100 if total_income > 0 else 0,
+        'savings_ratio': (savings / total_income) * 100 if total_income > 0 else 0,
+        'capital_turnover': (total_income / total_assets) if total_assets > 0 else 0
+    })
+
+
+@app.route('/api/risk')
+@login_required
+@superadmin_required
+def get_risk_analysis():
+    user_id = current_user.id
+    investments = Investment.query.filter_by(user_id=user_id).all()
+    high_risk = len([i for i in investments if i.type in ['Stock', 'Crop']])
+    medium_risk = len([i for i in investments if i.type == 'Business'])
+    low_risk = len([i for i in investments if i.type == 'Animal'])
+    total_income = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'income'
+    ).scalar() or 0
+    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'expense'
+    ).scalar() or 0
+    cash_reserve = total_income - total_expenses
+    return jsonify({
+        'high_risk_investments': high_risk,
+        'medium_risk_investments': medium_risk,
+        'low_risk_investments': low_risk,
+        'cash_reserve': cash_reserve,
+        'diversification_score': min((len(set(i.type for i in investments)) / 4) * 100, 100) if investments else 0,
+        'overall_risk': 'Low' if high_risk < 2 else 'Medium' if high_risk < 5 else 'High'
+    })
+
+
+@app.route('/api/analytics/<chart_type>')
+@login_required
+@superadmin_required
+def get_analytics(chart_type):
+    user_id = current_user.id
+    if chart_type == 'monthly_income':
+        data = db.session.query(
+            extract('month', Transaction.date).label('month'),
+            func.sum(Transaction.amount).label('total')
+        ).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'income',
+            extract('year', Transaction.date) == datetime.now().year
+        ).group_by('month').order_by('month').all()
+        return jsonify([{'month': int(i[0]), 'total': float(i[1])} for i in data])
+    elif chart_type == 'asset_distribution':
+        data = db.session.query(
+            Asset.category,
+            func.sum(Asset.current_value).label('total')
+        ).filter(Asset.user_id == user_id).group_by(Asset.category).all()
+        return jsonify([{'category': i[0], 'total': float(i[1])} for i in data])
+    return jsonify([])
+
+
+@app.route('/api/timeline')
+@login_required
+@superadmin_required
+def get_timeline():
+    user_id = current_user.id
+    events = []
+    for t in Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.desc()).limit(50).all():
+        events.append({'date': t.date.strftime('%Y-%m-%d'), 'type': 'transaction', 'title': f"{t.type.capitalize()}: {t.category}", 'description': f"{t.amount:,.0f} FCFA", 'icon': '💰'})
+    for i in Investment.query.filter_by(user_id=user_id).order_by(Investment.purchase_date.desc()).limit(30).all():
+        events.append({'date': i.purchase_date.strftime('%Y-%m-%d'), 'type': 'investment', 'title': f"Investment: {i.investment_id}", 'description': f"{i.capital:,.0f} FCFA - {i.type}", 'icon': '📊'})
+    for l in Livestock.query.filter_by(user_id=user_id).order_by(Livestock.purchase_date.desc()).limit(30).all():
+        events.append({'date': l.purchase_date.strftime('%Y-%m-%d'), 'type': 'livestock', 'title': f"Added: {l.type} - {l.tag}", 'description': f"Purchased for {l.purchase_price:,.0f} FCFA", 'icon': '🐄'})
+    for g in Goal.query.filter_by(user_id=user_id).order_by(Goal.created_at.desc()).limit(20).all():
+        events.append({'date': g.created_at.strftime('%Y-%m-%d'), 'type': 'goal', 'title': f"Goal: {g.name}", 'description': f"Target: {g.target_amount:,.0f} FCFA ({g.progress:.0f}%)", 'icon': '🎯'})
+    events.sort(key=lambda x: x['date'], reverse=True)
+    return jsonify(events[:100])
+
+
+@app.route('/api/decisions')
+@login_required
+@superadmin_required
+def get_decisions():
+    recommendations = []
+    user_id = current_user.id
+    today = datetime.now()
+    best_type = db.session.query(
+        Livestock.type,
+        func.avg(Livestock.profit).label('avg_profit')
+    ).filter(
+        Livestock.user_id == user_id,
+        Livestock.status == 'Sold'
+    ).group_by(Livestock.type).order_by(func.avg(Livestock.profit).desc()).first()
+    if best_type and best_type[1] > 0:
+        recommendations.append({'title': f'📈 Focus on {best_type[0]}', 'message': f'Your {best_type[0]} investments show the highest average profit.', 'type': 'opportunity'})
+    over_budget = Budget.query.filter(
+        Budget.user_id == user_id,
+        Budget.month == today.month,
+        Budget.year == today.year,
+        Budget.actual_amount > Budget.expected_amount
+    ).all()
+    for b in over_budget[:3]:
+        recommendations.append({'title': f'⚠️ Reduce {b.category} spending', 'message': f'Exceeded by {b.actual_amount - b.expected_amount:,.0f} FCFA.', 'type': 'warning'})
+    total_cash = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'income'
+    ).scalar() or 0
+    if total_cash > 500000:
+        recommendations.append({'title': '💰 Investment Opportunity', 'message': f'You have {total_cash:,.0f} FCFA in cash.', 'type': 'opportunity'})
+    return jsonify(recommendations[:5])
+
+
+@app.route('/api/notifications')
+@login_required
+@superadmin_required
+def get_notifications():
+    notifications = Notification.query.filter_by(
+        user_id=current_user.id,
+        is_read=False
+    ).order_by(Notification.created_at.desc()).limit(20).all()
+    return jsonify([n.to_dict() for n in notifications])
 
 
 # ============================
@@ -1083,7 +1564,14 @@ def admin_panel():
         sale.product = Product.query.get(sale.product_id)
         sale.client = Client.query.get(sale.client_id) if sale.client_id else None
         sale.final_amount = sale.final_total
-    return render_template('admin_dashboard.html', user=current_user, total_products=total_products, total_clients=total_clients, total_sales=total_sales, total_revenue=total_revenue, recent_sales=recent_sales)
+    return render_template('admin_dashboard.html',
+        user=current_user,
+        total_products=total_products,
+        total_clients=total_clients,
+        total_sales=total_sales,
+        total_revenue=total_revenue,
+        recent_sales=recent_sales
+    )
 
 
 @app.route('/admin/products')
