@@ -977,7 +977,7 @@ def sell_investment(id):
 
 
 # ============================
-# LIVESTOCK API
+# LIVESTOCK API - YOUR WORKING CODE
 # ============================
 
 @app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
@@ -1019,35 +1019,30 @@ def api_livestock():
 @login_required
 @superadmin_required
 def sell_livestock(id):
-    try:
-        animal = Livestock.query.get_or_404(id)
-        if animal.user_id != current_user.id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        data = request.json
-        sell_price = float(data.get('sell_price', 0))
-        
-        if sell_price <= 0:
-            return jsonify({'error': 'Sell price must be greater than 0'}), 400
-        
-        animal.actual_sell_price = sell_price
-        animal.status = 'Sold'
-        animal.profit = sell_price - animal.purchase_price
-        
-        db.session.commit()
-        
-        return jsonify({
-            'status': 'success',
-            'profit': animal.profit,
-            'sell_price': animal.actual_sell_price
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+    animal = Livestock.query.get_or_404(id)
+    if animal.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.json
+    sell_price = float(data.get('sell_price', 0))
+    
+    if sell_price <= 0:
+        return jsonify({'error': 'Sell price must be greater than 0'}), 400
+    
+    animal.actual_sell_price = sell_price
+    animal.status = 'Sold'
+    animal.profit = sell_price - animal.purchase_price
+    
+    db.session.commit()
+    return jsonify({
+        'status': 'success',
+        'profit': animal.profit,
+        'sell_price': animal.actual_sell_price
+    })
 
 
 # ============================
-# ASSETS API
+# ASSETS API - YOUR WORKING CODE
 # ============================
 
 @app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
@@ -1085,7 +1080,7 @@ def api_assets():
 
 
 # ============================
-# GOALS API
+# GOALS API - YOUR WORKING CODE
 # ============================
 
 @app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
@@ -1135,34 +1130,30 @@ def api_goals():
 @login_required
 @superadmin_required
 def add_goal_amount(id):
-    try:
-        goal = Goal.query.get_or_404(id)
-        if goal.user_id != current_user.id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        data = request.json
-        amount = float(data.get('amount', 0))
-        
-        if amount <= 0:
-            return jsonify({'error': 'Amount must be greater than 0'}), 400
-        
-        goal.current_amount += amount
-        goal.update_progress()
-        db.session.commit()
-        
-        return jsonify({
-            'status': 'success',
-            'current_amount': goal.current_amount,
-            'progress': goal.progress,
-            'remaining': goal.target_amount - goal.current_amount
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+    goal = Goal.query.get_or_404(id)
+    if goal.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.json
+    amount = float(data.get('amount', 0))
+    
+    if amount <= 0:
+        return jsonify({'error': 'Amount must be greater than 0'}), 400
+    
+    goal.current_amount += amount
+    goal.update_progress()
+    db.session.commit()
+    
+    return jsonify({
+        'status': 'success',
+        'current_amount': goal.current_amount,
+        'progress': goal.progress,
+        'remaining': goal.target_amount - goal.current_amount
+    })
 
 
 # ============================
-# BUDGET API
+# BUDGET API - YOUR WORKING CODE
 # ============================
 
 @app.route('/api/budget', methods=['GET', 'POST', 'DELETE'])
@@ -1235,7 +1226,7 @@ def update_budget_status(id):
 
 
 # ============================
-# LIABILITIES API
+# LIABILITIES API - YOUR WORKING CODE
 # ============================
 
 @app.route('/api/liabilities', methods=['GET', 'POST', 'DELETE'])
@@ -1615,7 +1606,7 @@ def get_notifications():
 
 
 # ============================
-# REPORTS API
+# REPORTS API - YOUR WORKING CODE (FIXED CURRENCY TO BIF)
 # ============================
 
 @app.route('/api/reports/<report_type>')
@@ -1623,45 +1614,39 @@ def get_notifications():
 @superadmin_required
 def get_report_data(report_type):
     user_id = current_user.id
-    
-    # Get all transactions for this user
-    all_transactions = Transaction.query.filter_by(user_id=user_id).all()
-    
     if report_type == 'income_statement':
-        total_income = sum(t.amount for t in all_transactions if t.type == 'income')
-        total_expenses = sum(t.amount for t in all_transactions if t.type == 'expense')
-        net_income = total_income - total_expenses
-        
-        # Group by category
-        income_by_category = {}
-        expense_by_category = {}
-        for t in all_transactions:
-            if t.type == 'income':
-                income_by_category[t.category] = income_by_category.get(t.category, 0) + t.amount
-            else:
-                expense_by_category[t.category] = expense_by_category.get(t.category, 0) + t.amount
-        
+        income = db.session.query(
+            func.sum(Transaction.amount).label('total'),
+            Transaction.category
+        ).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'income'
+        ).group_by(Transaction.category).all()
+        expenses = db.session.query(
+            func.sum(Transaction.amount).label('total'),
+            Transaction.category
+        ).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'expense'
+        ).group_by(Transaction.category).all()
         return jsonify({
-            'total_income': total_income,
-            'total_expenses': total_expenses,
-            'net_income': net_income,
-            'income_by_category': income_by_category,
-            'expense_by_category': expense_by_category
+            'income': [{'category': i[1], 'total': float(i[0])} for i in income],
+            'expenses': [{'category': i[1], 'total': float(i[0])} for i in expenses]
         })
-    
     elif report_type == 'balance_sheet':
         total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
-        total_income = sum(t.amount for t in all_transactions if t.type == 'income')
-        total_expenses = sum(t.amount for t in all_transactions if t.type == 'expense')
-        net_worth = total_assets + total_income - total_expenses
-        
+        total_income = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'income'
+        ).scalar() or 0
+        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'expense'
+        ).scalar() or 0
         return jsonify({
             'total_assets': total_assets,
             'total_income': total_income,
             'total_expenses': total_expenses,
-            'net_worth': net_worth
+            'net_worth': total_assets + total_income - total_expenses
         })
-    
     return jsonify({'error': 'Invalid report type'}), 400
 
 
@@ -1670,10 +1655,6 @@ def get_report_data(report_type):
 @superadmin_required
 def export_report(report_type, format):
     user_id = current_user.id
-    
-    # Get all transactions
-    all_transactions = Transaction.query.filter_by(user_id=user_id).all()
-    
     if format == 'pdf':
         from reportlab.lib.pagesizes import A4
         from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
@@ -1692,12 +1673,15 @@ def export_report(report_type, format):
         story.append(Paragraph(f"User: {current_user.username}", styles['Normal']))
         story.append(Spacer(1, 0.3*inch))
         
-        # EXECUTIVE SUMMARY
         story.append(Paragraph("<b>📊 EXECUTIVE SUMMARY</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
         
-        total_income = sum(t.amount for t in all_transactions if t.type == 'income')
-        total_expenses = sum(t.amount for t in all_transactions if t.type == 'expense')
+        total_income = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'income'
+        ).scalar() or 0
+        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id, Transaction.type == 'expense'
+        ).scalar() or 0
         total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
         total_investments = db.session.query(func.sum(Investment.capital)).filter(
             Investment.user_id == user_id, Investment.status == 'Running'
@@ -1747,9 +1731,10 @@ def export_report(report_type, format):
         story.append(Paragraph("<b>💰 TRANSACTIONS</b>", styles['Heading2']))
         story.append(Spacer(1, 0.1*inch))
         
-        if all_transactions:
+        transactions = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.desc()).limit(200).all()
+        if transactions:
             tx_data = [['Date', 'Type', 'Category', 'Amount', 'Description']]
-            for t in all_transactions[:200]:
+            for t in transactions:
                 tx_data.append([
                     t.date.strftime('%Y-%m-%d'),
                     t.type.capitalize(),
@@ -1773,7 +1758,227 @@ def export_report(report_type, format):
             story.append(Paragraph("No transactions found.", styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # Continue with other sections...
+        story.append(PageBreak())
+        story.append(Paragraph("<b>📈 INVESTMENTS</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        investments = Investment.query.filter_by(user_id=user_id).all()
+        if investments:
+            inv_data = [['ID', 'Type', 'Capital', 'Status', 'Profit', 'ROI']]
+            for i in investments:
+                inv_data.append([
+                    i.investment_id,
+                    f"{i.type}{' ('+i.sub_type+')' if i.sub_type else ''}",
+                    f"{i.capital:,.0f}",
+                    i.status,
+                    f"{i.profit:,.0f}",
+                    f"{i.roi_actual:.1f}%" if i.roi_actual else '-'
+                ])
+            inv_table = Table(inv_data, colWidths=[1*inch, 1.5*inch, 1.2*inch, 1*inch, 1.2*inch, 1*inch])
+            inv_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(inv_table)
+        else:
+            story.append(Paragraph("No investments found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        story.append(PageBreak())
+        story.append(Paragraph("<b>🐄 LIVESTOCK</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        livestock = Livestock.query.filter_by(user_id=user_id).all()
+        if livestock:
+            ls_data = [['Tag', 'Type', 'Breed', 'Purchase Price', 'Status', 'Profit']]
+            for l in livestock:
+                ls_data.append([
+                    l.tag,
+                    l.type,
+                    l.breed or '-',
+                    f"{l.purchase_price:,.0f}",
+                    l.status,
+                    f"{l.profit:,.0f}" if l.profit else '-'
+                ])
+            ls_table = Table(ls_data, colWidths=[0.8*inch, 1*inch, 1*inch, 1.2*inch, 1*inch, 1.2*inch])
+            ls_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(ls_table)
+        else:
+            story.append(Paragraph("No livestock found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        story.append(PageBreak())
+        story.append(Paragraph("<b>🏦 ASSETS</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        assets = Asset.query.filter_by(user_id=user_id).all()
+        if assets:
+            asset_data = [['Name', 'Category', 'Purchase Price', 'Current Value', 'Condition']]
+            for a in assets:
+                asset_data.append([
+                    a.name,
+                    a.category,
+                    f"{a.purchase_price:,.0f}",
+                    f"{a.current_value:,.0f}",
+                    a.condition
+                ])
+            asset_table = Table(asset_data, colWidths=[1.5*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1*inch])
+            asset_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(asset_table)
+        else:
+            story.append(Paragraph("No assets found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        story.append(PageBreak())
+        story.append(Paragraph("<b>🎯 GOALS</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        goals = Goal.query.filter_by(user_id=user_id).all()
+        if goals:
+            goal_data = [['Name', 'Target', 'Current', 'Progress', 'Status']]
+            for g in goals:
+                goal_data.append([
+                    g.name,
+                    f"{g.target_amount:,.0f}",
+                    f"{g.current_amount:,.0f}",
+                    f"{g.progress:.0f}%",
+                    g.status
+                ])
+            goal_table = Table(goal_data, colWidths=[1.5*inch, 1.2*inch, 1.2*inch, 1*inch, 1.2*inch])
+            goal_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(goal_table)
+        else:
+            story.append(Paragraph("No goals found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        story.append(PageBreak())
+        story.append(Paragraph("<b>📋 BUDGETS</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        all_budgets = Budget.query.filter_by(user_id=user_id).order_by(Budget.year.desc(), Budget.month.desc()).all()
+        if all_budgets:
+            budget_data = [['Category', 'Type', 'Month/Year', 'Expected', 'Actual', 'Difference', 'Status']]
+            for b in all_budgets:
+                month_name = datetime(b.year, b.month, 1).strftime('%B %Y')
+                budget_data.append([
+                    b.category,
+                    b.type,
+                    month_name,
+                    f"{b.expected_amount:,.0f}",
+                    f"{b.actual_amount:,.0f}",
+                    f"{b.difference:+,.0f}",
+                    b.status or 'pending'
+                ])
+            budget_table = Table(budget_data, colWidths=[1.2*inch, 1*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1*inch])
+            budget_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(budget_table)
+        else:
+            story.append(Paragraph("No budgets found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        story.append(PageBreak())
+        story.append(Paragraph("<b>📋 LIABILITIES</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        liabilities = Liability.query.filter_by(user_id=user_id).all()
+        if liabilities:
+            liability_data = [['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']]
+            for l in liabilities:
+                liability_data.append([
+                    'Owed to Me' if l.type == 'owes_me' else 'I Owe',
+                    l.name,
+                    l.description or '-',
+                    f"{l.amount:,.0f}",
+                    l.due_date.strftime('%Y-%m-%d') if l.due_date else '-',
+                    l.status
+                ])
+            liability_table = Table(liability_data, colWidths=[1.2*inch, 1.2*inch, 1.5*inch, 1.2*inch, 1.2*inch, 1*inch])
+            liability_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(liability_table)
+        else:
+            story.append(Paragraph("No liabilities found.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        story.append(PageBreak())
+        story.append(Paragraph("<b>📏 FINANCIAL RULES</b>", styles['Heading2']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        rules = FinancialRule.query.filter_by(user_id=user_id, is_active=True).all()
+        if rules:
+            rule_data = [['Name', 'Category', 'Condition', 'Message']]
+            for r in rules:
+                rule_data.append([
+                    r.name,
+                    r.category,
+                    f"{r.condition_type} {r.condition_operator} {r.condition_value}",
+                    r.action_message or '-'
+                ])
+            rule_table = Table(rule_data, colWidths=[1.5*inch, 1.2*inch, 1.5*inch, 2*inch])
+            rule_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(rule_table)
+        else:
+            story.append(Paragraph("No rules found.", styles['Normal']))
+        
         story.append(Spacer(1, 0.5*inch))
         footer_style = ParagraphStyle('Footer', fontSize=10, alignment=1, textColor=colors.HexColor('#4a5a6f'))
         story.append(Paragraph("BuSystem v1.0 • Every Franc Must Have a Job", footer_style))
@@ -1793,12 +1998,105 @@ def export_report(report_type, format):
         headers = ['Date', 'Type', 'Category', 'Amount', 'Description']
         for col, header in enumerate(headers):
             worksheet1.write(0, col, header)
-        for row, t in enumerate(all_transactions, 1):
+        transactions = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.desc()).all()
+        for row, t in enumerate(transactions, 1):
             worksheet1.write(row, 0, t.date.strftime('%Y-%m-%d'))
             worksheet1.write(row, 1, t.type)
             worksheet1.write(row, 2, t.category)
             worksheet1.write(row, 3, t.amount)
             worksheet1.write(row, 4, t.description or '')
+        
+        worksheet2 = workbook.add_worksheet('Investments')
+        headers2 = ['ID', 'Type', 'Sub Type', 'Capital', 'Status', 'Profit', 'ROI']
+        for col, header in enumerate(headers2):
+            worksheet2.write(0, col, header)
+        investments = Investment.query.filter_by(user_id=user_id).all()
+        for row, i in enumerate(investments, 1):
+            worksheet2.write(row, 0, i.investment_id)
+            worksheet2.write(row, 1, i.type)
+            worksheet2.write(row, 2, i.sub_type or '')
+            worksheet2.write(row, 3, i.capital)
+            worksheet2.write(row, 4, i.status)
+            worksheet2.write(row, 5, i.profit)
+            worksheet2.write(row, 6, i.roi_actual)
+        
+        worksheet3 = workbook.add_worksheet('Livestock')
+        headers3 = ['Tag', 'Type', 'Breed', 'Purchase Price', 'Status', 'Profit']
+        for col, header in enumerate(headers3):
+            worksheet3.write(0, col, header)
+        livestock = Livestock.query.filter_by(user_id=user_id).all()
+        for row, l in enumerate(livestock, 1):
+            worksheet3.write(row, 0, l.tag)
+            worksheet3.write(row, 1, l.type)
+            worksheet3.write(row, 2, l.breed or '')
+            worksheet3.write(row, 3, l.purchase_price)
+            worksheet3.write(row, 4, l.status)
+            worksheet3.write(row, 5, l.profit or 0)
+        
+        worksheet4 = workbook.add_worksheet('Assets')
+        headers4 = ['Name', 'Category', 'Purchase Price', 'Current Value', 'Condition']
+        for col, header in enumerate(headers4):
+            worksheet4.write(0, col, header)
+        assets = Asset.query.filter_by(user_id=user_id).all()
+        for row, a in enumerate(assets, 1):
+            worksheet4.write(row, 0, a.name)
+            worksheet4.write(row, 1, a.category)
+            worksheet4.write(row, 2, a.purchase_price)
+            worksheet4.write(row, 3, a.current_value)
+            worksheet4.write(row, 4, a.condition)
+        
+        worksheet5 = workbook.add_worksheet('Goals')
+        headers5 = ['Name', 'Target', 'Current', 'Progress', 'Status']
+        for col, header in enumerate(headers5):
+            worksheet5.write(0, col, header)
+        goals = Goal.query.filter_by(user_id=user_id).all()
+        for row, g in enumerate(goals, 1):
+            worksheet5.write(row, 0, g.name)
+            worksheet5.write(row, 1, g.target_amount)
+            worksheet5.write(row, 2, g.current_amount)
+            worksheet5.write(row, 3, g.progress)
+            worksheet5.write(row, 4, g.status)
+        
+        worksheet6 = workbook.add_worksheet('Budgets')
+        headers6 = ['Category', 'Type', 'Month', 'Year', 'Expected', 'Actual', 'Difference', 'Status']
+        for col, header in enumerate(headers6):
+            worksheet6.write(0, col, header)
+        budgets = Budget.query.filter_by(user_id=user_id).all()
+        for row, b in enumerate(budgets, 1):
+            worksheet6.write(row, 0, b.category)
+            worksheet6.write(row, 1, b.type)
+            worksheet6.write(row, 2, b.month)
+            worksheet6.write(row, 3, b.year)
+            worksheet6.write(row, 4, b.expected_amount)
+            worksheet6.write(row, 5, b.actual_amount)
+            worksheet6.write(row, 6, b.difference)
+            worksheet6.write(row, 7, b.status or 'pending')
+        
+        worksheet7 = workbook.add_worksheet('Liabilities')
+        headers7 = ['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']
+        for col, header in enumerate(headers7):
+            worksheet7.write(0, col, header)
+        liabilities = Liability.query.filter_by(user_id=user_id).all()
+        for row, l in enumerate(liabilities, 1):
+            worksheet7.write(row, 0, 'Owed to Me' if l.type == 'owes_me' else 'I Owe')
+            worksheet7.write(row, 1, l.name)
+            worksheet7.write(row, 2, l.description or '')
+            worksheet7.write(row, 3, l.amount)
+            worksheet7.write(row, 4, l.due_date.strftime('%Y-%m-%d') if l.due_date else '')
+            worksheet7.write(row, 5, l.status)
+        
+        worksheet8 = workbook.add_worksheet('Rules')
+        headers8 = ['Name', 'Category', 'Condition Type', 'Condition Value', 'Operator', 'Message']
+        for col, header in enumerate(headers8):
+            worksheet8.write(0, col, header)
+        rules = FinancialRule.query.filter_by(user_id=user_id, is_active=True).all()
+        for row, r in enumerate(rules, 1):
+            worksheet8.write(row, 0, r.name)
+            worksheet8.write(row, 1, r.category)
+            worksheet8.write(row, 2, r.condition_type)
+            worksheet8.write(row, 3, r.condition_value)
+            worksheet8.write(row, 4, r.condition_operator)
+            worksheet8.write(row, 5, r.action_message or '')
         
         workbook.close()
         output.seek(0)
@@ -2026,7 +2324,6 @@ def api_admin_products():
     elif request.method == 'DELETE':
         data = request.json
         product = Product.query.get_or_404(data.get('id'))
-        # Delete all sales for this product first
         Sale.query.filter_by(product_id=product.id).delete()
         db.session.commit()
         db.session.delete(product)
@@ -2068,7 +2365,6 @@ def api_admin_clients():
     elif request.method == 'DELETE':
         data = request.json
         client = Client.query.get_or_404(data.get('id'))
-        # Update sales to have no client
         Sale.query.filter_by(client_id=client.id).update({'client_id': None})
         db.session.commit()
         db.session.delete(client)
@@ -2136,7 +2432,6 @@ def api_admin_sales():
     elif request.method == 'DELETE':
         data = request.json
         sale = Sale.query.get_or_404(data.get('id'))
-        # Restore product stock
         product = Product.query.get(sale.product_id)
         if product:
             product.stock += sale.quantity
