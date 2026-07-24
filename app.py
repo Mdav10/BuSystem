@@ -1041,8 +1041,9 @@ def sell_livestock(id):
     })
 
 
+
 # ============================
-# ASSETS API - YOUR WORKING CODE
+# ASSETS API - FIXED
 # ============================
 
 @app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
@@ -1054,13 +1055,16 @@ def api_assets():
         return jsonify([a.to_dict() for a in assets])
     elif request.method == 'POST':
         data = request.json
+        # Use the provided current_value, or fall back to purchase_price if not provided
+        current_value = float(data.get('current_value', data.get('purchase_price', 0)))
+        
         asset = Asset(
             user_id=current_user.id,
             name=data.get('name'),
             category=data.get('category'),
             sub_category=data.get('sub_category'),
             purchase_price=float(data.get('purchase_price')),
-            current_value=float(data.get('purchase_price')),
+            current_value=current_value,
             depreciation_rate=float(data.get('depreciation_rate', 0)),
             location=data.get('location'),
             condition=data.get('condition', 'Good'),
@@ -1077,6 +1081,7 @@ def api_assets():
         db.session.delete(asset)
         db.session.commit()
         return jsonify({'status': 'success'})
+
 
 
 # ============================
