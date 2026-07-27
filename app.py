@@ -7,7 +7,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
-from sqlalchemy import func, extract, text
+from sqlalchemy import func, extract, text, and_, or_
 import json
 import random
 
@@ -855,7 +855,7 @@ def superadmin_dashboard():
 
 
 # ============================
-# TRANSACTIONS API
+# ALL ORIGINAL API ROUTES
 # ============================
 
 @app.route('/api/transactions', methods=['GET', 'POST', 'DELETE'])
@@ -905,10 +905,6 @@ def api_transactions():
         db.session.commit()
         return jsonify({'status': 'success'})
 
-
-# ============================
-# INVESTMENTS API
-# ============================
 
 @app.route('/api/investments', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -976,10 +972,6 @@ def sell_investment(id):
     })
 
 
-# ============================
-# LIVESTOCK API - YOUR WORKING CODE
-# ============================
-
 @app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1041,11 +1033,6 @@ def sell_livestock(id):
     })
 
 
-
-# ============================
-# ASSETS API - FIXED
-# ============================
-
 @app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1055,9 +1042,7 @@ def api_assets():
         return jsonify([a.to_dict() for a in assets])
     elif request.method == 'POST':
         data = request.json
-        # Use the provided current_value, or fall back to purchase_price if not provided
         current_value = float(data.get('current_value', data.get('purchase_price', 0)))
-        
         asset = Asset(
             user_id=current_user.id,
             name=data.get('name'),
@@ -1082,11 +1067,6 @@ def api_assets():
         db.session.commit()
         return jsonify({'status': 'success'})
 
-
-
-# ============================
-# GOALS API - YOUR WORKING CODE
-# ============================
 
 @app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
@@ -1157,10 +1137,6 @@ def add_goal_amount(id):
     })
 
 
-# ============================
-# BUDGET API - YOUR WORKING CODE
-# ============================
-
 @app.route('/api/budget', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1229,10 +1205,6 @@ def update_budget_status(id):
         'updated_at': budget.status_updated_at.strftime('%Y-%m-%d %H:%M')
     })
 
-
-# ============================
-# LIABILITIES API - YOUR WORKING CODE
-# ============================
 
 @app.route('/api/liabilities', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -1331,10 +1303,6 @@ def get_liability_summary():
         'net_position': total_owed_to_me - total_i_owe
     })
 
-
-# ============================
-# RULES API
-# ============================
 
 @app.route('/api/rules', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -1444,7 +1412,7 @@ def calculate_ratios():
 
 
 # ============================
-# RISK API
+# ENHANCED RISK API - PROFESSIONAL LEVEL
 # ============================
 
 @app.route('/api/risk')
@@ -1452,10 +1420,37 @@ def calculate_ratios():
 @superadmin_required
 def get_risk_analysis():
     user_id = current_user.id
+    today = datetime.now()
+    
+    # Investment Risk Analysis
     investments = Investment.query.filter_by(user_id=user_id).all()
-    high_risk = len([i for i in investments if i.type in ['Stock', 'Crop']])
-    medium_risk = len([i for i in investments if i.type == 'Business'])
-    low_risk = len([i for i in investments if i.type == 'Animal'])
+    running_investments = [i for i in investments if i.status == 'Running']
+    sold_investments = [i for i in investments if i.status == 'Sold']
+    
+    # Risk classification by type
+    high_risk_types = ['Stock', 'Crop', 'Cryptocurrency']
+    medium_risk_types = ['Business', 'Real Estate']
+    low_risk_types = ['Animal', 'Bonds', 'Savings']
+    
+    high_risk = len([i for i in running_investments if i.type in high_risk_types])
+    medium_risk = len([i for i in running_investments if i.type in medium_risk_types])
+    low_risk = len([i for i in running_investments if i.type in low_risk_types])
+    
+    # Calculate risk exposure (capital at risk)
+    high_risk_capital = sum(i.capital for i in running_investments if i.type in high_risk_types)
+    medium_risk_capital = sum(i.capital for i in running_investments if i.type in medium_risk_types)
+    low_risk_capital = sum(i.capital for i in running_investments if i.type in low_risk_types)
+    total_invested = high_risk_capital + medium_risk_capital + low_risk_capital
+    
+    # Risk concentration (max single investment)
+    max_investment = max(running_investments, key=lambda x: x.capital) if running_investments else None
+    concentration_risk = (max_investment.capital / total_invested * 100) if total_invested > 0 and max_investment else 0
+    
+    # Diversification score
+    unique_types = set(i.type for i in running_investments)
+    diversification_score = min((len(unique_types) / 4) * 100, 100) if running_investments else 0
+    
+    # Financial Health Risk
     total_income = db.session.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == user_id, Transaction.type == 'income'
     ).scalar() or 0
@@ -1463,13 +1458,118 @@ def get_risk_analysis():
         Transaction.user_id == user_id, Transaction.type == 'expense'
     ).scalar() or 0
     cash_reserve = total_income - total_expenses
+    
+    # Monthly burn rate (average monthly expenses)
+    monthly_expenses = db.session.query(func.avg(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'expense'
+    ).scalar() or 0
+    months_of_runway = cash_reserve / monthly_expenses if monthly_expenses > 0 else 999
+    
+    # Debt-to-equity ratio
+    total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
+    total_liabilities = db.session.query(func.sum(Liability.amount)).filter(
+        Liability.user_id == user_id, Liability.type == 'i_owe', Liability.status != 'Paid'
+    ).scalar() or 0
+    debt_to_equity = total_liabilities / total_assets if total_assets > 0 else 0
+    
+    # Liquidity risk (cash vs short-term obligations)
+    total_owed_to_me = db.session.query(func.sum(Liability.amount)).filter(
+        Liability.user_id == user_id, Liability.type == 'owes_me', Liability.status != 'Paid'
+    ).scalar() or 0
+    
+    # Overall risk level calculation
+    risk_score = 0
+    risk_factors = []
+    
+    if high_risk > 2:
+        risk_score += 30
+        risk_factors.append(f"High risk investments: {high_risk} investments")
+    elif high_risk > 0:
+        risk_score += 15
+        risk_factors.append(f"Some high risk investments: {high_risk}")
+    
+    if concentration_risk > 50:
+        risk_score += 25
+        risk_factors.append(f"High concentration risk: {concentration_risk:.1f}% in single investment")
+    elif concentration_risk > 30:
+        risk_score += 10
+        risk_factors.append(f"Moderate concentration risk: {concentration_risk:.1f}%")
+    
+    if debt_to_equity > 1:
+        risk_score += 20
+        risk_factors.append(f"High debt-to-equity ratio: {debt_to_equity:.2f}")
+    elif debt_to_equity > 0.5:
+        risk_score += 10
+        risk_factors.append(f"Moderate debt-to-equity ratio: {debt_to_equity:.2f}")
+    
+    if months_of_runway < 3:
+        risk_score += 25
+        risk_factors.append(f"Low cash runway: {months_of_runway:.1f} months")
+    elif months_of_runway < 6:
+        risk_score += 10
+        risk_factors.append(f"Limited cash runway: {months_of_runway:.1f} months")
+    
+    if diversification_score < 40:
+        risk_score += 15
+        risk_factors.append(f"Low diversification: {diversification_score:.0f}%")
+    
+    # Determine overall risk level
+    if risk_score >= 60:
+        overall_risk = 'Critical'
+        risk_color = '#ff4757'
+    elif risk_score >= 40:
+        overall_risk = 'High'
+        risk_color = '#ff6b6b'
+    elif risk_score >= 25:
+        overall_risk = 'Medium'
+        risk_color = '#f39c12'
+    elif risk_score >= 10:
+        overall_risk = 'Low'
+        risk_color = '#2ecc71'
+    else:
+        overall_risk = 'Very Low'
+        risk_color = '#00d4ff'
+    
+    # Risk recommendations
+    recommendations = []
+    if high_risk > 0:
+        recommendations.append(f"Consider reducing high-risk investments ({high_risk}) by diversifying into lower-risk assets.")
+    if concentration_risk > 40:
+        recommendations.append(f"Reduce concentration risk - no single investment should exceed 40% of your portfolio.")
+    if debt_to_equity > 0.7:
+        recommendations.append(f"Pay down debt to improve your debt-to-equity ratio of {debt_to_equity:.2f}.")
+    if months_of_runway < 6:
+        recommendations.append(f"Build more cash reserves - you have {months_of_runway:.1f} months of runway.")
+    if diversification_score < 50:
+        recommendations.append(f"Improve diversification - invest in at least 3 different investment types.")
+    
     return jsonify({
         'high_risk_investments': high_risk,
         'medium_risk_investments': medium_risk,
         'low_risk_investments': low_risk,
+        'high_risk_capital': high_risk_capital,
+        'medium_risk_capital': medium_risk_capital,
+        'low_risk_capital': low_risk_capital,
+        'total_invested': total_invested,
+        'concentration_risk': round(concentration_risk, 1),
+        'diversification_score': round(diversification_score, 1),
         'cash_reserve': cash_reserve,
-        'diversification_score': min((len(set(i.type for i in investments)) / 4) * 100, 100) if investments else 0,
-        'overall_risk': 'Low' if high_risk < 2 else 'Medium' if high_risk < 5 else 'High'
+        'months_of_runway': round(months_of_runway, 1),
+        'debt_to_equity': round(debt_to_equity, 3),
+        'total_owed_to_me': total_owed_to_me,
+        'total_liabilities': total_liabilities,
+        'risk_score': risk_score,
+        'overall_risk': overall_risk,
+        'risk_color': risk_color,
+        'risk_factors': risk_factors,
+        'recommendations': recommendations[:5],
+        'risk_breakdown': {
+            'Investment Risk': min(high_risk * 10, 100),
+            'Concentration Risk': min(concentration_risk * 2, 100),
+            'Debt Risk': min(debt_to_equity * 50, 100),
+            'Liquidity Risk': max(0, 100 - min(months_of_runway * 15, 100)),
+            'Diversification Risk': max(0, 100 - diversification_score)
+        }
     })
 
 
@@ -1548,7 +1648,7 @@ def get_timeline():
 
 
 # ============================
-# DECISIONS API
+# ENHANCED AI DECISIONS - FULL SYSTEM CONTROL
 # ============================
 
 @app.route('/api/decisions')
@@ -1558,60 +1658,528 @@ def get_decisions():
     recommendations = []
     user_id = current_user.id
     today = datetime.now()
-    best_type = db.session.query(
-        Livestock.type,
-        func.avg(Livestock.profit).label('avg_profit')
-    ).filter(
-        Livestock.user_id == user_id,
-        Livestock.status == 'Sold'
-    ).group_by(Livestock.type).order_by(func.avg(Livestock.profit).desc()).first()
-    if best_type and best_type[1] > 0:
-        recommendations.append({
-            'title': f'📈 Focus on {best_type[0]}',
-            'message': f'Your {best_type[0]} investments show the highest average profit.',
-            'type': 'opportunity'
-        })
-    over_budget = Budget.query.filter(
-        Budget.user_id == user_id,
-        Budget.month == today.month,
-        Budget.year == today.year,
-        Budget.actual_amount > Budget.expected_amount
-    ).all()
-    for b in over_budget[:3]:
-        recommendations.append({
-            'title': f'⚠️ Reduce {b.category} spending',
-            'message': f'Exceeded by {b.actual_amount - b.expected_amount:,.0f} BIF.',
-            'type': 'warning'
-        })
-    total_cash = db.session.query(func.sum(Transaction.amount)).filter(
+    
+    # 1. FINANCIAL HEALTH ANALYSIS
+    total_income = db.session.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == user_id, Transaction.type == 'income'
     ).scalar() or 0
-    if total_cash > 500000:
+    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'expense'
+    ).scalar() or 0
+    net_cash = total_income - total_expenses
+    
+    # Monthly averages
+    monthly_income = total_income / 12 if total_income > 0 else 0
+    monthly_expenses = total_expenses / 12 if total_expenses > 0 else 0
+    
+    # Savings rate
+    savings_rate = ((total_income - total_expenses) / total_income * 100) if total_income > 0 else 0
+    
+    if savings_rate < 10:
         recommendations.append({
-            'title': '💰 Investment Opportunity',
-            'message': f'You have {total_cash:,.0f} BIF in cash.',
-            'type': 'opportunity'
+            'title': '⚠️ Low Savings Rate',
+            'message': f'You save only {savings_rate:.1f}% of your income. Aim for at least 20%.',
+            'type': 'warning',
+            'priority': 'high',
+            'action': 'Review your expenses and cut unnecessary spending.'
         })
-    return jsonify(recommendations[:5])
+    elif savings_rate < 20:
+        recommendations.append({
+            'title': '📈 Improve Savings Rate',
+            'message': f'Your savings rate is {savings_rate:.1f}%. Consider increasing to 20%+ for better financial security.',
+            'type': 'opportunity',
+            'priority': 'medium',
+            'action': 'Look for areas to reduce expenses or increase income.'
+        })
+    else:
+        recommendations.append({
+            'title': '✅ Excellent Savings Rate',
+            'message': f'You save {savings_rate:.1f}% of your income. Keep up the great work!',
+            'type': 'success',
+            'priority': 'low',
+            'action': 'Consider investing your savings for better returns.'
+        })
+    
+    # 2. EMERGENCY FUND ANALYSIS
+    avg_monthly_expense = db.session.query(func.avg(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'expense'
+    ).scalar() or 1
+    emergency_fund_months = net_cash / (avg_monthly_expense * 3) if avg_monthly_expense > 0 else 0
+    
+    if emergency_fund_months < 3:
+        recommendations.append({
+            'title': '🚨 Emergency Fund Critical',
+            'message': f'Your emergency fund covers only {emergency_fund_months:.1f} months. Need at least 3-6 months.',
+            'type': 'critical',
+            'priority': 'high',
+            'action': f'Build emergency fund to {avg_monthly_expense * 3:,.0f} BIF minimum.'
+        })
+    elif emergency_fund_months < 6:
+        recommendations.append({
+            'title': '🛡️ Build Emergency Fund',
+            'message': f'You have {emergency_fund_months:.1f} months of expenses saved. Aim for 6 months.',
+            'type': 'warning',
+            'priority': 'medium',
+            'action': f'Target: {avg_monthly_expense * 6:,.0f} BIF for full emergency fund.'
+        })
+    else:
+        recommendations.append({
+            'title': '✅ Strong Emergency Fund',
+            'message': f'You have {emergency_fund_months:.1f} months of expenses saved. Well prepared!',
+            'type': 'success',
+            'priority': 'low',
+            'action': 'Consider investing excess cash for better returns.'
+        })
+    
+    # 3. INVESTMENT OPPORTUNITIES
+    investments = Investment.query.filter_by(user_id=user_id, status='Running').all()
+    total_invested = sum(i.capital for i in investments)
+    
+    # Best performing investment type
+    sold_investments = Investment.query.filter_by(user_id=user_id, status='Sold').all()
+    if sold_investments:
+        best_type = db.session.query(
+            Investment.type,
+            func.avg(Investment.roi_actual).label('avg_roi'),
+            func.count(Investment.id).label('count')
+        ).filter(
+            Investment.user_id == user_id,
+            Investment.status == 'Sold'
+        ).group_by(Investment.type).order_by(func.avg(Investment.roi_actual).desc()).first()
+        
+        if best_type and best_type[1] > 0:
+            recommendations.append({
+                'title': f'📈 Best Investment: {best_type[0]}',
+                'message': f'Your {best_type[0]} investments averaged {best_type[1]:.1f}% ROI from {best_type[2]} investments.',
+                'type': 'opportunity',
+                'priority': 'medium',
+                'action': f'Consider allocating more capital to {best_type[0]} investments.'
+            })
+    
+    # Underperforming investments
+    if investments:
+        worst_investments = sorted(investments, key=lambda x: x.roi_actual if x.roi_actual else 0)[:3]
+        for inv in worst_investments:
+            if inv.roi_actual < 5:  # Under 5% ROI is underperforming
+                recommendations.append({
+                    'title': f'⚠️ Underperforming: {inv.investment_id}',
+                    'message': f'{inv.type} investment with ROI of {inv.roi_actual:.1f}%. Consider reviewing.',
+                    'type': 'warning',
+                    'priority': 'medium',
+                    'action': f'Review {inv.type} investment strategy or consider selling.'
+                })
+    
+    # Investment diversification
+    if total_invested > 0:
+        type_count = len(set(i.type for i in investments))
+        if type_count < 3:
+            recommendations.append({
+                'title': '📊 Improve Diversification',
+                'message': f'You have investments in only {type_count} type(s). Diversify for better risk management.',
+                'type': 'opportunity',
+                'priority': 'medium',
+                'action': 'Consider investing in different asset classes like Livestock, Business, or Stocks.'
+            })
+    
+    # 4. BUDGET ANALYSIS
+    budgets = Budget.query.filter_by(user_id=user_id, month=today.month, year=today.year).all()
+    over_budget = [b for b in budgets if b.actual_amount > b.expected_amount]
+    under_budget = [b for b in budgets if b.actual_amount < b.expected_amount]
+    
+    if over_budget:
+        for b in over_budget[:3]:
+            recommendations.append({
+                'title': f'⚠️ Over Budget: {b.category}',
+                'message': f'Spent {b.actual_amount - b.expected_amount:,.0f} BIF over budget ({b.actual_amount/b.expected_amount*100:.0f}% of budget).',
+                'type': 'warning',
+                'priority': 'high',
+                'action': f'Reduce {b.category} spending by setting stricter limits.'
+            })
+    
+    if under_budget and len(under_budget) > 0:
+        best_saver = sorted(under_budget, key=lambda x: x.expected_amount - x.actual_amount, reverse=True)[0]
+        if best_saver:
+            recommendations.append({
+                'title': f'✅ Under Budget: {best_saver.category}',
+                'message': f'You saved {best_saver.expected_amount - best_saver.actual_amount:,.0f} BIF on {best_saver.category}.',
+                'type': 'success',
+                'priority': 'low',
+                'action': 'Consider allocating savings to investments or debt repayment.'
+            })
+    
+    # 5. GOAL PROGRESS
+    goals = Goal.query.filter_by(user_id=user_id, status='Active').all()
+    if goals:
+        # Goals with best progress
+        best_goal = max(goals, key=lambda x: x.progress) if goals else None
+        if best_goal and best_goal.progress > 0:
+            recommendations.append({
+                'title': f'🎯 Best Goal: {best_goal.name}',
+                'message': f'Progress: {best_goal.progress:.0f}% toward {best_goal.target_amount:,.0f} BIF target.',
+                'type': 'success',
+                'priority': 'low',
+                'action': 'Keep the momentum going!'
+            })
+        
+        # Goals with poor progress
+        slow_goals = [g for g in goals if g.progress < 20 and g.created_at < (datetime.now() - timedelta(days=30))]
+        for g in slow_goals[:2]:
+            recommendations.append({
+                'title': f'⚠️ Slow Progress: {g.name}',
+                'message': f'Only {g.progress:.0f}% progress after { (today - g.created_at).days } days. Need more focus.',
+                'type': 'warning',
+                'priority': 'medium',
+                'action': f'Increase contributions to {g.name} goal.'
+            })
+    
+    # 6. LIVESTOCK OPPORTUNITIES
+    livestock = Livestock.query.filter_by(user_id=user_id, status='Active').all()
+    ready_to_sell = [l for l in livestock if l.expected_sell_date and l.expected_sell_date <= today]
+    
+    if ready_to_sell:
+        recommendations.append({
+            'title': f'🐄 {len(ready_to_sell)} Animals Ready to Sell',
+            'message': 'These animals have reached their expected sell date. Time to cash in!',
+            'type': 'opportunity',
+            'priority': 'high',
+            'action': 'Go to Livestock section and sell these animals for profit.'
+        })
+    
+    # Best livestock type for profit
+    if sold_investments:
+        best_livestock = db.session.query(
+            Livestock.type,
+            func.avg(Livestock.profit).label('avg_profit')
+        ).filter(
+            Livestock.user_id == user_id,
+            Livestock.status == 'Sold'
+        ).group_by(Livestock.type).order_by(func.avg(Livestock.profit).desc()).first()
+        
+        if best_livestock and best_livestock[1] > 0:
+            recommendations.append({
+                'title': f'🐄 Best Livestock: {best_livestock[0]}',
+                'message': f'Average profit of {best_livestock[1]:,.0f} BIF per animal. Focus on this type!',
+                'type': 'opportunity',
+                'priority': 'medium',
+                'action': f'Consider expanding your {best_livestock[0]} operation.'
+            })
+    
+    # 7. LIABILITIES MANAGEMENT
+    total_owed = db.session.query(func.sum(Liability.amount)).filter(
+        Liability.user_id == user_id,
+        Liability.type == 'i_owe',
+        Liability.status != 'Paid'
+    ).scalar() or 0
+    
+    total_owed_to_me = db.session.query(func.sum(Liability.amount)).filter(
+        Liability.user_id == user_id,
+        Liability.type == 'owes_me',
+        Liability.status != 'Paid'
+    ).scalar() or 0
+    
+    if total_owed > 0:
+        # Check for overdue liabilities
+        overdue = Liability.query.filter(
+            Liability.user_id == user_id,
+            Liability.type == 'i_owe',
+            Liability.status == 'Pending',
+            Liability.due_date < today
+        ).all()
+        
+        if overdue:
+            for l in overdue[:3]:
+                days_overdue = (today - l.due_date).days
+                recommendations.append({
+                    'title': f'⚠️ Overdue Debt: {l.name}',
+                    'message': f'{l.amount:,.0f} BIF is {days_overdue} days overdue.',
+                    'type': 'critical',
+                    'priority': 'high',
+                    'action': f'Pay {l.name} immediately to avoid penalties.'
+                })
+    
+    # 8. ASSET UTILIZATION
+    total_asset_value = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
+    if total_asset_value > 0:
+        # Check for deprecated assets (older than 5 years)
+        five_years_ago = today - timedelta(days=365*5)
+        old_assets = Asset.query.filter(
+            Asset.user_id == user_id,
+            Asset.purchase_date < five_years_ago,
+            Asset.current_value < Asset.purchase_price * 0.5
+        ).all()
+        
+        if old_assets:
+            for a in old_assets[:2]:
+                depreciation = (1 - (a.current_value / a.purchase_price)) * 100
+                recommendations.append({
+                    'title': f'⚠️ Depreciating Asset: {a.name}',
+                    'message': f'Value dropped {depreciation:.0f}% since purchase. Consider replacing or selling.',
+                    'type': 'warning',
+                    'priority': 'medium',
+                    'action': f'Review if {a.name} still provides value or should be replaced.'
+                })
+    
+    # 9. CASH FLOW OPPORTUNITIES
+    if net_cash > 0 and total_income > 0:
+        # Extra cash available
+        extra_cash = net_cash * 0.1  # 10% of net cash
+        
+        recommendations.append({
+            'title': '💰 Cash Available for Investment',
+            'message': f'You have {net_cash:,.0f} BIF in net cash. Consider allocating {extra_cash:,.0f} BIF to investments.',
+            'type': 'opportunity',
+            'priority': 'medium',
+            'action': 'Check investment opportunities in the Investments section.'
+        })
+    
+    # 10. OVERALL FINANCIAL SCORE
+    # Calculate overall financial health score
+    score = 0
+    score += min(savings_rate * 2, 40)  # Max 40 points for savings rate
+    score += min(emergency_fund_months * 5, 25)  # Max 25 points for emergency fund
+    score += min(len(unique_types) * 8, 20) if investments else 0  # Max 20 for diversification
+    score += 15 if total_owed == 0 else max(0, 15 - (total_owed / total_income * 10))  # Debt management
+    
+    financial_health = 'Excellent' if score >= 80 else 'Good' if score >= 60 else 'Fair' if score >= 40 else 'Needs Improvement'
+    
+    recommendations.append({
+        'title': f'📊 Financial Health Score: {score:.0f}/100',
+        'message': f'Your financial health is {financial_health}. Score based on savings, emergency fund, diversification, and debt management.',
+        'type': 'info' if score >= 60 else 'warning',
+        'priority': 'low',
+        'action': 'Check the detailed recommendations above to improve your score.'
+    })
+    
+    # Sort recommendations by priority
+    priority_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'info': 4, 'success': 5}
+    recommendations.sort(key=lambda x: priority_order.get(x.get('priority', 'low'), 3))
+    
+    return jsonify(recommendations[:15])
 
 
 # ============================
-# NOTIFICATIONS API
+# ENHANCED NOTIFICATIONS - ADVANCED & DATA-DRIVEN
 # ============================
 
 @app.route('/api/notifications')
 @login_required
 @superadmin_required
 def get_notifications():
-    notifications = Notification.query.filter_by(
-        user_id=current_user.id,
+    user_id = current_user.id
+    today = datetime.now()
+    notifications = []
+    
+    # 1. Check unread notifications from database
+    db_notifications = Notification.query.filter_by(
+        user_id=user_id,
         is_read=False
-    ).order_by(Notification.created_at.desc()).limit(20).all()
-    return jsonify([n.to_dict() for n in notifications])
+    ).order_by(Notification.created_at.desc()).limit(10).all()
+    
+    for n in db_notifications:
+        notifications.append(n.to_dict())
+    
+    # 2. SYSTEM ALERTS - Critical issues
+    total_income = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'income'
+    ).scalar() or 0
+    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'expense'
+    ).scalar() or 0
+    net_cash = total_income - total_expenses
+    
+    # Emergency fund alert
+    avg_monthly_expense = db.session.query(func.avg(Transaction.amount)).filter(
+        Transaction.user_id == user_id, Transaction.type == 'expense'
+    ).scalar() or 1
+    emergency_months = net_cash / (avg_monthly_expense * 3) if avg_monthly_expense > 0 else 0
+    
+    if emergency_months < 3:
+        notifications.append({
+            'title': '🚨 Emergency Fund Critical',
+            'message': f'Your emergency fund covers only {emergency_months:.1f} months. Need at least 3-6 months of expenses.',
+            'type': 'critical',
+            'is_read': False,
+            'created_at': today.strftime('%Y-%m-%d %H:%M')
+        })
+    
+    # Overdue liabilities
+    overdue_liabilities = Liability.query.filter(
+        Liability.user_id == user_id,
+        Liability.type == 'i_owe',
+        Liability.status == 'Pending',
+        Liability.due_date < today
+    ).all()
+    
+    if overdue_liabilities:
+        total_overdue = sum(l.amount for l in overdue_liabilities)
+        notifications.append({
+            'title': f'⚠️ {len(overdue_liabilities)} Overdue Payments',
+            'message': f'Total overdue: {total_overdue:,.0f} BIF. Pay immediately to avoid penalties.',
+            'type': 'critical',
+            'is_read': False,
+            'created_at': today.strftime('%Y-%m-%d %H:%M')
+        })
+    
+    # 3. FINANCIAL ALERTS
+    
+    # Budget overruns
+    budgets = Budget.query.filter_by(user_id=user_id, month=today.month, year=today.year).all()
+    over_budget = [b for b in budgets if b.actual_amount > b.expected_amount]
+    
+    if over_budget:
+        for b in over_budget[:3]:
+            notifications.append({
+                'title': f'⚠️ Budget Overrun: {b.category}',
+                'message': f'Spent {b.actual_amount - b.expected_amount:,.0f} BIF over budget ({b.actual_amount/b.expected_amount*100:.0f}% used).',
+                'type': 'warning',
+                'is_read': False,
+                'created_at': today.strftime('%Y-%m-%d %H:%M')
+            })
+    
+    # 4. INVESTMENT ALERTS
+    
+    # Investments nearing exit date (within 30 days)
+    thirty_days_later = today + timedelta(days=30)
+    nearing_exit = Investment.query.filter(
+        Investment.user_id == user_id,
+        Investment.status == 'Running',
+        Investment.expected_exit_date <= thirty_days_later,
+        Investment.expected_exit_date >= today
+    ).all()
+    
+    if nearing_exit:
+        for inv in nearing_exit[:3]:
+            days_left = (inv.expected_exit_date - today).days
+            notifications.append({
+                'title': f'📊 Investment: {inv.investment_id}',
+                'message': f'Exit date in {days_left} days. Capital: {inv.capital:,.0f} BIF. Start planning your exit strategy.',
+                'type': 'info',
+                'is_read': False,
+                'created_at': today.strftime('%Y-%m-%d %H:%M')
+            })
+    
+    # 5. LIVESTOCK ALERTS
+    
+    # Animals ready to sell
+    ready_to_sell = Livestock.query.filter(
+        Livestock.user_id == user_id,
+        Livestock.status == 'Active',
+        Livestock.expected_sell_date <= today
+    ).all()
+    
+    if ready_to_sell:
+        notifications.append({
+            'title': f'🐄 {len(ready_to_sell)} Animals Ready to Sell',
+            'message': 'These animals have reached their expected sell date. Sell them to realize profit!',
+            'type': 'opportunity',
+            'is_read': False,
+            'created_at': today.strftime('%Y-%m-%d %H:%M')
+        })
+    
+    # 6. GOAL ALERTS
+    
+    # Goals near completion (90%+)
+    near_completion = Goal.query.filter(
+        Goal.user_id == user_id,
+        Goal.status == 'Active',
+        Goal.progress >= 90
+    ).all()
+    
+    if near_completion:
+        for g in near_completion[:3]:
+            notifications.append({
+                'title': f'🎯 Goal Near Completion: {g.name}',
+                'message': f'Progress: {g.progress:.0f}% - only {g.target_amount - g.current_amount:,.0f} BIF remaining!',
+                'type': 'success',
+                'is_read': False,
+                'created_at': today.strftime('%Y-%m-%d %H:%M')
+            })
+    
+    # Goals behind schedule (created > 30 days, progress < 10%)
+    thirty_days_ago = today - timedelta(days=30)
+    behind_schedule = Goal.query.filter(
+        Goal.user_id == user_id,
+        Goal.status == 'Active',
+        Goal.created_at <= thirty_days_ago,
+        Goal.progress < 10
+    ).all()
+    
+    if behind_schedule:
+        for g in behind_schedule[:3]:
+            notifications.append({
+                'title': f'⚠️ Goal Behind Schedule: {g.name}',
+                'message': f'Only {g.progress:.0f}% progress after {(today - g.created_at).days} days. Need more focus!',
+                'type': 'warning',
+                'is_read': False,
+                'created_at': today.strftime('%Y-%m-%d %H:%M')
+            })
+    
+    # 7. ASSET ALERTS
+    
+    # Assets with high depreciation (value drop > 30%)
+    high_depreciation = Asset.query.filter(
+        Asset.user_id == user_id,
+        Asset.purchase_price > 0,
+        Asset.current_value < Asset.purchase_price * 0.7
+    ).all()
+    
+    if high_depreciation:
+        for a in high_depreciation[:3]:
+            depreciation_pct = (1 - (a.current_value / a.purchase_price)) * 100
+            notifications.append({
+                'title': f'⚠️ Asset Depreciation: {a.name}',
+                'message': f'Value dropped {depreciation_pct:.0f}% to {a.current_value:,.0f} BIF. Consider reviewing.',
+                'type': 'warning',
+                'is_read': False,
+                'created_at': today.strftime('%Y-%m-%d %H:%M')
+            })
+    
+    # 8. CASH FLOW ALERTS
+    
+    # Negative cash flow alert
+    if net_cash < 0:
+        notifications.append({
+            'title': '💸 Negative Cash Flow',
+            'message': f'Your expenses ({total_expenses:,.0f} BIF) exceed income ({total_income:,.0f} BIF). Reduce spending!',
+            'type': 'critical',
+            'is_read': False,
+            'created_at': today.strftime('%Y-%m-%d %H:%M')
+        })
+    
+    # 9. DAILY/PERIODIC REMINDERS
+    
+    # Check if there are unread notifications
+    unread_count = len([n for n in notifications if not n.get('is_read', True)])
+    if unread_count > 5:
+        notifications.append({
+            'title': f'📬 {unread_count} Unread Notifications',
+            'message': 'You have important notifications waiting. Review them to stay on top of your finances.',
+            'type': 'info',
+            'is_read': False,
+            'created_at': today.strftime('%Y-%m-%d %H:%M')
+        })
+    
+    # 10. OPPORTUNITY ALERTS
+    
+    # Cash available for investment
+    if net_cash > 100000:
+        notifications.append({
+            'title': '💰 Cash Available for Investment',
+            'message': f'You have {net_cash:,.0f} BIF in cash. Consider investing to grow your wealth.',
+            'type': 'opportunity',
+            'is_read': False,
+            'created_at': today.strftime('%Y-%m-%d %H:%M')
+        })
+    
+    # Sort notifications by type (critical first, then warnings, then info)
+    type_order = {'critical': 0, 'warning': 1, 'opportunity': 2, 'info': 3, 'success': 4}
+    notifications.sort(key=lambda x: type_order.get(x.get('type', 'info'), 5))
+    
+    return jsonify(notifications[:20])
 
 
 # ============================
-# REPORTS API - YOUR WORKING CODE (FIXED CURRENCY TO BIF)
+# REPORTS API
 # ============================
 
 @app.route('/api/reports/<report_type>')
@@ -1653,461 +2221,6 @@ def get_report_data(report_type):
             'net_worth': total_assets + total_income - total_expenses
         })
     return jsonify({'error': 'Invalid report type'}), 400
-
-
-@app.route('/api/reports/export/<report_type>/<format>')
-@login_required
-@superadmin_required
-def export_report(report_type, format):
-    user_id = current_user.id
-    if format == 'pdf':
-        from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib import colors
-        from reportlab.lib.units import inch
-        
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-        styles = getSampleStyleSheet()
-        story = []
-        
-        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, alignment=1, textColor=colors.HexColor('#00d4ff'))
-        story.append(Paragraph("💰 BuSystem - Complete Financial Report", title_style))
-        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
-        story.append(Paragraph(f"User: {current_user.username}", styles['Normal']))
-        story.append(Spacer(1, 0.3*inch))
-        
-        story.append(Paragraph("<b>📊 EXECUTIVE SUMMARY</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        
-        total_income = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id, Transaction.type == 'income'
-        ).scalar() or 0
-        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id, Transaction.type == 'expense'
-        ).scalar() or 0
-        total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
-        total_investments = db.session.query(func.sum(Investment.capital)).filter(
-            Investment.user_id == user_id, Investment.status == 'Running'
-        ).scalar() or 0
-        total_livestock = Livestock.query.filter_by(user_id=user_id).count()
-        active_goals = Goal.query.filter_by(user_id=user_id, status='Active').count()
-        
-        total_owed_to_me = db.session.query(func.sum(Liability.amount)).filter(
-            Liability.user_id == user_id,
-            Liability.type == 'owes_me',
-            Liability.status != 'Paid'
-        ).scalar() or 0
-        total_i_owe = db.session.query(func.sum(Liability.amount)).filter(
-            Liability.user_id == user_id,
-            Liability.type == 'i_owe',
-            Liability.status != 'Paid'
-        ).scalar() or 0
-        
-        summary_data = [
-            ['Metric', 'Amount (BIF)'],
-            ['Total Income', f"{total_income:,.0f}"],
-            ['Total Expenses', f"{total_expenses:,.0f}"],
-            ['Net Cash', f"{total_income - total_expenses:,.0f}"],
-            ['Total Assets', f"{total_assets:,.0f}"],
-            ['Total Investments', f"{total_investments:,.0f}"],
-            ['Owed to Me', f"{total_owed_to_me:,.0f}"],
-            ['I Owe', f"{total_i_owe:,.0f}"],
-            ['Net Worth', f"{total_assets + total_income - total_expenses:,.0f}"],
-            ['Total Livestock', f"{total_livestock}"],
-            ['Active Goals', f"{active_goals}"]
-        ]
-        summary_table = Table(summary_data, colWidths=[3*inch, 3*inch])
-        summary_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-        ]))
-        story.append(summary_table)
-        story.append(Spacer(1, 0.3*inch))
-        
-        story.append(PageBreak())
-        story.append(Paragraph("<b>💰 TRANSACTIONS</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        
-        transactions = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.desc()).limit(200).all()
-        if transactions:
-            tx_data = [['Date', 'Type', 'Category', 'Amount', 'Description']]
-            for t in transactions:
-                tx_data.append([
-                    t.date.strftime('%Y-%m-%d'),
-                    t.type.capitalize(),
-                    t.category,
-                    f"{t.amount:,.0f}",
-                    t.description or ''
-                ])
-            tx_table = Table(tx_data, colWidths=[1.2*inch, 1*inch, 1.5*inch, 1.2*inch, 2*inch])
-            tx_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-            ]))
-            story.append(tx_table)
-        else:
-            story.append(Paragraph("No transactions found.", styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(PageBreak())
-        story.append(Paragraph("<b>📈 INVESTMENTS</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        
-        investments = Investment.query.filter_by(user_id=user_id).all()
-        if investments:
-            inv_data = [['ID', 'Type', 'Capital', 'Status', 'Profit', 'ROI']]
-            for i in investments:
-                inv_data.append([
-                    i.investment_id,
-                    f"{i.type}{' ('+i.sub_type+')' if i.sub_type else ''}",
-                    f"{i.capital:,.0f}",
-                    i.status,
-                    f"{i.profit:,.0f}",
-                    f"{i.roi_actual:.1f}%" if i.roi_actual else '-'
-                ])
-            inv_table = Table(inv_data, colWidths=[1*inch, 1.5*inch, 1.2*inch, 1*inch, 1.2*inch, 1*inch])
-            inv_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-            ]))
-            story.append(inv_table)
-        else:
-            story.append(Paragraph("No investments found.", styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(PageBreak())
-        story.append(Paragraph("<b>🐄 LIVESTOCK</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        
-        livestock = Livestock.query.filter_by(user_id=user_id).all()
-        if livestock:
-            ls_data = [['Tag', 'Type', 'Breed', 'Purchase Price', 'Status', 'Profit']]
-            for l in livestock:
-                ls_data.append([
-                    l.tag,
-                    l.type,
-                    l.breed or '-',
-                    f"{l.purchase_price:,.0f}",
-                    l.status,
-                    f"{l.profit:,.0f}" if l.profit else '-'
-                ])
-            ls_table = Table(ls_data, colWidths=[0.8*inch, 1*inch, 1*inch, 1.2*inch, 1*inch, 1.2*inch])
-            ls_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-            ]))
-            story.append(ls_table)
-        else:
-            story.append(Paragraph("No livestock found.", styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(PageBreak())
-        story.append(Paragraph("<b>🏦 ASSETS</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        
-        assets = Asset.query.filter_by(user_id=user_id).all()
-        if assets:
-            asset_data = [['Name', 'Category', 'Purchase Price', 'Current Value', 'Condition']]
-            for a in assets:
-                asset_data.append([
-                    a.name,
-                    a.category,
-                    f"{a.purchase_price:,.0f}",
-                    f"{a.current_value:,.0f}",
-                    a.condition
-                ])
-            asset_table = Table(asset_data, colWidths=[1.5*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1*inch])
-            asset_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-            ]))
-            story.append(asset_table)
-        else:
-            story.append(Paragraph("No assets found.", styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(PageBreak())
-        story.append(Paragraph("<b>🎯 GOALS</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        
-        goals = Goal.query.filter_by(user_id=user_id).all()
-        if goals:
-            goal_data = [['Name', 'Target', 'Current', 'Progress', 'Status']]
-            for g in goals:
-                goal_data.append([
-                    g.name,
-                    f"{g.target_amount:,.0f}",
-                    f"{g.current_amount:,.0f}",
-                    f"{g.progress:.0f}%",
-                    g.status
-                ])
-            goal_table = Table(goal_data, colWidths=[1.5*inch, 1.2*inch, 1.2*inch, 1*inch, 1.2*inch])
-            goal_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-            ]))
-            story.append(goal_table)
-        else:
-            story.append(Paragraph("No goals found.", styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(PageBreak())
-        story.append(Paragraph("<b>📋 BUDGETS</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        
-        all_budgets = Budget.query.filter_by(user_id=user_id).order_by(Budget.year.desc(), Budget.month.desc()).all()
-        if all_budgets:
-            budget_data = [['Category', 'Type', 'Month/Year', 'Expected', 'Actual', 'Difference', 'Status']]
-            for b in all_budgets:
-                month_name = datetime(b.year, b.month, 1).strftime('%B %Y')
-                budget_data.append([
-                    b.category,
-                    b.type,
-                    month_name,
-                    f"{b.expected_amount:,.0f}",
-                    f"{b.actual_amount:,.0f}",
-                    f"{b.difference:+,.0f}",
-                    b.status or 'pending'
-                ])
-            budget_table = Table(budget_data, colWidths=[1.2*inch, 1*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1*inch])
-            budget_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-            ]))
-            story.append(budget_table)
-        else:
-            story.append(Paragraph("No budgets found.", styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(PageBreak())
-        story.append(Paragraph("<b>📋 LIABILITIES</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        
-        liabilities = Liability.query.filter_by(user_id=user_id).all()
-        if liabilities:
-            liability_data = [['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']]
-            for l in liabilities:
-                liability_data.append([
-                    'Owed to Me' if l.type == 'owes_me' else 'I Owe',
-                    l.name,
-                    l.description or '-',
-                    f"{l.amount:,.0f}",
-                    l.due_date.strftime('%Y-%m-%d') if l.due_date else '-',
-                    l.status
-                ])
-            liability_table = Table(liability_data, colWidths=[1.2*inch, 1.2*inch, 1.5*inch, 1.2*inch, 1.2*inch, 1*inch])
-            liability_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-            ]))
-            story.append(liability_table)
-        else:
-            story.append(Paragraph("No liabilities found.", styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(PageBreak())
-        story.append(Paragraph("<b>📏 FINANCIAL RULES</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        
-        rules = FinancialRule.query.filter_by(user_id=user_id, is_active=True).all()
-        if rules:
-            rule_data = [['Name', 'Category', 'Condition', 'Message']]
-            for r in rules:
-                rule_data.append([
-                    r.name,
-                    r.category,
-                    f"{r.condition_type} {r.condition_operator} {r.condition_value}",
-                    r.action_message or '-'
-                ])
-            rule_table = Table(rule_data, colWidths=[1.5*inch, 1.2*inch, 1.5*inch, 2*inch])
-            rule_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 8),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-            ]))
-            story.append(rule_table)
-        else:
-            story.append(Paragraph("No rules found.", styles['Normal']))
-        
-        story.append(Spacer(1, 0.5*inch))
-        footer_style = ParagraphStyle('Footer', fontSize=10, alignment=1, textColor=colors.HexColor('#4a5a6f'))
-        story.append(Paragraph("BuSystem v1.0 • Every Franc Must Have a Job", footer_style))
-        story.append(Paragraph(f"Report generated on {datetime.now().strftime('%Y-%m-%d at %H:%M')}", footer_style))
-        story.append(Paragraph(f"User: {current_user.username} • Currency: BIF", footer_style))
-        
-        doc.build(story)
-        buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name=f"BuSystem_Full_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf")
-    
-    elif format == 'excel':
-        import xlsxwriter
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output)
-        
-        worksheet1 = workbook.add_worksheet('Transactions')
-        headers = ['Date', 'Type', 'Category', 'Amount', 'Description']
-        for col, header in enumerate(headers):
-            worksheet1.write(0, col, header)
-        transactions = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.desc()).all()
-        for row, t in enumerate(transactions, 1):
-            worksheet1.write(row, 0, t.date.strftime('%Y-%m-%d'))
-            worksheet1.write(row, 1, t.type)
-            worksheet1.write(row, 2, t.category)
-            worksheet1.write(row, 3, t.amount)
-            worksheet1.write(row, 4, t.description or '')
-        
-        worksheet2 = workbook.add_worksheet('Investments')
-        headers2 = ['ID', 'Type', 'Sub Type', 'Capital', 'Status', 'Profit', 'ROI']
-        for col, header in enumerate(headers2):
-            worksheet2.write(0, col, header)
-        investments = Investment.query.filter_by(user_id=user_id).all()
-        for row, i in enumerate(investments, 1):
-            worksheet2.write(row, 0, i.investment_id)
-            worksheet2.write(row, 1, i.type)
-            worksheet2.write(row, 2, i.sub_type or '')
-            worksheet2.write(row, 3, i.capital)
-            worksheet2.write(row, 4, i.status)
-            worksheet2.write(row, 5, i.profit)
-            worksheet2.write(row, 6, i.roi_actual)
-        
-        worksheet3 = workbook.add_worksheet('Livestock')
-        headers3 = ['Tag', 'Type', 'Breed', 'Purchase Price', 'Status', 'Profit']
-        for col, header in enumerate(headers3):
-            worksheet3.write(0, col, header)
-        livestock = Livestock.query.filter_by(user_id=user_id).all()
-        for row, l in enumerate(livestock, 1):
-            worksheet3.write(row, 0, l.tag)
-            worksheet3.write(row, 1, l.type)
-            worksheet3.write(row, 2, l.breed or '')
-            worksheet3.write(row, 3, l.purchase_price)
-            worksheet3.write(row, 4, l.status)
-            worksheet3.write(row, 5, l.profit or 0)
-        
-        worksheet4 = workbook.add_worksheet('Assets')
-        headers4 = ['Name', 'Category', 'Purchase Price', 'Current Value', 'Condition']
-        for col, header in enumerate(headers4):
-            worksheet4.write(0, col, header)
-        assets = Asset.query.filter_by(user_id=user_id).all()
-        for row, a in enumerate(assets, 1):
-            worksheet4.write(row, 0, a.name)
-            worksheet4.write(row, 1, a.category)
-            worksheet4.write(row, 2, a.purchase_price)
-            worksheet4.write(row, 3, a.current_value)
-            worksheet4.write(row, 4, a.condition)
-        
-        worksheet5 = workbook.add_worksheet('Goals')
-        headers5 = ['Name', 'Target', 'Current', 'Progress', 'Status']
-        for col, header in enumerate(headers5):
-            worksheet5.write(0, col, header)
-        goals = Goal.query.filter_by(user_id=user_id).all()
-        for row, g in enumerate(goals, 1):
-            worksheet5.write(row, 0, g.name)
-            worksheet5.write(row, 1, g.target_amount)
-            worksheet5.write(row, 2, g.current_amount)
-            worksheet5.write(row, 3, g.progress)
-            worksheet5.write(row, 4, g.status)
-        
-        worksheet6 = workbook.add_worksheet('Budgets')
-        headers6 = ['Category', 'Type', 'Month', 'Year', 'Expected', 'Actual', 'Difference', 'Status']
-        for col, header in enumerate(headers6):
-            worksheet6.write(0, col, header)
-        budgets = Budget.query.filter_by(user_id=user_id).all()
-        for row, b in enumerate(budgets, 1):
-            worksheet6.write(row, 0, b.category)
-            worksheet6.write(row, 1, b.type)
-            worksheet6.write(row, 2, b.month)
-            worksheet6.write(row, 3, b.year)
-            worksheet6.write(row, 4, b.expected_amount)
-            worksheet6.write(row, 5, b.actual_amount)
-            worksheet6.write(row, 6, b.difference)
-            worksheet6.write(row, 7, b.status or 'pending')
-        
-        worksheet7 = workbook.add_worksheet('Liabilities')
-        headers7 = ['Type', 'Name', 'Description', 'Amount', 'Due Date', 'Status']
-        for col, header in enumerate(headers7):
-            worksheet7.write(0, col, header)
-        liabilities = Liability.query.filter_by(user_id=user_id).all()
-        for row, l in enumerate(liabilities, 1):
-            worksheet7.write(row, 0, 'Owed to Me' if l.type == 'owes_me' else 'I Owe')
-            worksheet7.write(row, 1, l.name)
-            worksheet7.write(row, 2, l.description or '')
-            worksheet7.write(row, 3, l.amount)
-            worksheet7.write(row, 4, l.due_date.strftime('%Y-%m-%d') if l.due_date else '')
-            worksheet7.write(row, 5, l.status)
-        
-        worksheet8 = workbook.add_worksheet('Rules')
-        headers8 = ['Name', 'Category', 'Condition Type', 'Condition Value', 'Operator', 'Message']
-        for col, header in enumerate(headers8):
-            worksheet8.write(0, col, header)
-        rules = FinancialRule.query.filter_by(user_id=user_id, is_active=True).all()
-        for row, r in enumerate(rules, 1):
-            worksheet8.write(row, 0, r.name)
-            worksheet8.write(row, 1, r.category)
-            worksheet8.write(row, 2, r.condition_type)
-            worksheet8.write(row, 3, r.condition_value)
-            worksheet8.write(row, 4, r.condition_operator)
-            worksheet8.write(row, 5, r.action_message or '')
-        
-        workbook.close()
-        output.seek(0)
-        return send_file(output, as_attachment=True, download_name=f"BuSystem_Full_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx")
-    
-    return jsonify({'error': 'Invalid format'}), 400
 
 
 # ============================
@@ -2462,98 +2575,6 @@ def admin_sales_stats():
         'total_products': total_products,
         'total_clients': total_clients
     })
-
-
-@app.route('/api/admin/sales/export/<format>')
-@login_required
-@admin_required
-def admin_export_sales(format):
-    sales = Sale.query.order_by(Sale.sale_date.desc()).all()
-    if format == 'pdf':
-        from reportlab.lib.pagesizes import A4, landscape
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib import colors
-        from reportlab.lib.units import inch
-        
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=30, bottomMargin=30)
-        styles = getSampleStyleSheet()
-        story = []
-        
-        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=20, alignment=1, textColor=colors.HexColor('#00d4ff'))
-        story.append(Paragraph("📊 Sales Report", title_style))
-        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        data = [['Date', 'Product', 'Client', 'Qty', 'Unit Price', 'Total', 'Discount', 'Final Total', 'Profit']]
-        total_final = 0
-        total_profit = 0
-        for s in sales:
-            product = Product.query.get(s.product_id)
-            client = Client.query.get(s.client_id) if s.client_id else None
-            data.append([
-                s.sale_date.strftime('%Y-%m-%d %H:%M'),
-                product.name if product else 'Unknown',
-                client.name if client else 'Walk-in',
-                str(s.quantity),
-                f"{s.unit_price:,.0f}",
-                f"{s.total:,.0f}",
-                f"{s.discount:,.0f}",
-                f"{s.final_total:,.0f}",
-                f"{s.profit:,.0f}"
-            ])
-            total_final += s.final_total
-            total_profit += s.profit
-        
-        data.append(['', '', '', '', '', '', 'TOTAL', f"{total_final:,.0f}", f"{total_profit:,.0f}"])
-        
-        table = Table(data, colWidths=[1.0*inch, 1.2*inch, 1.0*inch, 0.5*inch, 0.8*inch, 0.8*inch, 0.8*inch, 1.0*inch, 0.8*inch])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 8),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-            ('BACKGROUND', (0, 1), (-1, -2), colors.HexColor('#111a2b')),
-            ('TEXTCOLOR', (0, 1), (-1, -2), colors.whitesmoke),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#1a3a2f')),
-            ('TEXTCOLOR', (0, -1), (-1, -1), colors.whitesmoke),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, -1), (-1, -1), 9),
-        ]))
-        story.append(table)
-        
-        doc.build(story)
-        buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name=f"Sales_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf")
-    
-    elif format == 'excel':
-        import xlsxwriter
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output)
-        worksheet = workbook.add_worksheet('Sales')
-        headers = ['Date', 'Product', 'Client', 'Quantity', 'Unit Price', 'Total', 'Discount', 'Final Total', 'Profit']
-        for col, header in enumerate(headers):
-            worksheet.write(0, col, header)
-        for row, s in enumerate(sales, 1):
-            product = Product.query.get(s.product_id)
-            client = Client.query.get(s.client_id) if s.client_id else None
-            worksheet.write(row, 0, s.sale_date.strftime('%Y-%m-%d %H:%M'))
-            worksheet.write(row, 1, product.name if product else 'Unknown')
-            worksheet.write(row, 2, client.name if client else 'Walk-in')
-            worksheet.write(row, 3, s.quantity)
-            worksheet.write(row, 4, s.unit_price)
-            worksheet.write(row, 5, s.total)
-            worksheet.write(row, 6, s.discount)
-            worksheet.write(row, 7, s.final_total)
-            worksheet.write(row, 8, s.profit)
-        workbook.close()
-        output.seek(0)
-        return send_file(output, as_attachment=True, download_name=f"Sales_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx")
-    
-    return jsonify({'error': 'Invalid format'}), 400
 
 
 @app.route('/api/admin/users')
