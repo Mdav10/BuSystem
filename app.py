@@ -1648,7 +1648,7 @@ def get_timeline():
 
 
 # ============================
-# ENHANCED AI DECISIONS - FULL SYSTEM CONTROL
+# ENHANCED AI DECISIONS - FIXED
 # ============================
 
 @app.route('/api/decisions')
@@ -1735,51 +1735,61 @@ def get_decisions():
     investments = Investment.query.filter_by(user_id=user_id, status='Running').all()
     total_invested = sum(i.capital for i in investments)
     
-    # Best performing investment type
+    # SAFE: Best performing investment type - only if there are sold investments
     sold_investments = Investment.query.filter_by(user_id=user_id, status='Sold').all()
     if sold_investments:
-        best_type = db.session.query(
-            Investment.type,
-            func.avg(Investment.roi_actual).label('avg_roi'),
-            func.count(Investment.id).label('count')
-        ).filter(
-            Investment.user_id == user_id,
-            Investment.status == 'Sold'
-        ).group_by(Investment.type).order_by(func.avg(Investment.roi_actual).desc()).first()
-        
-        if best_type and best_type[1] > 0:
-            recommendations.append({
-                'title': f'📈 Best Investment: {best_type[0]}',
-                'message': f'Your {best_type[0]} investments averaged {best_type[1]:.1f}% ROI from {best_type[2]} investments.',
-                'type': 'opportunity',
-                'priority': 'medium',
-                'action': f'Consider allocating more capital to {best_type[0]} investments.'
-            })
-    
-    # Underperforming investments
-    if investments:
-        worst_investments = sorted(investments, key=lambda x: x.roi_actual if x.roi_actual else 0)[:3]
-        for inv in worst_investments:
-            if inv.roi_actual < 5:  # Under 5% ROI is underperforming
+        try:
+            best_type = db.session.query(
+                Investment.type,
+                func.avg(Investment.roi_actual).label('avg_roi'),
+                func.count(Investment.id).label('count')
+            ).filter(
+                Investment.user_id == user_id,
+                Investment.status == 'Sold'
+            ).group_by(Investment.type).order_by(func.avg(Investment.roi_actual).desc()).first()
+            
+            if best_type and best_type[1] is not None and best_type[1] > 0:
                 recommendations.append({
-                    'title': f'⚠️ Underperforming: {inv.investment_id}',
-                    'message': f'{inv.type} investment with ROI of {inv.roi_actual:.1f}%. Consider reviewing.',
-                    'type': 'warning',
+                    'title': f'📈 Best Investment: {best_type[0]}',
+                    'message': f'Your {best_type[0]} investments averaged {best_type[1]:.1f}% ROI from {best_type[2]} investments.',
+                    'type': 'opportunity',
                     'priority': 'medium',
-                    'action': f'Review {inv.type} investment strategy or consider selling.'
+                    'action': f'Consider allocating more capital to {best_type[0]} investments.'
                 })
+        except Exception as e:
+            print(f"Error calculating best investment: {e}")
+    
+    # SAFE: Underperforming investments - only if there are running investments
+    if investments:
+        try:
+            # Calculate ROI for each investment
+            for inv in investments:
+                # If investment has been sold, use actual ROI, otherwise estimate
+                if inv.roi_actual and inv.roi_actual < 5:
+                    recommendations.append({
+                        'title': f'⚠️ Underperforming: {inv.investment_id}',
+                        'message': f'{inv.type} investment with ROI of {inv.roi_actual:.1f}%. Consider reviewing.',
+                        'type': 'warning',
+                        'priority': 'medium',
+                        'action': f'Review {inv.type} investment strategy or consider selling.'
+                    })
+        except Exception as e:
+            print(f"Error checking underperforming investments: {e}")
     
     # Investment diversification
     if total_invested > 0:
-        type_count = len(set(i.type for i in investments))
-        if type_count < 3:
-            recommendations.append({
-                'title': '📊 Improve Diversification',
-                'message': f'You have investments in only {type_count} type(s). Diversify for better risk management.',
-                'type': 'opportunity',
-                'priority': 'medium',
-                'action': 'Consider investing in different asset classes like Livestock, Business, or Stocks.'
-            })
+        try:
+            type_count = len(set(i.type for i in investments))
+            if type_count < 3:
+                recommendations.append({
+                    'title': '📊 Improve Diversification',
+                    'message': f'You have investments in only {type_count} type(s). Diversify for better risk management.',
+                    'type': 'opportunity',
+                    'priority': 'medium',
+                    'action': 'Consider investing in different asset classes like Livestock, Business, or Stocks.'
+                })
+        except Exception as e:
+            print(f"Error checking diversification: {e}")
     
     # 4. BUDGET ANALYSIS
     budgets = Budget.query.filter_by(user_id=user_id, month=today.month, year=today.year).all()
@@ -1788,49 +1798,60 @@ def get_decisions():
     
     if over_budget:
         for b in over_budget[:3]:
-            recommendations.append({
-                'title': f'⚠️ Over Budget: {b.category}',
-                'message': f'Spent {b.actual_amount - b.expected_amount:,.0f} BIF over budget ({b.actual_amount/b.expected_amount*100:.0f}% of budget).',
-                'type': 'warning',
-                'priority': 'high',
-                'action': f'Reduce {b.category} spending by setting stricter limits.'
-            })
+            try:
+                pct_used = (b.actual_amount / b.expected_amount * 100) if b.expected_amount > 0 else 0
+                recommendations.append({
+                    'title': f'⚠️ Over Budget: {b.category}',
+                    'message': f'Spent {b.actual_amount - b.expected_amount:,.0f} BIF over budget ({pct_used:.0f}% of budget).',
+                    'type': 'warning',
+                    'priority': 'high',
+                    'action': f'Reduce {b.category} spending by setting stricter limits.'
+                })
+            except Exception as e:
+                print(f"Error processing over budget: {e}")
     
     if under_budget and len(under_budget) > 0:
-        best_saver = sorted(under_budget, key=lambda x: x.expected_amount - x.actual_amount, reverse=True)[0]
-        if best_saver:
-            recommendations.append({
-                'title': f'✅ Under Budget: {best_saver.category}',
-                'message': f'You saved {best_saver.expected_amount - best_saver.actual_amount:,.0f} BIF on {best_saver.category}.',
-                'type': 'success',
-                'priority': 'low',
-                'action': 'Consider allocating savings to investments or debt repayment.'
-            })
+        try:
+            best_saver = sorted(under_budget, key=lambda x: x.expected_amount - x.actual_amount, reverse=True)[0]
+            if best_saver:
+                recommendations.append({
+                    'title': f'✅ Under Budget: {best_saver.category}',
+                    'message': f'You saved {best_saver.expected_amount - best_saver.actual_amount:,.0f} BIF on {best_saver.category}.',
+                    'type': 'success',
+                    'priority': 'low',
+                    'action': 'Consider allocating savings to investments or debt repayment.'
+                })
+        except Exception as e:
+            print(f"Error processing under budget: {e}")
     
     # 5. GOAL PROGRESS
     goals = Goal.query.filter_by(user_id=user_id, status='Active').all()
     if goals:
-        # Goals with best progress
-        best_goal = max(goals, key=lambda x: x.progress) if goals else None
-        if best_goal and best_goal.progress > 0:
-            recommendations.append({
-                'title': f'🎯 Best Goal: {best_goal.name}',
-                'message': f'Progress: {best_goal.progress:.0f}% toward {best_goal.target_amount:,.0f} BIF target.',
-                'type': 'success',
-                'priority': 'low',
-                'action': 'Keep the momentum going!'
-            })
-        
-        # Goals with poor progress
-        slow_goals = [g for g in goals if g.progress < 20 and g.created_at < (datetime.now() - timedelta(days=30))]
-        for g in slow_goals[:2]:
-            recommendations.append({
-                'title': f'⚠️ Slow Progress: {g.name}',
-                'message': f'Only {g.progress:.0f}% progress after { (today - g.created_at).days } days. Need more focus.',
-                'type': 'warning',
-                'priority': 'medium',
-                'action': f'Increase contributions to {g.name} goal.'
-            })
+        try:
+            # Goals with best progress
+            best_goal = max(goals, key=lambda x: x.progress) if goals else None
+            if best_goal and best_goal.progress > 0:
+                recommendations.append({
+                    'title': f'🎯 Best Goal: {best_goal.name}',
+                    'message': f'Progress: {best_goal.progress:.0f}% toward {best_goal.target_amount:,.0f} BIF target.',
+                    'type': 'success',
+                    'priority': 'low',
+                    'action': 'Keep the momentum going!'
+                })
+            
+            # Goals with poor progress
+            slow_goals = [g for g in goals if g.progress < 20 and g.created_at < (datetime.now() - timedelta(days=30))]
+            for g in slow_goals[:2]:
+                days_old = (today - g.created_at).days
+                recommendations.append({
+                    'title': f'⚠️ Slow Progress: {g.name}',
+                    'message': f'Only {g.progress:.0f}% progress after {days_old} days. Need more focus.',
+                    'type': 'warning',
+                    'priority': 'medium',
+                    'action': f'Increase contributions to {g.name} goal.'
+                })
+        except Exception as e:
+            print(f"Error processing goals: {e}")
     
     # 6. LIVESTOCK OPPORTUNITIES
     livestock = Livestock.query.filter_by(user_id=user_id, status='Active').all()
@@ -1845,24 +1866,28 @@ def get_decisions():
             'action': 'Go to Livestock section and sell these animals for profit.'
         })
     
-    # Best livestock type for profit
-    if sold_investments:
-        best_livestock = db.session.query(
-            Livestock.type,
-            func.avg(Livestock.profit).label('avg_profit')
-        ).filter(
-            Livestock.user_id == user_id,
-            Livestock.status == 'Sold'
-        ).group_by(Livestock.type).order_by(func.avg(Livestock.profit).desc()).first()
-        
-        if best_livestock and best_livestock[1] > 0:
-            recommendations.append({
-                'title': f'🐄 Best Livestock: {best_livestock[0]}',
-                'message': f'Average profit of {best_livestock[1]:,.0f} BIF per animal. Focus on this type!',
-                'type': 'opportunity',
-                'priority': 'medium',
-                'action': f'Consider expanding your {best_livestock[0]} operation.'
-            })
+    # SAFE: Best livestock type for profit - only if there are sold livestock
+    sold_livestock = Livestock.query.filter_by(user_id=user_id, status='Sold').all()
+    if sold_livestock:
+        try:
+            best_livestock = db.session.query(
+                Livestock.type,
+                func.avg(Livestock.profit).label('avg_profit')
+            ).filter(
+                Livestock.user_id == user_id,
+                Livestock.status == 'Sold'
+            ).group_by(Livestock.type).order_by(func.avg(Livestock.profit).desc()).first()
+            
+            if best_livestock and best_livestock[1] is not None and best_livestock[1] > 0:
+                recommendations.append({
+                    'title': f'🐄 Best Livestock: {best_livestock[0]}',
+                    'message': f'Average profit of {best_livestock[1]:,.0f} BIF per animal. Focus on this type!',
+                    'type': 'opportunity',
+                    'priority': 'medium',
+                    'action': f'Consider expanding your {best_livestock[0]} operation.'
+                })
+        except Exception as e:
+            print(f"Error calculating best livestock: {e}")
     
     # 7. LIABILITIES MANAGEMENT
     total_owed = db.session.query(func.sum(Liability.amount)).filter(
@@ -1888,70 +1913,82 @@ def get_decisions():
         
         if overdue:
             for l in overdue[:3]:
-                days_overdue = (today - l.due_date).days
-                recommendations.append({
-                    'title': f'⚠️ Overdue Debt: {l.name}',
-                    'message': f'{l.amount:,.0f} BIF is {days_overdue} days overdue.',
-                    'type': 'critical',
-                    'priority': 'high',
-                    'action': f'Pay {l.name} immediately to avoid penalties.'
-                })
+                try:
+                    days_overdue = (today - l.due_date).days
+                    recommendations.append({
+                        'title': f'⚠️ Overdue Debt: {l.name}',
+                        'message': f'{l.amount:,.0f} BIF is {days_overdue} days overdue.',
+                        'type': 'critical',
+                        'priority': 'high',
+                        'action': f'Pay {l.name} immediately to avoid penalties.'
+                    })
+                except Exception as e:
+                    print(f"Error processing overdue: {e}")
     
     # 8. ASSET UTILIZATION
     total_asset_value = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
     if total_asset_value > 0:
-        # Check for deprecated assets (older than 5 years)
-        five_years_ago = today - timedelta(days=365*5)
-        old_assets = Asset.query.filter(
-            Asset.user_id == user_id,
-            Asset.purchase_date < five_years_ago,
-            Asset.current_value < Asset.purchase_price * 0.5
-        ).all()
-        
-        if old_assets:
-            for a in old_assets[:2]:
-                depreciation = (1 - (a.current_value / a.purchase_price)) * 100
-                recommendations.append({
-                    'title': f'⚠️ Depreciating Asset: {a.name}',
-                    'message': f'Value dropped {depreciation:.0f}% since purchase. Consider replacing or selling.',
-                    'type': 'warning',
-                    'priority': 'medium',
-                    'action': f'Review if {a.name} still provides value or should be replaced.'
-                })
+        try:
+            # Check for deprecated assets (older than 5 years)
+            five_years_ago = today - timedelta(days=365*5)
+            old_assets = Asset.query.filter(
+                Asset.user_id == user_id,
+                Asset.purchase_date < five_years_ago,
+                Asset.current_value < Asset.purchase_price * 0.5
+            ).all()
+            
+            if old_assets:
+                for a in old_assets[:2]:
+                    depreciation = (1 - (a.current_value / a.purchase_price)) * 100
+                    recommendations.append({
+                        'title': f'⚠️ Depreciating Asset: {a.name}',
+                        'message': f'Value dropped {depreciation:.0f}% since purchase. Consider replacing or selling.',
+                        'type': 'warning',
+                        'priority': 'medium',
+                        'action': f'Review if {a.name} still provides value or should be replaced.'
+                    })
+        except Exception as e:
+            print(f"Error processing assets: {e}")
     
     # 9. CASH FLOW OPPORTUNITIES
     if net_cash > 0 and total_income > 0:
-        # Extra cash available
-        extra_cash = net_cash * 0.1  # 10% of net cash
-        
-        recommendations.append({
-            'title': '💰 Cash Available for Investment',
-            'message': f'You have {net_cash:,.0f} BIF in net cash. Consider allocating {extra_cash:,.0f} BIF to investments.',
-            'type': 'opportunity',
-            'priority': 'medium',
-            'action': 'Check investment opportunities in the Investments section.'
-        })
+        try:
+            extra_cash = net_cash * 0.1  # 10% of net cash
+            recommendations.append({
+                'title': '💰 Cash Available for Investment',
+                'message': f'You have {net_cash:,.0f} BIF in net cash. Consider allocating {extra_cash:,.0f} BIF to investments.',
+                'type': 'opportunity',
+                'priority': 'medium',
+                'action': 'Check investment opportunities in the Investments section.'
+            })
+        except Exception as e:
+            print(f"Error processing cash flow: {e}")
     
     # 10. OVERALL FINANCIAL SCORE
-    # Calculate overall financial health score
-    score = 0
-    score += min(savings_rate * 2, 40)  # Max 40 points for savings rate
-    score += min(emergency_fund_months * 5, 25)  # Max 25 points for emergency fund
-    score += min(len(unique_types) * 8, 20) if investments else 0  # Max 20 for diversification
-    score += 15 if total_owed == 0 else max(0, 15 - (total_owed / total_income * 10))  # Debt management
-    
-    financial_health = 'Excellent' if score >= 80 else 'Good' if score >= 60 else 'Fair' if score >= 40 else 'Needs Improvement'
-    
-    recommendations.append({
-        'title': f'📊 Financial Health Score: {score:.0f}/100',
-        'message': f'Your financial health is {financial_health}. Score based on savings, emergency fund, diversification, and debt management.',
-        'type': 'info' if score >= 60 else 'warning',
-        'priority': 'low',
-        'action': 'Check the detailed recommendations above to improve your score.'
-    })
+    try:
+        # Calculate overall financial health score
+        score = 0
+        score += min(savings_rate * 2, 40)  # Max 40 points for savings rate
+        score += min(emergency_fund_months * 5, 25)  # Max 25 points for emergency fund
+        if investments:
+            type_count = len(set(i.type for i in investments))
+            score += min(type_count * 8, 20)  # Max 20 for diversification
+        score += 15 if total_owed == 0 else max(0, 15 - (total_owed / (total_income + 1) * 10))  # Debt management
+        
+        financial_health = 'Excellent' if score >= 80 else 'Good' if score >= 60 else 'Fair' if score >= 40 else 'Needs Improvement'
+        
+        recommendations.append({
+            'title': f'📊 Financial Health Score: {score:.0f}/100',
+            'message': f'Your financial health is {financial_health}. Score based on savings, emergency fund, diversification, and debt management.',
+            'type': 'info' if score >= 60 else 'warning',
+            'priority': 'low',
+            'action': 'Check the detailed recommendations above to improve your score.'
+        })
+    except Exception as e:
+        print(f"Error calculating financial score: {e}")
     
     # Sort recommendations by priority
-    priority_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'info': 4, 'success': 5}
+    priority_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'info': 4, 'success': 5, 'warning': 2, 'opportunity': 2}
     recommendations.sort(key=lambda x: priority_order.get(x.get('priority', 'low'), 3))
     
     return jsonify(recommendations[:15])
