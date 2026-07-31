@@ -213,11 +213,6 @@ class Goal(db.Model):
         }
 
 
-
-
-
-
-
 # ============================
 # BUDGET MODEL - PROFESSIONAL
 # ============================
@@ -274,9 +269,6 @@ class Budget(db.Model):
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
             'notes': self.notes
         }
-
-
-
 
 
 
@@ -784,7 +776,7 @@ def user_api_transactions():
 
 
 # ============================
-# SUPERADMIN DASHBOARD - UPDATED
+# SUPERADMIN DASHBOARD - COMPLETE FIXED
 # ============================
 
 @app.route('/dashboard')
@@ -853,6 +845,7 @@ def superadmin_dashboard():
     
     alerts = []
     
+    # Ready to sell animals
     ready_animals = Livestock.query.filter(
         Livestock.user_id == user_id,
         Livestock.status == 'Active',
@@ -861,19 +854,21 @@ def superadmin_dashboard():
     for animal in ready_animals:
         alerts.append(f"🐄 {animal.tag} ({animal.type}) is ready to sell!")
     
-    # UPDATED: Get budgets for current month using the new model
-    # Get active budgets that cover the current date
-    active_budgets = Budget.query.filter(
-        Budget.user_id == user_id,
-        Budget.status == 'active',
-        Budget.start_date <= today,
-        Budget.end_date >= today
-    ).all()
+    # Budget alerts - using new budget model
+    try:
+        active_budgets = Budget.query.filter(
+            Budget.user_id == user_id,
+            Budget.status == 'active',
+            Budget.start_date <= today,
+            Budget.end_date >= today
+        ).all()
+        for budget in active_budgets:
+            if budget.actual_amount > budget.planned_amount:
+                alerts.append(f"⚠️ {budget.name} budget exceeded by {budget.actual_amount - budget.planned_amount:,.0f} BIF")
+    except Exception as e:
+        print(f"Budget alert error: {e}")
     
-    for budget in active_budgets:
-        if budget.actual_amount > budget.planned_amount:
-            alerts.append(f"⚠️ {budget.name} budget exceeded by {budget.actual_amount - budget.planned_amount:,.0f} BIF")
-    
+    # Overdue investments
     overdue_investments = Investment.query.filter(
         Investment.user_id == user_id,
         Investment.status == 'Running',
@@ -882,9 +877,11 @@ def superadmin_dashboard():
     for inv in overdue_investments:
         alerts.append(f"📊 Investment {inv.investment_id} ({inv.type}) is overdue!")
     
+    # Emergency fund alert
     if emergency_fund_ratio < 30:
         alerts.append(f"🛡️ Emergency fund is low ({emergency_fund_ratio:.0f}%)")
     
+    # Admin stats
     total_products = Product.query.count()
     total_clients = Client.query.count()
     total_sales = Sale.query.count()
@@ -908,7 +905,6 @@ def superadmin_dashboard():
         total_revenue=total_revenue,
         user=current_user
     )
-
 
 
 

@@ -34,6 +34,9 @@
         .role-badge { background: #f39c12; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #0a0e17; font-weight: bold; }
         h2 { color: #fff; margin: 20px 0 10px 0; }
         .alert { background: #1a1a2a; padding: 10px 15px; border-radius: 8px; margin: 5px 0; border-left: 3px solid #f39c12; }
+        .alert.critical { border-left-color: #ff4757; }
+        .alert.success { border-left-color: #2ecc71; }
+        .alert.info { border-left-color: #00d4ff; }
         @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
@@ -50,7 +53,6 @@
         </div>
     </div>
 
-    <!-- ALL ORIGINAL NAVIGATION LINKS - SAME AS YOUR WORKING DASHBOARD -->
     <div class="nav">
         <a href="/dashboard" class="active">📊 Dashboard</a>
         <a href="/cashflow">💰 Cash Flow</a>
@@ -72,7 +74,7 @@
         <a href="/admin" style="color:#f39c12; border:1px solid #3a3a1a;">🔧 Admin Panel</a>
     </div>
 
-    <!-- DASHBOARD STATS -->
+    <!-- Dashboard Stats -->
     <div class="grid">
         <div class="card"><div class="label">💰 Current Cash</div><div class="value green">{{ "%.0f"|format(current_cash) }}</div></div>
         <div class="card"><div class="label">🏦 Total Assets</div><div class="value blue">{{ "%.0f"|format(total_assets) }}</div></div>
@@ -90,12 +92,32 @@
         <div class="card"><div class="label">💰 Revenue</div><div class="value green">{{ "%.0f"|format(total_revenue) }}</div></div>
     </div>
 
+    <!-- Alerts -->
     {% if alerts %}
-    <h2>⚠️ Alerts</h2>
-    {% for alert in alerts %}
-    <div class="alert">{{ alert }}</div>
-    {% endfor %}
+    <h2>⚠️ Alerts & Notifications</h2>
+    <div style="max-height:300px; overflow-y:auto;">
+        {% for alert in alerts %}
+        <div class="alert info">{{ alert }}</div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:20px; text-align:center; color:#4a5a6f; background:#0f1a2b; border-radius:12px; margin-top:10px;">
+        ✅ All systems running smoothly! No alerts.
+    </div>
     {% endif %}
+
+    <!-- Quick Stats Summary -->
+    <div style="margin-top:20px; padding:15px; background:#0f1a2b; border-radius:12px; border:1px solid #1a2a3f;">
+        <h3 style="color:#7a8ba3; font-size:14px;">📊 Quick Summary</h3>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-top:10px;">
+            <div><span style="color:#7a8ba3;">Cash:</span> <span style="color:#2ecc71;">{{ "%.0f"|format(current_cash) }} BIF</span></div>
+            <div><span style="color:#7a8ba3;">Assets:</span> <span style="color:#3498db;">{{ "%.0f"|format(total_assets) }} BIF</span></div>
+            <div><span style="color:#7a8ba3;">Net Worth:</span> <span style="color:#00d4ff;">{{ "%.0f"|format(net_worth) }} BIF</span></div>
+            <div><span style="color:#7a8ba3;">Monthly Income:</span> <span style="color:#2ecc71;">{{ "%.0f"|format(monthly_income) }} BIF</span></div>
+            <div><span style="color:#7a8ba3;">Monthly Expenses:</span> <span style="color:#ff6b6b;">{{ "%.0f"|format(monthly_expenses) }} BIF</span></div>
+            <div><span style="color:#7a8ba3;">Sales Revenue:</span> <span style="color:#f39c12;">{{ "%.0f"|format(total_revenue) }} BIF</span></div>
+        </div>
+    </div>
 
     <div class="footer">BuSystem • Every Franc Must Have a Job</div>
 </div>
