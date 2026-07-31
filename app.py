@@ -213,8 +213,11 @@ class Goal(db.Model):
         }
 
 
+
+
+
 # ============================
-# BUDGET MODEL - PROFESSIONAL
+# BUDGET MODEL - COMPLETE FIXED
 # ============================
 
 class Budget(db.Model):
@@ -223,21 +226,21 @@ class Budget(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
     # Budget details
-    name = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(100), nullable=False, default='Budget')
     category = db.Column(db.String(50), nullable=False)
     description = db.Column(db.String(200))
     
     # Amounts
-    planned_amount = db.Column(db.Float, nullable=False)
+    planned_amount = db.Column(db.Float, nullable=False, default=0)
     actual_amount = db.Column(db.Float, default=0)
     
     # Time period
-    period_type = db.Column(db.String(20), default='monthly')  # daily, weekly, monthly, yearly, custom
-    start_date = db.Column(db.DateTime, nullable=False)
-    end_date = db.Column(db.DateTime, nullable=False)
+    period_type = db.Column(db.String(20), default='monthly')
+    start_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    end_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     # Status
-    status = db.Column(db.String(20), default='active')  # active, completed, cancelled
+    status = db.Column(db.String(20), default='active')
     
     # Tracking
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -246,6 +249,14 @@ class Budget(db.Model):
     
     # Notes
     notes = db.Column(db.Text)
+    
+    # Keep old columns for compatibility (they might still exist in DB)
+    month = db.Column(db.Integer, nullable=True)
+    year = db.Column(db.Integer, nullable=True)
+    expected_amount = db.Column(db.Float, nullable=True)
+    type = db.Column(db.String(20), nullable=True)
+    difference = db.Column(db.Float, default=0)
+    status_updated_at = db.Column(db.DateTime)
     
     def calculate_difference(self):
         self.difference = self.actual_amount - self.planned_amount
@@ -259,7 +270,7 @@ class Budget(db.Model):
             'description': self.description,
             'planned_amount': self.planned_amount,
             'actual_amount': self.actual_amount,
-            'difference': self.difference if hasattr(self, 'difference') else self.planned_amount - self.actual_amount,
+            'difference': self.actual_amount - self.planned_amount,
             'period_type': self.period_type,
             'start_date': self.start_date.strftime('%Y-%m-%d') if self.start_date else None,
             'end_date': self.end_date.strftime('%Y-%m-%d') if self.end_date else None,
@@ -770,13 +781,8 @@ def user_api_transactions():
 
 
 
-
-
-
-
-
 # ============================
-# SUPERADMIN DASHBOARD - COMPLETE FIXED
+# SUPERADMIN DASHBOARD - WITH ERROR HANDLING
 # ============================
 
 @app.route('/dashboard')
@@ -854,7 +860,7 @@ def superadmin_dashboard():
     for animal in ready_animals:
         alerts.append(f"🐄 {animal.tag} ({animal.type}) is ready to sell!")
     
-    # Budget alerts - using new budget model
+    # Budget alerts - with try/except for safety
     try:
         active_budgets = Budget.query.filter(
             Budget.user_id == user_id,
@@ -867,6 +873,20 @@ def superadmin_dashboard():
                 alerts.append(f"⚠️ {budget.name} budget exceeded by {budget.actual_amount - budget.planned_amount:,.0f} BIF")
     except Exception as e:
         print(f"Budget alert error: {e}")
+        # Try fallback - get budgets using old method if new columns don't exist
+        try:
+            # Try to get budgets using month/year (old method)
+            from sqlalchemy import and_
+            old_budgets = Budget.query.filter(
+                Budget.user_id == user_id,
+                Budget.month == today.month,
+                Budget.year == today.year
+            ).all()
+            for budget in old_budgets:
+                if budget.actual_amount > budget.expected_amount:
+                    alerts.append(f"⚠️ {budget.category} budget exceeded by {budget.actual_amount - budget.expected_amount:,.0f} BIF")
+        except Exception as e2:
+            print(f"Fallback budget error: {e2}")
     
     # Overdue investments
     overdue_investments = Investment.query.filter(
@@ -877,11 +897,9 @@ def superadmin_dashboard():
     for inv in overdue_investments:
         alerts.append(f"📊 Investment {inv.investment_id} ({inv.type}) is overdue!")
     
-    # Emergency fund alert
     if emergency_fund_ratio < 30:
         alerts.append(f"🛡️ Emergency fund is low ({emergency_fund_ratio:.0f}%)")
     
-    # Admin stats
     total_products = Product.query.count()
     total_clients = Client.query.count()
     total_sales = Sale.query.count()
@@ -905,6 +923,10 @@ def superadmin_dashboard():
         total_revenue=total_revenue,
         user=current_user
     )
+
+
+
+
 
 
 
