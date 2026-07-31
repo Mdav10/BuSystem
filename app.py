@@ -212,37 +212,75 @@ class Goal(db.Model):
         }
 
 
+
+
+
+
+
+# ============================
+# BUDGET MODEL - PROFESSIONAL
+# ============================
+
 class Budget(db.Model):
     __tablename__ = 'budgets'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Budget details
+    name = db.Column(db.String(100), nullable=False)
     category = db.Column(db.String(50), nullable=False)
-    type = db.Column(db.String(20), nullable=False)
-    expected_amount = db.Column(db.Float, nullable=False)
+    description = db.Column(db.String(200))
+    
+    # Amounts
+    planned_amount = db.Column(db.Float, nullable=False)
     actual_amount = db.Column(db.Float, default=0)
-    month = db.Column(db.Integer, nullable=False)
-    year = db.Column(db.Integer, nullable=False)
-    difference = db.Column(db.Float, default=0)
-    status = db.Column(db.String(20), default='pending')
-    status_updated_at = db.Column(db.DateTime)
+    
+    # Time period
+    period_type = db.Column(db.String(20), default='monthly')  # daily, weekly, monthly, yearly, custom
+    start_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=False)
+    
+    # Status
+    status = db.Column(db.String(20), default='active')  # active, completed, cancelled
+    
+    # Tracking
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+    
+    # Notes
+    notes = db.Column(db.Text)
     
     def calculate_difference(self):
-        self.difference = self.actual_amount - self.expected_amount
+        self.difference = self.actual_amount - self.planned_amount
         return self.difference
     
     def to_dict(self):
         return {
             'id': self.id,
+            'name': self.name,
             'category': self.category,
-            'type': self.type,
-            'expected_amount': self.expected_amount,
+            'description': self.description,
+            'planned_amount': self.planned_amount,
             'actual_amount': self.actual_amount,
-            'difference': self.difference,
-            'month': self.month,
-            'year': self.year,
+            'difference': self.difference if hasattr(self, 'difference') else self.planned_amount - self.actual_amount,
+            'period_type': self.period_type,
+            'start_date': self.start_date.strftime('%Y-%m-%d') if self.start_date else None,
+            'end_date': self.end_date.strftime('%Y-%m-%d') if self.end_date else None,
             'status': self.status,
-            'status_updated_at': self.status_updated_at.strftime('%Y-%m-%d %H:%M') if self.status_updated_at else None
+            'progress': min((self.actual_amount / self.planned_amount) * 100, 100) if self.planned_amount > 0 else 0,
+            'remaining': self.planned_amount - self.actual_amount,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            'notes': self.notes
         }
+
+
+
+
+
+
+
+
 
 
 class Liability(db.Model):
@@ -1335,75 +1373,196 @@ def add_goal_amount(id):
     })
 
 
-@app.route('/api/budget', methods=['GET', 'POST', 'DELETE'])
+
+
+
+
+
+# ============================
+# PROFESSIONAL BUDGET API
+# ============================
+
+@app.route('/api/budget', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
 @superadmin_required
 def api_budget():
+    user_id = current_user.id
+    
     if request.method == 'GET':
-        today = datetime.now()
-        budgets = Budget.query.filter_by(
-            user_id=current_user.id,
-            month=today.month,
-            year=today.year
-        ).all()
+        # Get all budgets or filter by period
+        budget_id = request.args.get('id')
+        period_type = request.args.get('period_type')
+        status = request.args.get('status')
+        
+        query = Budget.query.filter_by(user_id=user_id)
+        
+        if budget_id:
+            budget = query.filter_by(id=budget_id).first()
+            if budget:
+                return jsonify(budget.to_dict())
+            return jsonify({'error': 'Budget not found'}), 404
+        
+        if period_type:
+            query = query.filter_by(period_type=period_type)
+        if status:
+            query = query.filter_by(status=status)
+        
+        budgets = query.order_by(Budget.start_date.desc()).all()
         return jsonify([b.to_dict() for b in budgets])
+    
     elif request.method == 'POST':
         data = request.json
-        budget = Budget.query.filter_by(
-            user_id=current_user.id,
+        
+        # Parse dates
+        start_date = datetime.strptime(data.get('start_date'), '%Y-%m-%d') if data.get('start_date') else datetime.now()
+        end_date = datetime.strptime(data.get('end_date'), '%Y-%m-%d') if data.get('end_date') else None
+        
+        # If no end date, set based on period type
+        if not end_date:
+            if data.get('period_type') == 'daily':
+                end_date = start_date
+            elif data.get('period_type') == 'weekly':
+                end_date = start_date + timedelta(days=6)
+            elif data.get('period_type') == 'monthly':
+                # End of month
+                if start_date.month == 12:
+                    end_date = datetime(start_date.year + 1, 1, 1) - timedelta(days=1)
+                else:
+                    end_date = datetime(start_date.year, start_date.month + 1, 1) - timedelta(days=1)
+            elif data.get('period_type') == 'yearly':
+                end_date = datetime(start_date.year, 12, 31)
+            else:
+                end_date = start_date + timedelta(days=30)  # Default 30 days
+        
+        budget = Budget(
+            user_id=user_id,
+            name=data.get('name'),
             category=data.get('category'),
-            month=data.get('month'),
-            year=data.get('year')
-        ).first()
-        if budget:
-            budget.expected_amount = float(data.get('expected_amount'))
-        else:
-            budget = Budget(
-                user_id=current_user.id,
-                category=data.get('category'),
-                type=data.get('type'),
-                expected_amount=float(data.get('expected_amount')),
-                month=data.get('month'),
-                year=data.get('year')
-            )
-            db.session.add(budget)
+            description=data.get('description'),
+            planned_amount=float(data.get('planned_amount')),
+            period_type=data.get('period_type', 'monthly'),
+            start_date=start_date,
+            end_date=end_date,
+            status=data.get('status', 'active'),
+            notes=data.get('notes')
+        )
+        db.session.add(budget)
         db.session.commit()
-        return jsonify({'status': 'success'})
+        return jsonify({'status': 'success', 'id': budget.id, 'budget': budget.to_dict()})
+    
+    elif request.method == 'PUT':
+        data = request.json
+        budget = Budget.query.get_or_404(data.get('id'))
+        if budget.user_id != user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Update fields
+        if 'name' in data: budget.name = data['name']
+        if 'category' in data: budget.category = data['category']
+        if 'description' in data: budget.description = data['description']
+        if 'planned_amount' in data: budget.planned_amount = float(data['planned_amount'])
+        if 'period_type' in data: budget.period_type = data['period_type']
+        if 'start_date' in data:
+            budget.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d')
+        if 'end_date' in data:
+            budget.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d')
+        if 'status' in data: budget.status = data['status']
+        if 'notes' in data: budget.notes = data['notes']
+        
+        budget.updated_at = datetime.utcnow()
+        
+        # If status is completed, set completed_at
+        if budget.status == 'completed' and not budget.completed_at:
+            budget.completed_at = datetime.utcnow()
+        
+        db.session.commit()
+        return jsonify({'status': 'success', 'budget': budget.to_dict()})
+    
     elif request.method == 'DELETE':
         data = request.json
         budget = Budget.query.get_or_404(data.get('id'))
-        if budget.user_id != current_user.id:
+        if budget.user_id != user_id:
             return jsonify({'error': 'Unauthorized'}), 403
         db.session.delete(budget)
         db.session.commit()
         return jsonify({'status': 'success'})
 
 
-@app.route('/api/budget/<int:id>/status', methods=['POST'])
+@app.route('/api/budget/<int:id>/track', methods=['POST'])
 @login_required
 @superadmin_required
-def update_budget_status(id):
+def track_budget_spending(id):
+    """Track actual spending against a budget"""
     budget = Budget.query.get_or_404(id)
     if budget.user_id != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     
     data = request.json
-    status = data.get('status')
+    amount = float(data.get('amount', 0))
     
-    if status not in ['done', 'not_done', 'pending']:
-        return jsonify({'error': 'Invalid status'}), 400
+    if amount <= 0:
+        return jsonify({'error': 'Amount must be greater than 0'}), 400
     
-    budget.status = status
-    budget.status_updated_at = datetime.utcnow()
+    budget.actual_amount += amount
+    budget.updated_at = datetime.utcnow()
+    
+    # If actual amount reaches or exceeds planned, auto-complete
+    if budget.actual_amount >= budget.planned_amount and budget.status == 'active':
+        budget.status = 'completed'
+        budget.completed_at = datetime.utcnow()
+    
     db.session.commit()
     
     return jsonify({
         'status': 'success',
-        'new_status': status,
-        'updated_at': budget.status_updated_at.strftime('%Y-%m-%d %H:%M')
+        'budget': budget.to_dict(),
+        'progress': min((budget.actual_amount / budget.planned_amount) * 100, 100) if budget.planned_amount > 0 else 0,
+        'remaining': budget.planned_amount - budget.actual_amount
     })
 
 
+@app.route('/api/budget/summary')
+@login_required
+@superadmin_required
+def budget_summary():
+    """Get budget summary statistics"""
+    user_id = current_user.id
+    today = datetime.now()
+    
+    # Active budgets
+    active_budgets = Budget.query.filter_by(user_id=user_id, status='active').all()
+    total_planned = sum(b.planned_amount for b in active_budgets)
+    total_actual = sum(b.actual_amount for b in active_budgets)
+    
+    # Completed budgets
+    completed_budgets = Budget.query.filter_by(user_id=user_id, status='completed').all()
+    total_completed_planned = sum(b.planned_amount for b in completed_budgets)
+    total_completed_actual = sum(b.actual_amount for b in completed_budgets)
+    
+    # Budgets by category
+    categories = {}
+    for b in active_budgets:
+        if b.category not in categories:
+            categories[b.category] = {'planned': 0, 'actual': 0, 'count': 0}
+        categories[b.category]['planned'] += b.planned_amount
+        categories[b.category]['actual'] += b.actual_amount
+        categories[b.category]['count'] += 1
+    
+    # Over budget alerts
+    over_budget = [b for b in active_budgets if b.actual_amount > b.planned_amount]
+    
+    return jsonify({
+        'total_active_budgets': len(active_budgets),
+        'total_completed_budgets': len(completed_budgets),
+        'total_planned': total_planned,
+        'total_actual': total_actual,
+        'total_remaining': total_planned - total_actual,
+        'total_completed_planned': total_completed_planned,
+        'total_completed_actual': total_completed_actual,
+        'categories': categories,
+        'over_budget': [b.to_dict() for b in over_budget],
+        'overall_progress': min((total_actual / total_planned) * 100, 100) if total_planned > 0 else 0
+    })
 
 
 
