@@ -1033,13 +1033,24 @@ def sell_livestock(id):
     })
 
 
-@app.route('/api/assets', methods=['GET', 'POST', 'DELETE'])
+
+
+
+
+
+
+# ============================
+# ASSETS API - WITH UPDATE CURRENT VALUE
+# ============================
+
+@app.route('/api/assets', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
 @superadmin_required
 def api_assets():
     if request.method == 'GET':
         assets = Asset.query.filter_by(user_id=current_user.id).all()
         return jsonify([a.to_dict() for a in assets])
+    
     elif request.method == 'POST':
         data = request.json
         current_value = float(data.get('current_value', data.get('purchase_price', 0)))
@@ -1058,6 +1069,36 @@ def api_assets():
         db.session.add(asset)
         db.session.commit()
         return jsonify({'status': 'success', 'id': asset.id})
+    
+    elif request.method == 'PUT':
+        data = request.json
+        asset = Asset.query.get_or_404(data.get('id'))
+        if asset.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Update fields
+        if 'name' in data:
+            asset.name = data['name']
+        if 'category' in data:
+            asset.category = data['category']
+        if 'sub_category' in data:
+            asset.sub_category = data['sub_category']
+        if 'purchase_price' in data:
+            asset.purchase_price = float(data['purchase_price'])
+        if 'current_value' in data:
+            asset.current_value = float(data['current_value'])
+        if 'depreciation_rate' in data:
+            asset.depreciation_rate = float(data['depreciation_rate'])
+        if 'location' in data:
+            asset.location = data['location']
+        if 'condition' in data:
+            asset.condition = data['condition']
+        if 'notes' in data:
+            asset.notes = data['notes']
+        
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': asset.id, 'current_value': asset.current_value})
+    
     elif request.method == 'DELETE':
         data = request.json
         asset = Asset.query.get_or_404(data.get('id'))
@@ -1066,6 +1107,15 @@ def api_assets():
         db.session.delete(asset)
         db.session.commit()
         return jsonify({'status': 'success'})
+
+
+
+
+
+
+
+
+
 
 
 @app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
