@@ -1,3 +1,4 @@
+
 import os
 import io
 from datetime import datetime, timedelta
@@ -773,8 +774,17 @@ def user_api_transactions():
         return jsonify({'status': 'success'})
 
 
+
+
+
+
+
+
+
+
+
 # ============================
-# SUPERADMIN DASHBOARD
+# SUPERADMIN DASHBOARD - UPDATED
 # ============================
 
 @app.route('/dashboard')
@@ -851,10 +861,18 @@ def superadmin_dashboard():
     for animal in ready_animals:
         alerts.append(f"🐄 {animal.tag} ({animal.type}) is ready to sell!")
     
-    budgets = Budget.query.filter_by(user_id=user_id, month=today.month, year=today.year).all()
-    for budget in budgets:
-        if budget.actual_amount > budget.expected_amount:
-            alerts.append(f"⚠️ {budget.category} budget exceeded by {budget.actual_amount - budget.expected_amount:,.0f} BIF")
+    # UPDATED: Get budgets for current month using the new model
+    # Get active budgets that cover the current date
+    active_budgets = Budget.query.filter(
+        Budget.user_id == user_id,
+        Budget.status == 'active',
+        Budget.start_date <= today,
+        Budget.end_date >= today
+    ).all()
+    
+    for budget in active_budgets:
+        if budget.actual_amount > budget.planned_amount:
+            alerts.append(f"⚠️ {budget.name} budget exceeded by {budget.actual_amount - budget.planned_amount:,.0f} BIF")
     
     overdue_investments = Investment.query.filter(
         Investment.user_id == user_id,
@@ -890,6 +908,15 @@ def superadmin_dashboard():
         total_revenue=total_revenue,
         user=current_user
     )
+
+
+
+
+
+
+
+
+
 
 
 # ============================
