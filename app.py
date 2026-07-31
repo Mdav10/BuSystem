@@ -570,7 +570,7 @@ def serve_manifest():
     manifest = {
         "name": "BuSystem",
         "short_name": "BuSys",
-        "description": "Personal Finance OS",
+        "description": "Mugisha's Finance OS",
         "start_url": "/login",
         "display": "standalone",
         "background_color": "#0a0e17",
@@ -906,6 +906,14 @@ def api_transactions():
         return jsonify({'status': 'success'})
 
 
+
+
+
+
+# ============================
+# INVESTMENTS API - WITH CASH VALIDATION
+# ============================
+
 @app.route('/api/investments', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -915,32 +923,91 @@ def api_investments():
             user_id=current_user.id
         ).order_by(Investment.purchase_date.desc()).all()
         return jsonify([i.to_dict() for i in investments])
+    
     elif request.method == 'POST':
         data = request.json
+        user_id = current_user.id
+        
+        # Calculate current cash
+        total_income = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'income'
+        ).scalar() or 0
+        
+        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'expense'
+        ).scalar() or 0
+        
+        current_cash = total_income - total_expenses
+        capital = float(data.get('capital', 0))
+        
+        # Check if user has enough cash
+        if capital > current_cash:
+            return jsonify({
+                'error': f'Insufficient cash! You have {current_cash:,.0f} BIF available. Investment requires {capital:,.0f} BIF.',
+                'current_cash': current_cash,
+                'required': capital,
+                'shortfall': capital - current_cash
+            }), 400
+        
         investment_id = f"{data.get('type')[:3].upper()}{random.randint(100, 999)}"
         investment = Investment(
-            user_id=current_user.id,
+            user_id=user_id,
             investment_id=investment_id,
             type=data.get('type'),
             sub_type=data.get('sub_type'),
-            capital=float(data.get('capital')),
+            capital=capital,
             expected_roi=float(data.get('expected_roi', 0)),
-            current_value=float(data.get('capital')),
+            current_value=capital,
             expected_exit_date=datetime.strptime(data.get('expected_exit_date'), '%Y-%m-%d') if data.get('expected_exit_date') else None,
             purchase_date=datetime.strptime(data.get('purchase_date'), '%Y-%m-%d') if data.get('purchase_date') else datetime.utcnow(),
             notes=data.get('notes')
         )
         db.session.add(investment)
         db.session.commit()
-        return jsonify({'status': 'success', 'investment_id': investment_id})
+        
+        # Create transaction for the investment (expense)
+        transaction = Transaction(
+            user_id=user_id,
+            type='expense',
+            category='Investment',
+            amount=capital,
+            description=f"Investment: {investment_id} - {data.get('type')}",
+            date=datetime.utcnow()
+        )
+        db.session.add(transaction)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'investment_id': investment_id,
+            'current_cash': current_cash - capital,
+            'amount_invested': capital
+        })
+    
     elif request.method == 'DELETE':
         data = request.json
         investment = Investment.query.get_or_404(data.get('id'))
         if investment.user_id != current_user.id:
             return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Restore cash when investment is deleted (if not sold)
+        if investment.status != 'Sold':
+            transaction = Transaction(
+                user_id=current_user.id,
+                type='income',
+                category='Investment Return',
+                amount=investment.capital,
+                description=f"Investment {investment.investment_id} deleted - cash restored",
+                date=datetime.utcnow()
+            )
+            db.session.add(transaction)
+        
         db.session.delete(investment)
         db.session.commit()
         return jsonify({'status': 'success'})
+
 
 
 @app.route('/api/investments/<int:id>/sell', methods=['POST'])
@@ -957,19 +1024,45 @@ def sell_investment(id):
     if sell_price <= 0:
         return jsonify({'error': 'Sell price must be greater than 0'}), 400
     
+    profit = sell_price - investment.capital
+    roi_actual = (profit / investment.capital) * 100 if investment.capital > 0 else 0
+    
     investment.sell_price = sell_price
     investment.sell_date = datetime.utcnow()
     investment.status = 'Sold'
-    investment.profit = sell_price - investment.capital
-    investment.roi_actual = (investment.profit / investment.capital) * 100 if investment.capital > 0 else 0
+    investment.profit = profit
+    investment.roi_actual = roi_actual
     
     db.session.commit()
+    
+    # Create transaction for the sale (income)
+    transaction = Transaction(
+        user_id=current_user.id,
+        type='income',
+        category='Investment Sale',
+        amount=sell_price,
+        description=f"Investment {investment.investment_id} sold for {sell_price:,.0f} BIF",
+        date=datetime.utcnow()
+    )
+    db.session.add(transaction)
+    db.session.commit()
+    
     return jsonify({
         'status': 'success', 
-        'roi': investment.roi_actual,
-        'profit': investment.profit,
-        'sell_price': investment.sell_price
+        'roi': roi_actual,
+        'profit': profit,
+        'sell_price': sell_price
     })
+
+
+
+
+
+
+
+
+
+
 
 
 @app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
