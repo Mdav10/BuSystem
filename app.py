@@ -907,9 +907,6 @@ def api_transactions():
 
 
 
-
-
-
 # ============================
 # INVESTMENTS API - WITH CASH VALIDATION
 # ============================
@@ -1065,6 +1062,10 @@ def sell_investment(id):
 
 
 
+# ============================
+# LIVESTOCK API - WITH CASH FLOW
+# ============================
+
 @app.route('/api/livestock', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1074,27 +1075,82 @@ def api_livestock():
             user_id=current_user.id
         ).order_by(Livestock.purchase_date.desc()).all()
         return jsonify([l.to_dict() for l in livestock])
+    
     elif request.method == 'POST':
         data = request.json
+        user_id = current_user.id
+        
+        # Calculate current cash
+        total_income = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'income'
+        ).scalar() or 0
+        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'expense'
+        ).scalar() or 0
+        current_cash = total_income - total_expenses
+        purchase_price = float(data.get('purchase_price', 0))
+        
+        # Check if user has enough cash to buy livestock
+        if purchase_price > current_cash:
+            return jsonify({
+                'error': f'Insufficient cash! You have {current_cash:,.0f} BIF available. Purchase requires {purchase_price:,.0f} BIF.',
+                'current_cash': current_cash,
+                'required': purchase_price,
+                'shortfall': purchase_price - current_cash
+            }), 400
+        
         animal = Livestock(
-            user_id=current_user.id,
+            user_id=user_id,
             tag=data.get('tag'),
             type=data.get('type'),
             breed=data.get('breed'),
-            purchase_price=float(data.get('purchase_price')),
-            current_value=float(data.get('purchase_price')),
+            purchase_price=purchase_price,
+            current_value=purchase_price,
             expected_sell_price=float(data.get('expected_sell_price', 0)),
             expected_sell_date=datetime.strptime(data.get('expected_sell_date'), '%Y-%m-%d') if data.get('expected_sell_date') else None,
             notes=data.get('notes')
         )
         db.session.add(animal)
         db.session.commit()
-        return jsonify({'status': 'success', 'id': animal.id})
+        
+        # Create transaction for livestock purchase (expense)
+        transaction = Transaction(
+            user_id=user_id,
+            type='expense',
+            category='Livestock',
+            amount=purchase_price,
+            description=f"Livestock purchase: {data.get('tag')} - {data.get('type')}",
+            date=datetime.utcnow()
+        )
+        db.session.add(transaction)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success', 
+            'id': animal.id,
+            'current_cash': current_cash - purchase_price
+        })
+    
     elif request.method == 'DELETE':
         data = request.json
         animal = Livestock.query.get_or_404(data.get('id'))
         if animal.user_id != current_user.id:
             return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Restore cash when livestock is deleted (if not sold)
+        if animal.status != 'Sold':
+            transaction = Transaction(
+                user_id=current_user.id,
+                type='income',
+                category='Livestock Return',
+                amount=animal.purchase_price,
+                description=f"Livestock {animal.tag} deleted - cash restored",
+                date=datetime.utcnow()
+            )
+            db.session.add(transaction)
+        
         db.session.delete(animal)
         db.session.commit()
         return jsonify({'status': 'success'})
@@ -1114,17 +1170,32 @@ def sell_livestock(id):
     if sell_price <= 0:
         return jsonify({'error': 'Sell price must be greater than 0'}), 400
     
+    profit = sell_price - animal.purchase_price
+    
     animal.actual_sell_price = sell_price
     animal.status = 'Sold'
-    animal.profit = sell_price - animal.purchase_price
+    animal.profit = profit
     
     db.session.commit()
+    
+    # Create transaction for livestock sale (income)
+    transaction = Transaction(
+        user_id=current_user.id,
+        type='income',
+        category='Livestock Sale',
+        amount=sell_price,
+        description=f"Livestock {animal.tag} ({animal.type}) sold for {sell_price:,.0f} BIF",
+        date=datetime.utcnow()
+    )
+    db.session.add(transaction)
+    db.session.commit()
+    
     return jsonify({
         'status': 'success',
-        'profit': animal.profit,
-        'sell_price': animal.actual_sell_price
+        'profit': profit,
+        'sell_price': sell_price,
+        'message': f'✅ {animal.tag} sold for {sell_price:,.0f} BIF! Profit: {profit:+,.0f} BIF'
     })
-
 
 
 
