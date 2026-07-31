@@ -1053,15 +1053,6 @@ def sell_investment(id):
 
 
 
-
-
-
-
-
-
-
-
-
 # ============================
 # LIVESTOCK API - WITH CASH FLOW
 # ============================
@@ -1275,13 +1266,6 @@ def api_assets():
 
 
 
-
-
-
-
-
-
-
 @app.route('/api/goals', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1420,6 +1404,17 @@ def update_budget_status(id):
     })
 
 
+
+
+
+
+
+
+
+# ============================
+# LIABILITIES API - WITH CASH FLOW
+# ============================
+
 @app.route('/api/liabilities', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1429,6 +1424,7 @@ def api_liabilities():
             user_id=current_user.id
         ).order_by(Liability.created_at.desc()).all()
         return jsonify([l.to_dict() for l in liabilities])
+    
     elif request.method == 'POST':
         data = request.json
         liability = Liability(
@@ -1443,12 +1439,67 @@ def api_liabilities():
         )
         db.session.add(liability)
         db.session.commit()
+        
+        # If liability is 'I Owe' (debt), create an expense transaction (cash goes out)
+        if liability.type == 'i_owe' and liability.status == 'Paid':
+            transaction = Transaction(
+                user_id=current_user.id,
+                type='expense',
+                category='Debt Payment',
+                amount=liability.amount,
+                description=f"Debt paid: {liability.name} - {liability.description or ''}",
+                date=datetime.utcnow()
+            )
+            db.session.add(transaction)
+            db.session.commit()
+        
+        # If liability is 'Owed to Me' (someone owes you), create an income transaction (cash comes in)
+        elif liability.type == 'owes_me' and liability.status == 'Paid':
+            transaction = Transaction(
+                user_id=current_user.id,
+                type='income',
+                category='Debt Collection',
+                amount=liability.amount,
+                description=f"Received payment: {liability.name} - {liability.description or ''}",
+                date=datetime.utcnow()
+            )
+            db.session.add(transaction)
+            db.session.commit()
+        
         return jsonify({'status': 'success', 'id': liability.id})
+    
     elif request.method == 'DELETE':
         data = request.json
         liability = Liability.query.get_or_404(data.get('id'))
         if liability.user_id != current_user.id:
             return jsonify({'error': 'Unauthorized'}), 403
+        
+        # If liability was already paid, we need to reverse the transaction
+        if liability.status == 'Paid':
+            if liability.type == 'i_owe':
+                # Reverse debt payment (add income back)
+                transaction = Transaction(
+                    user_id=current_user.id,
+                    type='income',
+                    category='Debt Reversal',
+                    amount=liability.amount,
+                    description=f"Debt payment reversed: {liability.name}",
+                    date=datetime.utcnow()
+                )
+                db.session.add(transaction)
+            elif liability.type == 'owes_me':
+                # Reverse collection (add expense back)
+                transaction = Transaction(
+                    user_id=current_user.id,
+                    type='expense',
+                    category='Collection Reversal',
+                    amount=liability.amount,
+                    description=f"Payment reversed: {liability.name}",
+                    date=datetime.utcnow()
+                )
+                db.session.add(transaction)
+            db.session.commit()
+        
         db.session.delete(liability)
         db.session.commit()
         return jsonify({'status': 'success'})
@@ -1462,16 +1513,67 @@ def mark_liability_paid(id):
     if liability.user_id != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     
+    if liability.status == 'Paid':
+        return jsonify({'error': 'This liability is already marked as paid'}), 400
+    
     liability.status = 'Paid'
     liability.paid_at = datetime.utcnow()
     db.session.commit()
     
-    return jsonify({
-        'status': 'success',
-        'message': 'Marked as paid',
-        'id': liability.id,
-        'new_status': liability.status
-    })
+    # Create cash flow transaction based on liability type
+    if liability.type == 'i_owe':
+        # I Owe - paying debt (cash goes out)
+        transaction = Transaction(
+            user_id=current_user.id,
+            type='expense',
+            category='Debt Payment',
+            amount=liability.amount,
+            description=f"Debt paid: {liability.name} - {liability.description or ''}",
+            date=datetime.utcnow()
+        )
+        db.session.add(transaction)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'✅ Debt of {liability.amount:,.0f} BIF marked as paid. Cash flow updated.',
+            'id': liability.id,
+            'new_status': liability.status,
+            'amount': liability.amount,
+            'type': 'expense'
+        })
+    
+    elif liability.type == 'owes_me':
+        # Owed to Me - someone paid you (cash comes in)
+        transaction = Transaction(
+            user_id=current_user.id,
+            type='income',
+            category='Debt Collection',
+            amount=liability.amount,
+            description=f"Payment received: {liability.name} - {liability.description or ''}",
+            date=datetime.utcnow()
+        )
+        db.session.add(transaction)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'✅ Payment of {liability.amount:,.0f} BIF received. Cash flow updated.',
+            'id': liability.id,
+            'new_status': liability.status,
+            'amount': liability.amount,
+            'type': 'income'
+        })
+    
+    return jsonify({'error': 'Invalid liability type'}), 400
+
+
+
+
+
+
+
+
 
 
 @app.route('/api/liabilities/summary')
