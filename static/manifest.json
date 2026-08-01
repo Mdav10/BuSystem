@@ -9,6 +9,9 @@
   "orientation": "portrait",
   "scope": "/",
   "id": "/",
+  "categories": ["finance", "business", "productivity"],
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/static/icons/icon-192.png",
@@ -22,5 +25,7 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
 }
