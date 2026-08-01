@@ -69,36 +69,103 @@
             color: #0a0e17;
             cursor: pointer;
             transition: 0.3s;
-            position: relative;
-            overflow: hidden;
             -webkit-tap-highlight-color: transparent;
         }
         .btn-login:active { transform: scale(0.96); }
-        .btn-login::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-            pointer-events: none;
-        }
-        .btn-login:active::before { width: 400px; height: 400px; }
         .btn-login:hover { background: #00ff88; transform: scale(1.02); }
         .error { color: #ff4757; text-align: center; margin-bottom: 15px; font-size: 14px; }
         .footer { text-align: center; margin-top: 20px; color: #4a5a6f; font-size: 12px; }
+
+        /* Install Button Styles */
+        .install-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        .install-btn.ready {
+            background: #00d4ff;
+            color: #0a0e17;
+        }
+        .install-btn.ready:hover {
+            background: #00ff88;
+            transform: scale(1.02);
+        }
+        .install-btn.downloading {
+            background: #f39c12;
+            color: #fff;
+            cursor: wait;
+        }
+        .install-btn.downloading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        .install-btn.installed {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .install-btn.installed:hover {
+            background: #27ae60;
+        }
+        .install-btn.error {
+            background: #ff4757;
+            color: #fff;
+        }
+        .install-btn.hidden {
+            display: none;
+        }
+
+        /* Progress bar */
+        .progress-container {
+            width: 100%;
+            height: 4px;
+            background: #1a2332;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-container.active {
+            display: block;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
         @media (max-width: 480px) { .login-box { padding: 30px 20px; } }
+        @media (display-mode: standalone) {
+            .install-btn { display: none !important; }
+            .progress-container { display: none !important; }
+        }
     </style>
 </head>
 <body>
 <div class="login-box">
     <img src="/static/icons/icon-192.png" alt="BuSystem" class="app-icon">
     <div class="logo-text">BuSys</div>
-    <div class="subtitle">Mugisha' Finance OS</div>
+    <div class="subtitle">Personal Finance OS</div>
     {% with messages = get_flashed_messages() %}
         {% if messages %}<div class="error">{{ messages[0] }}</div>{% endif %}
     {% endwith %}
@@ -114,59 +181,139 @@
         <button type="submit" class="btn-login">🚀 Access</button>
     </form>
 
+    <!-- Install Button - Only shows when supported -->
+    <button id="installBtn" class="install-btn hidden ready">
+        📲 Install App
+    </button>
+    <div id="progressContainer" class="progress-container">
+        <div id="progressBar" class="progress-bar" style="width: 0%;"></div>
+    </div>
+
     <div class="footer">Every Franc Must Have a Job</div>
 </div>
 
 <script>
-    // Native PWA Install - No custom banner
     let deferredPrompt;
+    let isDownloading = false;
+    let installBtn = document.getElementById('installBtn');
+    let progressContainer = document.getElementById('progressContainer');
+    let progressBar = document.getElementById('progressBar');
 
+    // Check if already installed
+    function isInstalled() {
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    }
+
+    if (isInstalled()) {
+        installBtn.classList.add('hidden');
+        installBtn.classList.remove('ready');
+    }
+
+    // Listen for install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevent Chrome 67 and earlier from automatically showing the prompt
         e.preventDefault();
-        // Stash the event so it can be triggered later
         deferredPrompt = e;
         
-        // Show a simple install button only if the browser supports it
-        const installBtn = document.createElement('button');
+        // Show the install button
+        installBtn.classList.remove('hidden');
+        installBtn.classList.add('ready');
         installBtn.textContent = '📲 Install App';
-        installBtn.style.cssText = `
-            width: 100%;
-            padding: 12px;
-            background: #00d4ff;
-            color: #0a0e17;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-        `;
-        installBtn.onclick = async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const result = await deferredPrompt.userChoice;
-                if (result.outcome === 'accepted') {
-                    installBtn.textContent = '✅ Installed!';
-                    installBtn.style.background = '#2ecc71';
-                } else {
-                    installBtn.textContent = '❌ Declined';
-                    installBtn.style.background = '#ff4757';
-                }
-                deferredPrompt = null;
-            }
-        };
+        installBtn.disabled = false;
+    });
+
+    // Install button click handler
+    installBtn.addEventListener('click', async function() {
+        if (isDownloading) return;
         
-        // Only add if not in standalone mode
-        if (!window.matchMedia('(display-mode: standalone)').matches && !window.navigator.standalone) {
-            document.querySelector('.login-box').appendChild(installBtn);
+        if (deferredPrompt) {
+            // Start downloading state
+            isDownloading = true;
+            this.classList.remove('ready');
+            this.classList.add('downloading');
+            this.textContent = '📥 Downloading...';
+            this.disabled = true;
+            
+            // Show progress bar
+            progressContainer.classList.add('active');
+            
+            // Simulate download progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15 + 5;
+                if (progress > 100) progress = 100;
+                progressBar.style.width = progress + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    
+                    // Show the native install prompt
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            // Installed successfully
+                            this.classList.remove('downloading');
+                            this.classList.add('installed');
+                            this.textContent = '✅ Installed!';
+                            this.disabled = true;
+                            progressContainer.classList.remove('active');
+                            progressBar.style.width = '100%';
+                            
+                            setTimeout(() => {
+                                this.classList.add('hidden');
+                            }, 3000);
+                        } else {
+                            // User declined
+                            this.classList.remove('downloading');
+                            this.classList.add('ready');
+                            this.textContent = '📲 Install App';
+                            this.disabled = false;
+                            progressContainer.classList.remove('active');
+                            progressBar.style.width = '0%';
+                        }
+                        isDownloading = false;
+                        deferredPrompt = null;
+                    });
+                }
+            }, 200);
+        } else {
+            // No install prompt available - fallback
+            this.classList.remove('ready');
+            this.classList.add('error');
+            this.textContent = '⚠️ Use browser menu → "Install App"';
+            setTimeout(() => {
+                this.classList.remove('error');
+                this.classList.add('ready');
+                this.textContent = '📲 Install App';
+            }, 3000);
         }
     });
 
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-        console.log('App is installed');
-    }
+    // Handle app installed event
+    window.addEventListener('appinstalled', () => {
+        installBtn.classList.remove('downloading', 'ready');
+        installBtn.classList.add('installed');
+        installBtn.textContent = '✅ Installed!';
+        installBtn.disabled = true;
+        progressContainer.classList.remove('active');
+        progressBar.style.width = '100%';
+        isDownloading = false;
+        
+        setTimeout(() => {
+            installBtn.classList.add('hidden');
+        }, 3000);
+    });
+
+    // Show install button if PWA is supported but prompt not triggered yet
+    setTimeout(() => {
+        if (!installBtn.classList.contains('hidden') && !deferredPrompt) {
+            // Check if already installed
+            if (!isInstalled()) {
+                installBtn.classList.remove('hidden');
+                installBtn.classList.add('ready');
+                installBtn.textContent = '📲 Install App';
+            }
+        }
+    }, 3000);
 </script>
 </body>
 </html>
