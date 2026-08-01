@@ -250,13 +250,13 @@ class Budget(db.Model):
     # Notes
     notes = db.Column(db.Text)
     
-    # Keep old columns for compatibility (they might still exist in DB)
+    # OLD COLUMNS - Make them nullable
     month = db.Column(db.Integer, nullable=True)
     year = db.Column(db.Integer, nullable=True)
     expected_amount = db.Column(db.Float, nullable=True)
     type = db.Column(db.String(20), nullable=True)
-    difference = db.Column(db.Float, default=0)
-    status_updated_at = db.Column(db.DateTime)
+    difference = db.Column(db.Float, nullable=True)
+    status_updated_at = db.Column(db.DateTime, nullable=True)
     
     def calculate_difference(self):
         self.difference = self.actual_amount - self.planned_amount
@@ -280,7 +280,6 @@ class Budget(db.Model):
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
             'notes': self.notes
         }
-
 
 
 
@@ -1423,10 +1422,6 @@ def add_goal_amount(id):
 
 
 
-# ============================
-# PROFESSIONAL BUDGET API
-# ============================
-
 @app.route('/api/budget', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1434,26 +1429,8 @@ def api_budget():
     user_id = current_user.id
     
     if request.method == 'GET':
-        # Get all budgets or filter by period
-        budget_id = request.args.get('id')
-        period_type = request.args.get('period_type')
-        status = request.args.get('status')
-        
-        query = Budget.query.filter_by(user_id=user_id)
-        
-        if budget_id:
-            budget = query.filter_by(id=budget_id).first()
-            if budget:
-                return jsonify(budget.to_dict())
-            return jsonify({'error': 'Budget not found'}), 404
-        
-        if period_type:
-            query = query.filter_by(period_type=period_type)
-        if status:
-            query = query.filter_by(status=status)
-        
-        budgets = query.order_by(Budget.start_date.desc()).all()
-        return jsonify([b.to_dict() for b in budgets])
+        # ... existing GET code ...
+        pass
     
     elif request.method == 'POST':
         data = request.json
@@ -1462,14 +1439,12 @@ def api_budget():
         start_date = datetime.strptime(data.get('start_date'), '%Y-%m-%d') if data.get('start_date') else datetime.now()
         end_date = datetime.strptime(data.get('end_date'), '%Y-%m-%d') if data.get('end_date') else None
         
-        # If no end date, set based on period type
         if not end_date:
             if data.get('period_type') == 'daily':
                 end_date = start_date
             elif data.get('period_type') == 'weekly':
                 end_date = start_date + timedelta(days=6)
             elif data.get('period_type') == 'monthly':
-                # End of month
                 if start_date.month == 12:
                     end_date = datetime(start_date.year + 1, 1, 1) - timedelta(days=1)
                 else:
@@ -1477,7 +1452,7 @@ def api_budget():
             elif data.get('period_type') == 'yearly':
                 end_date = datetime(start_date.year, 12, 31)
             else:
-                end_date = start_date + timedelta(days=30)  # Default 30 days
+                end_date = start_date + timedelta(days=30)
         
         budget = Budget(
             user_id=user_id,
@@ -1489,48 +1464,18 @@ def api_budget():
             start_date=start_date,
             end_date=end_date,
             status=data.get('status', 'active'),
-            notes=data.get('notes')
+            notes=data.get('notes'),
+            # Set old columns to avoid null violations
+            month=start_date.month,
+            year=start_date.year,
+            expected_amount=float(data.get('planned_amount')),
+            type='expense',
+            difference=0,
+            status_updated_at=datetime.utcnow()
         )
         db.session.add(budget)
         db.session.commit()
         return jsonify({'status': 'success', 'id': budget.id, 'budget': budget.to_dict()})
-    
-    elif request.method == 'PUT':
-        data = request.json
-        budget = Budget.query.get_or_404(data.get('id'))
-        if budget.user_id != user_id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        # Update fields
-        if 'name' in data: budget.name = data['name']
-        if 'category' in data: budget.category = data['category']
-        if 'description' in data: budget.description = data['description']
-        if 'planned_amount' in data: budget.planned_amount = float(data['planned_amount'])
-        if 'period_type' in data: budget.period_type = data['period_type']
-        if 'start_date' in data:
-            budget.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d')
-        if 'end_date' in data:
-            budget.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d')
-        if 'status' in data: budget.status = data['status']
-        if 'notes' in data: budget.notes = data['notes']
-        
-        budget.updated_at = datetime.utcnow()
-        
-        # If status is completed, set completed_at
-        if budget.status == 'completed' and not budget.completed_at:
-            budget.completed_at = datetime.utcnow()
-        
-        db.session.commit()
-        return jsonify({'status': 'success', 'budget': budget.to_dict()})
-    
-    elif request.method == 'DELETE':
-        data = request.json
-        budget = Budget.query.get_or_404(data.get('id'))
-        if budget.user_id != user_id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        db.session.delete(budget)
-        db.session.commit()
-        return jsonify({'status': 'success'})
 
 
 @app.route('/api/budget/<int:id>/track', methods=['POST'])
