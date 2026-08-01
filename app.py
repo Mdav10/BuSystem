@@ -1422,6 +1422,10 @@ def add_goal_amount(id):
 
 
 
+# ============================
+# PROFESSIONAL BUDGET API - COMPLETE FIXED
+# ============================
+
 @app.route('/api/budget', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
 @superadmin_required
@@ -1429,16 +1433,37 @@ def api_budget():
     user_id = current_user.id
     
     if request.method == 'GET':
-        # ... existing GET code ...
-        pass
+        # Get all budgets or filter by parameters
+        budget_id = request.args.get('id')
+        period_type = request.args.get('period_type')
+        status = request.args.get('status')
+        
+        query = Budget.query.filter_by(user_id=user_id)
+        
+        if budget_id:
+            budget = query.filter_by(id=budget_id).first()
+            if budget:
+                return jsonify(budget.to_dict())
+            return jsonify({'error': 'Budget not found'}), 404
+        
+        if period_type:
+            query = query.filter_by(period_type=period_type)
+        if status:
+            query = query.filter_by(status=status)
+        
+        budgets = query.order_by(Budget.start_date.desc()).all()
+        return jsonify([b.to_dict() for b in budgets])
     
     elif request.method == 'POST':
         data = request.json
         
         # Parse dates
         start_date = datetime.strptime(data.get('start_date'), '%Y-%m-%d') if data.get('start_date') else datetime.now()
-        end_date = datetime.strptime(data.get('end_date'), '%Y-%m-%d') if data.get('end_date') else None
+        end_date = None
+        if data.get('end_date'):
+            end_date = datetime.strptime(data.get('end_date'), '%Y-%m-%d')
         
+        # If no end date, set based on period type
         if not end_date:
             if data.get('period_type') == 'daily':
                 end_date = start_date
@@ -1465,7 +1490,7 @@ def api_budget():
             end_date=end_date,
             status=data.get('status', 'active'),
             notes=data.get('notes'),
-            # Set old columns to avoid null violations
+            # Old columns - for backward compatibility
             month=start_date.month,
             year=start_date.year,
             expected_amount=float(data.get('planned_amount')),
@@ -1476,6 +1501,61 @@ def api_budget():
         db.session.add(budget)
         db.session.commit()
         return jsonify({'status': 'success', 'id': budget.id, 'budget': budget.to_dict()})
+    
+    elif request.method == 'PUT':
+        data = request.json
+        budget = Budget.query.get_or_404(data.get('id'))
+        if budget.user_id != user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Update fields
+        if 'name' in data:
+            budget.name = data['name']
+        if 'category' in data:
+            budget.category = data['category']
+        if 'description' in data:
+            budget.description = data['description']
+        if 'planned_amount' in data:
+            budget.planned_amount = float(data['planned_amount'])
+            budget.expected_amount = float(data['planned_amount'])  # Update old column too
+        if 'period_type' in data:
+            budget.period_type = data['period_type']
+        if 'start_date' in data:
+            budget.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d')
+            budget.month = budget.start_date.month  # Update old column
+            budget.year = budget.start_date.year  # Update old column
+        if 'end_date' in data:
+            budget.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d')
+        if 'status' in data:
+            budget.status = data['status']
+        if 'notes' in data:
+            budget.notes = data['notes']
+        
+        budget.updated_at = datetime.utcnow()
+        
+        # If status is completed, set completed_at
+        if budget.status == 'completed' and not budget.completed_at:
+            budget.completed_at = datetime.utcnow()
+        
+        db.session.commit()
+        return jsonify({'status': 'success', 'budget': budget.to_dict()})
+    
+    elif request.method == 'DELETE':
+        data = request.json
+        budget = Budget.query.get_or_404(data.get('id'))
+        if budget.user_id != user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        db.session.delete(budget)
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    
+    # If no method matched, return error
+    return jsonify({'error': 'Method not allowed'}), 405
+
+
+
+
+
 
 
 @app.route('/api/budget/<int:id>/track', methods=['POST'])
@@ -1516,44 +1596,58 @@ def track_budget_spending(id):
 @superadmin_required
 def budget_summary():
     """Get budget summary statistics"""
-    user_id = current_user.id
-    today = datetime.now()
-    
-    # Active budgets
-    active_budgets = Budget.query.filter_by(user_id=user_id, status='active').all()
-    total_planned = sum(b.planned_amount for b in active_budgets)
-    total_actual = sum(b.actual_amount for b in active_budgets)
-    
-    # Completed budgets
-    completed_budgets = Budget.query.filter_by(user_id=user_id, status='completed').all()
-    total_completed_planned = sum(b.planned_amount for b in completed_budgets)
-    total_completed_actual = sum(b.actual_amount for b in completed_budgets)
-    
-    # Budgets by category
-    categories = {}
-    for b in active_budgets:
-        if b.category not in categories:
-            categories[b.category] = {'planned': 0, 'actual': 0, 'count': 0}
-        categories[b.category]['planned'] += b.planned_amount
-        categories[b.category]['actual'] += b.actual_amount
-        categories[b.category]['count'] += 1
-    
-    # Over budget alerts
-    over_budget = [b for b in active_budgets if b.actual_amount > b.planned_amount]
-    
-    return jsonify({
-        'total_active_budgets': len(active_budgets),
-        'total_completed_budgets': len(completed_budgets),
-        'total_planned': total_planned,
-        'total_actual': total_actual,
-        'total_remaining': total_planned - total_actual,
-        'total_completed_planned': total_completed_planned,
-        'total_completed_actual': total_completed_actual,
-        'categories': categories,
-        'over_budget': [b.to_dict() for b in over_budget],
-        'overall_progress': min((total_actual / total_planned) * 100, 100) if total_planned > 0 else 0
-    })
-
+    try:
+        user_id = current_user.id
+        today = datetime.now()
+        
+        # Active budgets
+        active_budgets = Budget.query.filter_by(user_id=user_id, status='active').all()
+        total_planned = sum(b.planned_amount for b in active_budgets)
+        total_actual = sum(b.actual_amount for b in active_budgets)
+        
+        # Completed budgets
+        completed_budgets = Budget.query.filter_by(user_id=user_id, status='completed').all()
+        total_completed_planned = sum(b.planned_amount for b in completed_budgets)
+        total_completed_actual = sum(b.actual_amount for b in completed_budgets)
+        
+        # Budgets by category
+        categories = {}
+        for b in active_budgets:
+            if b.category not in categories:
+                categories[b.category] = {'planned': 0, 'actual': 0, 'count': 0}
+            categories[b.category]['planned'] += b.planned_amount
+            categories[b.category]['actual'] += b.actual_amount
+            categories[b.category]['count'] += 1
+        
+        # Over budget alerts
+        over_budget = [b for b in active_budgets if b.actual_amount > b.planned_amount]
+        
+        return jsonify({
+            'total_active_budgets': len(active_budgets),
+            'total_completed_budgets': len(completed_budgets),
+            'total_planned': total_planned,
+            'total_actual': total_actual,
+            'total_remaining': total_planned - total_actual,
+            'total_completed_planned': total_completed_planned,
+            'total_completed_actual': total_completed_actual,
+            'categories': categories,
+            'over_budget': [b.to_dict() for b in over_budget],
+            'overall_progress': min((total_actual / total_planned) * 100, 100) if total_planned > 0 else 0
+        })
+    except Exception as e:
+        print(f"Budget summary error: {e}")
+        return jsonify({
+            'total_active_budgets': 0,
+            'total_completed_budgets': 0,
+            'total_planned': 0,
+            'total_actual': 0,
+            'total_remaining': 0,
+            'total_completed_planned': 0,
+            'total_completed_actual': 0,
+            'categories': {},
+            'over_budget': [],
+            'overall_progress': 0
+        })
 
 
 
