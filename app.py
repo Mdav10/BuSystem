@@ -3627,14 +3627,29 @@ def export_transactions(format):
     return jsonify({'error': 'Invalid format'}), 400
 
 
-# SUPERADMIN ONLY - Income Statement Export
-@app.route('/api/reports/export/income_statement/<format>')
+
+
+
+
+
+# ============================
+# SUPERADMIN REPORTS ROUTES
+# ============================
+
+@app.route('/reports')
 @login_required
 @superadmin_required
-def export_income_statement(format):
+def reports():
+    return render_template('reports.html', user=current_user)
+
+
+@app.route('/api/reports/income_statement')
+@login_required
+@superadmin_required
+def get_income_statement():
     user_id = current_user.id
     
-    income_data = db.session.query(
+    income = db.session.query(
         Transaction.category,
         func.sum(Transaction.amount).label('total')
     ).filter(
@@ -3642,7 +3657,7 @@ def export_income_statement(format):
         Transaction.type == 'income'
     ).group_by(Transaction.category).all()
     
-    expense_data = db.session.query(
+    expenses = db.session.query(
         Transaction.category,
         func.sum(Transaction.amount).label('total')
     ).filter(
@@ -3650,185 +3665,58 @@ def export_income_statement(format):
         Transaction.type == 'expense'
     ).group_by(Transaction.category).all()
     
-    total_income = sum(i[1] for i in income_data)
-    total_expenses = sum(i[1] for i in expense_data)
+    total_income = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == 'income'
+    ).scalar() or 0
     
-    if format == 'pdf':
-        from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib import colors
-        from reportlab.lib.units import inch
-        
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-        styles = getSampleStyleSheet()
-        story = []
-        
-        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=20, alignment=1, textColor=colors.HexColor('#00d4ff'))
-        story.append(Paragraph("📊 Income Statement", title_style))
-        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
-        story.append(Paragraph(f"User: {current_user.username}", styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(Paragraph("<b>💰 INCOME</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        inc_data = [['Category', 'Amount (BIF)']]
-        for cat, amt in income_data:
-            inc_data.append([cat, f"{amt:,.0f}"])
-        inc_data.append(['TOTAL', f"{total_income:,.0f}"])
-        inc_table = Table(inc_data, colWidths=[2.5*inch, 2.5*inch])
-        inc_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-            ('BACKGROUND', (0, 1), (-1, -2), colors.HexColor('#111a2b')),
-            ('TEXTCOLOR', (0, 1), (-1, -2), colors.whitesmoke),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#1a3a2f')),
-            ('TEXTCOLOR', (0, -1), (-1, -1), colors.whitesmoke),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-        ]))
-        story.append(inc_table)
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(Paragraph("<b>💸 EXPENSES</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        exp_data = [['Category', 'Amount (BIF)']]
-        for cat, amt in expense_data:
-            exp_data.append([cat, f"{amt:,.0f}"])
-        exp_data.append(['TOTAL', f"{total_expenses:,.0f}"])
-        exp_table = Table(exp_data, colWidths=[2.5*inch, 2.5*inch])
-        exp_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-            ('BACKGROUND', (0, 1), (-1, -2), colors.HexColor('#111a2b')),
-            ('TEXTCOLOR', (0, 1), (-1, -2), colors.whitesmoke),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#1a3a2f')),
-            ('TEXTCOLOR', (0, -1), (-1, -1), colors.whitesmoke),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-        ]))
-        story.append(exp_table)
-        story.append(Spacer(1, 0.2*inch))
-        
-        story.append(Paragraph("<b>📊 SUMMARY</b>", styles['Heading2']))
-        story.append(Spacer(1, 0.1*inch))
-        sum_data = [
-            ['Metric', 'Amount (BIF)'],
-            ['Total Income', f"{total_income:,.0f}"],
-            ['Total Expenses', f"{total_expenses:,.0f}"],
-            ['Net Income', f"{total_income - total_expenses:,.0f}"]
-        ]
-        sum_table = Table(sum_data, colWidths=[2.5*inch, 2.5*inch])
-        sum_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-        ]))
-        story.append(sum_table)
-        
-        doc.build(story)
-        buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name=f"Income_Statement_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf")
+    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == 'expense'
+    ).scalar() or 0
     
-    return jsonify({'error': 'Invalid format'}), 400
+    return jsonify({
+        'income': [{'category': i[0], 'total': float(i[1])} for i in income],
+        'expenses': [{'category': i[0], 'total': float(i[1])} for i in expenses],
+        'total_income': float(total_income),
+        'total_expenses': float(total_expenses),
+        'net_income': float(total_income - total_expenses)
+    })
 
 
-# SUPERADMIN ONLY - Balance Sheet Export
-@app.route('/api/reports/export/balance_sheet/<format>')
+@app.route('/api/reports/balance_sheet')
 @login_required
 @superadmin_required
-def export_balance_sheet(format):
+def get_balance_sheet():
     user_id = current_user.id
     
-    total_assets = db.session.query(func.sum(Asset.current_value)).filter(Asset.user_id == user_id).scalar() or 0
-    total_investments = db.session.query(func.sum(Investment.capital)).filter(
-        Investment.user_id == user_id, Investment.status == 'Running'
+    total_assets = db.session.query(func.sum(Asset.current_value)).filter(
+        Asset.user_id == user_id
     ).scalar() or 0
+    
     total_income = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id, Transaction.type == 'income'
+        Transaction.user_id == user_id,
+        Transaction.type == 'income'
     ).scalar() or 0
+    
     total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id, Transaction.type == 'expense'
-    ).scalar() or 0
-    total_liabilities = db.session.query(func.sum(Liability.amount)).filter(
-        Liability.user_id == user_id, Liability.type == 'i_owe', Liability.status != 'Paid'
-    ).scalar() or 0
-    total_owed_to_me = db.session.query(func.sum(Liability.amount)).filter(
-        Liability.user_id == user_id, Liability.type == 'owes_me', Liability.status != 'Paid'
+        Transaction.user_id == user_id,
+        Transaction.type == 'expense'
     ).scalar() or 0
     
-    if format == 'pdf':
-        from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib import colors
-        from reportlab.lib.units import inch
-        
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-        styles = getSampleStyleSheet()
-        story = []
-        
-        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=20, alignment=1, textColor=colors.HexColor('#00d4ff'))
-        story.append(Paragraph("📊 Balance Sheet", title_style))
-        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
-        story.append(Paragraph(f"User: {current_user.username}", styles['Normal']))
-        story.append(Spacer(1, 0.2*inch))
-        
-        data = [
-            ['ASSETS', 'Amount (BIF)'],
-            ['Total Assets', f"{total_assets:,.0f}"],
-            ['Total Investments', f"{total_investments:,.0f}"],
-            ['', ''],
-            ['INCOME & EXPENSES', ''],
-            ['Total Income', f"{total_income:,.0f}"],
-            ['Total Expenses', f"{total_expenses:,.0f}"],
-            ['Net Cash', f"{total_income - total_expenses:,.0f}"],
-            ['', ''],
-            ['LIABILITIES', ''],
-            ['Total Liabilities', f"{total_liabilities:,.0f}"],
-            ['Owed to Me', f"{total_owed_to_me:,.0f}"],
-            ['', ''],
-            ['NET WORTH', ''],
-            ['Net Worth', f"{total_assets + total_income - total_expenses + total_owed_to_me - total_liabilities:,.0f}"]
-        ]
-        
-        table = Table(data, colWidths=[2.5*inch, 2.5*inch])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
-            ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#1a2a3f')),
-            ('BACKGROUND', (0, 7), (-1, 7), colors.HexColor('#1a2a3f')),
-            ('BACKGROUND', (0, 11), (-1, 11), colors.HexColor('#1a2a3f')),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#1a3a2f')),
-            ('TEXTCOLOR', (0, -1), (-1, -1), colors.whitesmoke),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-        ]))
-        story.append(table)
-        
-        doc.build(story)
-        buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name=f"Balance_Sheet_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf")
-    
-    return jsonify({'error': 'Invalid format'}), 400
+    return jsonify({
+        'total_assets': float(total_assets),
+        'total_income': float(total_income),
+        'total_expenses': float(total_expenses),
+        'net_worth': float(total_assets + total_income - total_expenses)
+    })
+
+
+
+
+
+
+
 
 
 # MAIN ROUTE TO HANDLE ALL EXPORTS
@@ -3849,17 +3737,6 @@ def export_report(report_type, format):
         return export_balance_sheet(format)
     else:
         return jsonify({'error': 'Invalid report type'}), 400
-
-
-
-
-
-
-
-
-
-
-
 
 
 
