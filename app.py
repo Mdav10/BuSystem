@@ -3713,18 +3713,13 @@ def get_balance_sheet():
         'net_worth': float(total_assets + total_income - total_expenses)
     })
 
+# ============================
+# MAIN ROUTE TO HANDLE ALL EXPORTS - FIXED
+# ============================
 
-
-
-
-
-
-
-
-# MAIN ROUTE TO HANDLE ALL EXPORTS
 @app.route('/api/reports/export/<report_type>/<format>')
 @login_required
-@admin_required
+@superadmin_required
 def export_report(report_type, format):
     # Route to appropriate export function
     if report_type == 'sales':
@@ -3739,6 +3734,12 @@ def export_report(report_type, format):
         return export_balance_sheet(format)
     else:
         return jsonify({'error': 'Invalid report type'}), 400
+
+
+
+
+
+
 
 
 
