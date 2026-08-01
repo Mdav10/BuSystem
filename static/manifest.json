@@ -1,8 +1,8 @@
 {
   "name": "BuSystem",
   "short_name": "Mugisha",
-  "description": "My Finance Operating System",
-  "start_url": "/dashboard",
+  "description": "Mugisha Finance OS",
+  "start_url": "/login",
   "display": "standalone",
   "background_color": "#0a0e17",
   "theme_color": "#00d4ff",

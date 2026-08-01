@@ -91,50 +91,6 @@
         .btn-login:hover { background: #00ff88; transform: scale(1.02); }
         .error { color: #ff4757; text-align: center; margin-bottom: 15px; font-size: 14px; }
         .footer { text-align: center; margin-top: 20px; color: #4a5a6f; font-size: 12px; }
-        .install-banner {
-            background: linear-gradient(135deg, #1a2a3f, #0f1a2b);
-            padding: 16px 20px;
-            border-radius: 12px;
-            margin-top: 15px;
-            text-align: center;
-            font-size: 13px;
-            color: #7a8ba3;
-            border: 1px solid #2a3f5f;
-            animation: slideUp 0.5s ease-out;
-            display: block !important;
-        }
-        .install-banner .btn-install {
-            background: #00d4ff;
-            color: #0a0e17;
-            border: none;
-            padding: 10px 30px;
-            border-radius: 8px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 8px;
-            font-size: 14px;
-            transition: 0.3s;
-        }
-        .install-banner .btn-install:active { transform: scale(0.95); }
-        .install-banner .btn-install:hover { background: #00ff88; transform: scale(1.02); }
-        .install-banner .app-status {
-            display: inline-block;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 11px;
-            margin-top: 6px;
-        }
-        .install-banner .app-status.installed {
-            background: #1a3a2a;
-            color: #2ecc71;
-        }
-        .install-banner .app-status.not-installed {
-            background: #3a2a1a;
-            color: #f39c12;
-        }
-        @media (display-mode: standalone) {
-            .install-banner { display: none !important; }
-        }
         @media (max-width: 480px) { .login-box { padding: 30px 20px; } }
     </style>
 </head>
@@ -142,7 +98,7 @@
 <div class="login-box">
     <img src="/static/icons/icon-192.png" alt="BuSystem" class="app-icon">
     <div class="logo-text">BuSys</div>
-    <div class="subtitle">Personal Finance OS</div>
+    <div class="subtitle">Mugisha' Finance OS</div>
     {% with messages = get_flashed_messages() %}
         {% if messages %}<div class="error">{{ messages[0] }}</div>{% endif %}
     {% endwith %}
@@ -157,68 +113,60 @@
         </div>
         <button type="submit" class="btn-login">🚀 Access</button>
     </form>
-    
-    <div id="installBanner" class="install-banner">
-        <div style="font-size: 24px; margin-bottom: 4px;">📱</div>
-        <div style="font-weight: 600; color: #fff; font-size: 15px;">Install BuSystem as App</div>
-        <div style="font-size: 12px; color: #7a8ba3; margin: 4px 0;">Full screen • Offline • Faster</div>
-        <button class="btn-install" id="installBtn">📲 Install App</button>
-        <div style="margin-top: 6px;">
-            <span class="app-status not-installed" id="appStatus">📲 Not Installed</span>
-        </div>
-    </div>
-    
+
     <div class="footer">Every Franc Must Have a Job</div>
 </div>
 
 <script>
+    // Native PWA Install - No custom banner
     let deferredPrompt;
-    const installBanner = document.getElementById('installBanner');
-    const installBtn = document.getElementById('installBtn');
-    const appStatus = document.getElementById('appStatus');
-    
-    function checkInstalled() {
-        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-            installBanner.style.display = 'none';
-            appStatus.textContent = '✅ Installed';
-            appStatus.className = 'app-status installed';
-        } else {
-            installBanner.style.display = 'block';
-            appStatus.textContent = '📲 Not Installed';
-            appStatus.className = 'app-status not-installed';
-        }
-    }
-    
-    checkInstalled();
-    
+
     window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent Chrome 67 and earlier from automatically showing the prompt
         e.preventDefault();
+        // Stash the event so it can be triggered later
         deferredPrompt = e;
-        installBanner.style.display = 'block';
-        appStatus.textContent = '📲 Ready to Install';
-        appStatus.className = 'app-status not-installed';
-    });
-    
-    installBtn.addEventListener('click', async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const result = await deferredPrompt.userChoice;
-            if (result.outcome === 'accepted') {
-                appStatus.textContent = '✅ Installed!';
-                appStatus.className = 'app-status installed';
-                installBanner.style.display = 'none';
-            } else {
-                appStatus.textContent = '❌ Declined';
-                appStatus.className = 'app-status not-installed';
+        
+        // Show a simple install button only if the browser supports it
+        const installBtn = document.createElement('button');
+        installBtn.textContent = '📲 Install App';
+        installBtn.style.cssText = `
+            width: 100%;
+            padding: 12px;
+            background: #00d4ff;
+            color: #0a0e17;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        `;
+        installBtn.onclick = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const result = await deferredPrompt.userChoice;
+                if (result.outcome === 'accepted') {
+                    installBtn.textContent = '✅ Installed!';
+                    installBtn.style.background = '#2ecc71';
+                } else {
+                    installBtn.textContent = '❌ Declined';
+                    installBtn.style.background = '#ff4757';
+                }
+                deferredPrompt = null;
             }
-            deferredPrompt = null;
-        } else {
-            appStatus.textContent = '🔄 Please allow installation...';
-            if (window.location.protocol === 'https:') {
-                appStatus.textContent = '⚠️ Click browser menu → "Install App"';
-            }
+        };
+        
+        // Only add if not in standalone mode
+        if (!window.matchMedia('(display-mode: standalone)').matches && !window.navigator.standalone) {
+            document.querySelector('.login-box').appendChild(installBtn);
         }
     });
+
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        console.log('App is installed');
+    }
 </script>
 </body>
 </html>
