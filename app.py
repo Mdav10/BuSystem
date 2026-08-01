@@ -630,6 +630,16 @@ def serve_manifest():
     return Response(json.dumps(manifest), mimetype='application/json')
 
 
+
+# Add this to your app.py
+@app.route('/service-worker.js')
+def serve_service_worker():
+    return send_from_directory('.', 'service-worker.js', mimetype='application/javascript')
+
+
+
+
+
 # ============================
 # AUTHENTICATION
 # ============================

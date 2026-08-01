@@ -76,31 +76,6 @@
         .btn-login:hover { background: #00ff88; transform: scale(1.02); }
         .error { color: #ff4757; text-align: center; margin-bottom: 15px; font-size: 14px; }
         .footer { text-align: center; margin-top: 20px; color: #4a5a6f; font-size: 12px; }
-        
-        .install-btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-            background: #00d4ff;
-            color: #0a0e17;
-            transition: 0.3s;
-            display: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .install-btn:hover { background: #00ff88; transform: scale(1.02); }
-        .install-btn:active { transform: scale(0.96); }
-        .install-btn.installed {
-            background: #2ecc71;
-            color: #fff;
-        }
-        @media (display-mode: standalone) {
-            .install-btn { display: none !important; }
-        }
         @media (max-width: 480px) { .login-box { padding: 30px 20px; } }
     </style>
 </head>
@@ -124,71 +99,29 @@
         <button type="submit" class="btn-login">🚀 Access</button>
     </form>
 
-    <button id="installBtn" class="install-btn">📲 Install BuSystem</button>
-
     <div class="footer">Every Franc Must Have a Job</div>
 </div>
 
 <script>
-    // ===== SERVICE WORKER REGISTRATION =====
+    // ===== SERVICE WORKER REGISTRATION FROM ROOT =====
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/static/service-worker.js')
-            .then(() => console.log('✅ Service Worker Registered'))
-            .catch(err => console.error('❌ Service Worker Registration Error:', err));
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(reg => {
+                console.log('✅ Service Worker Registered:', reg);
+            })
+            .catch(err => {
+                console.error('❌ Service Worker Registration Error:', err);
+            });
     }
 
-    // ===== PWA INSTALL =====
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-        document.getElementById('installBtn').style.display = 'none';
-    }
-
-    let deferredPrompt;
-
-    // Listen for the native install prompt
+    // ===== PWA INSTALL - Chrome will handle it =====
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
-        deferredPrompt = e;
-        const installBtn = document.getElementById('installBtn');
-        installBtn.style.display = 'block';
-        installBtn.textContent = '📲 Install BuSystem';
-        installBtn.className = 'install-btn';
+        console.log('✅ Install prompt available');
     });
 
-    // Click to show native install banner
-    document.getElementById('installBtn').addEventListener('click', async function() {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const result = await deferredPrompt.userChoice;
-            if (result.outcome === 'accepted') {
-                this.textContent = '✅ Installed!';
-                this.className = 'install-btn installed';
-                setTimeout(() => {
-                    this.style.display = 'none';
-                }, 3000);
-            } else {
-                this.textContent = '📲 Install BuSystem';
-                this.className = 'install-btn';
-            }
-            deferredPrompt = null;
-        } else {
-            this.textContent = '📲 Tap menu → Install App';
-            this.style.background = '#f39c12';
-            setTimeout(() => {
-                this.textContent = '📲 Install BuSystem';
-                this.style.background = '#00d4ff';
-            }, 3000);
-        }
-    });
-
-    // App installed
     window.addEventListener('appinstalled', () => {
-        const btn = document.getElementById('installBtn');
-        btn.textContent = '✅ Installed!';
-        btn.className = 'install-btn installed';
-        setTimeout(() => {
-            btn.style.display = 'none';
-        }, 3000);
+        console.log('✅ App installed successfully');
     });
 </script>
 </body>
