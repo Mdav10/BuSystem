@@ -4282,6 +4282,119 @@ def admin_delete_user(user_id):
     return jsonify({'status': 'success', 'message': f'User {user.username} deleted'})
 
 
+
+
+# ============================
+# USER TRANSACTIONS EXPORT - ONLY FOR REGULAR USERS
+# ============================
+
+@app.route('/api/user/export/transactions/<format>')
+@login_required_redirect
+def user_export_transactions(format):
+    """Export transactions for regular users only - accessible to all authenticated users"""
+    user_id = current_user.id
+    transactions = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.desc()).all()
+    
+    if format == 'pdf':
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=30, bottomMargin=30)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=20, alignment=1, textColor=colors.HexColor('#00d4ff'))
+        story.append(Paragraph("📊 My Transactions Report", title_style))
+        story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+        story.append(Paragraph(f"User: {current_user.username}", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        total_income = sum(t.amount for t in transactions if t.type == 'income')
+        total_expenses = sum(t.amount for t in transactions if t.type == 'expense')
+        
+        summary_data = [
+            ['Metric', 'Amount (BIF)'],
+            ['Total Income', f"{total_income:,.0f}"],
+            ['Total Expenses', f"{total_expenses:,.0f}"],
+            ['Net Cash', f"{total_income - total_expenses:,.0f}"]
+        ]
+        summary_table = Table(summary_data, colWidths=[2*inch, 2.5*inch])
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+        ]))
+        story.append(summary_table)
+        story.append(Spacer(1, 0.3*inch))
+        
+        if transactions:
+            data = [['Date', 'Type', 'Category', 'Amount (BIF)', 'Description']]
+            for t in transactions:
+                data.append([
+                    t.date.strftime('%Y-%m-%d %H:%M'),
+                    t.type.capitalize(),
+                    t.category,
+                    f"{t.amount:,.0f}",
+                    t.description or ''
+                ])
+            
+            table = Table(data, colWidths=[1.2*inch, 0.8*inch, 1.2*inch, 1.0*inch, 2.0*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a2a3f')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1a2332')),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#111a2b')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.whitesmoke),
+            ]))
+            story.append(table)
+        else:
+            story.append(Paragraph("No transactions found.", styles['Normal']))
+        
+        doc.build(story)
+        buffer.seek(0)
+        return send_file(buffer, as_attachment=True, download_name=f"My_Transactions_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf")
+    
+    elif format == 'excel':
+        import xlsxwriter
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet('My Transactions')
+        
+        headers = ['Date', 'Type', 'Category', 'Amount (BIF)', 'Description']
+        for col, header in enumerate(headers):
+            worksheet.write(0, col, header)
+        
+        for row, t in enumerate(transactions, 1):
+            worksheet.write(row, 0, t.date.strftime('%Y-%m-%d %H:%M'))
+            worksheet.write(row, 1, t.type)
+            worksheet.write(row, 2, t.category)
+            worksheet.write(row, 3, t.amount)
+            worksheet.write(row, 4, t.description or '')
+        
+        workbook.close()
+        output.seek(0)
+        return send_file(output, as_attachment=True, download_name=f"My_Transactions_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx")
+    
+    return jsonify({'error': 'Invalid format'}), 400
+
+
+
+
+
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)

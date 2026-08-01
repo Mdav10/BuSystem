@@ -22,6 +22,11 @@
         .btn-primary { background: #00d4ff; color: #0a0e17; }
         .btn-danger { background: #ff4757; color: white; }
         .btn-success { background: #2ecc71; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-pdf { background: #ff4757; color: white; }
+        .btn-excel { background: #2ecc71; color: white; }
+        .btn-pdf:hover { background: #ff6b6b; }
+        .btn-excel:hover { background: #55efc4; }
         .table-wrap { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1a2a3f; padding: 10px; text-align: left; color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
@@ -42,6 +47,8 @@
         .summary-item { flex: 1; min-width: 100px; }
         .summary-item .label { color: #7a8ba3; font-size: 11px; text-transform: uppercase; }
         .summary-item .value { font-size: 20px; font-weight: bold; }
+        .export-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
@@ -62,9 +69,15 @@
         <a href="/user/cashflow" class="active">💰 Cash Flow</a>
     </div>
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin: 20px 0;">
         <h2 style="margin:0;">💰 My Cash Flow</h2>
         <button class="btn btn-primary" onclick="openAddModal()">+ Add Transaction</button>
+    </div>
+
+    <!-- Export Buttons -->
+    <div class="export-buttons">
+        <button class="btn btn-pdf" onclick="exportUserTransactions('pdf')">📄 Export PDF</button>
+        <button class="btn btn-excel" onclick="exportUserTransactions('excel')">📊 Export Excel</button>
     </div>
 
     <div class="summary" id="summary">
@@ -84,6 +97,7 @@
         </table>
     </div>
 
+    <!-- Add Transaction Modal -->
     <div class="modal" id="transactionModal">
         <div class="modal-content">
             <h2>Add Transaction</h2>
@@ -108,6 +122,11 @@
 <script>
     let transactions = [];
 
+    // ===== EXPORT FUNCTION =====
+    function exportUserTransactions(format) {
+        window.location.href = `/api/user/export/transactions/${format}`;
+    }
+
     async function loadData() {
         await Promise.all([loadTransactions(), loadSummary()]);
     }
@@ -131,9 +150,9 @@
                 if (t.type === 'income') totalIncome += t.amount;
                 else totalExpense += t.amount;
             });
-            document.getElementById('totalIncome').textContent = totalIncome.toFixed(0);
-            document.getElementById('totalExpense').textContent = totalExpense.toFixed(0);
-            document.getElementById('balance').textContent = (totalIncome - totalExpense).toFixed(0);
+            document.getElementById('totalIncome').textContent = totalIncome.toFixed(0) + ' BIF';
+            document.getElementById('totalExpense').textContent = totalExpense.toFixed(0) + ' BIF';
+            document.getElementById('balance').textContent = (totalIncome - totalExpense).toFixed(0) + ' BIF';
         } catch (e) { console.error('Error loading summary'); }
     }
 
