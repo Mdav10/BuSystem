@@ -4273,7 +4273,81 @@ def user_export_transactions(format):
 
 
 
+# ============================
+# USER REPORTS ROUTES
+# ============================
 
+@app.route('/user/reports')
+@login_required_redirect
+def user_reports():
+    return render_template('user_reports.html', user=current_user)
+
+
+@app.route('/api/user/reports/income_statement')
+@login_required_redirect
+def user_get_income_statement():
+    user_id = current_user.id
+    
+    income = db.session.query(
+        Transaction.category,
+        func.sum(Transaction.amount).label('total')
+    ).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == 'income'
+    ).group_by(Transaction.category).all()
+    
+    expenses = db.session.query(
+        Transaction.category,
+        func.sum(Transaction.amount).label('total')
+    ).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == 'expense'
+    ).group_by(Transaction.category).all()
+    
+    total_income = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == 'income'
+    ).scalar() or 0
+    
+    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == 'expense'
+    ).scalar() or 0
+    
+    return jsonify({
+        'income': [{'category': i[0], 'total': float(i[1])} for i in income],
+        'expenses': [{'category': i[0], 'total': float(i[1])} for i in expenses],
+        'total_income': float(total_income),
+        'total_expenses': float(total_expenses),
+        'net_income': float(total_income - total_expenses)
+    })
+
+
+@app.route('/api/user/reports/balance_sheet')
+@login_required_redirect
+def user_get_balance_sheet():
+    user_id = current_user.id
+    
+    total_assets = db.session.query(func.sum(Asset.current_value)).filter(
+        Asset.user_id == user_id
+    ).scalar() or 0
+    
+    total_income = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == 'income'
+    ).scalar() or 0
+    
+    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == user_id,
+        Transaction.type == 'expense'
+    ).scalar() or 0
+    
+    return jsonify({
+        'total_assets': float(total_assets),
+        'total_income': float(total_income),
+        'total_expenses': float(total_expenses),
+        'net_worth': float(total_assets + total_income - total_expenses)
+    })
 
 
 
