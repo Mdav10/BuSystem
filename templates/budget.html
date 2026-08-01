@@ -111,17 +111,17 @@
 
     <!-- Cash Info -->
     <div class="cash-info" id="cashInfo">
-        <div class="cash-card">
+        <div class="cash-card" style="border-color:#2ecc71;">
             <div class="label">💰 Current Cash Available</div>
-            <div class="value available" id="currentCashDisplay">Loading...</div>
+            <div class="value available" id="currentCashDisplay">0 BIF</div>
         </div>
-        <div class="cash-card">
+        <div class="cash-card" style="border-color:#f39c12;">
             <div class="label">📊 Reserved for Budgets</div>
-            <div class="value reserved" id="reservedBudgetDisplay">Loading...</div>
+            <div class="value reserved" id="reservedBudgetDisplay">0 BIF</div>
         </div>
-        <div class="cash-card">
+        <div class="cash-card" style="border-color:#00d4ff;">
             <div class="label">💎 Total Cash</div>
-            <div class="value total" id="totalCashDisplay">Loading...</div>
+            <div class="value total" id="totalCashDisplay">0 BIF</div>
         </div>
     </div>
 
@@ -262,17 +262,19 @@
             
             console.log('Budget Summary Data:', data);
             
+            // Update summary cards
             document.getElementById('activeBudgets').textContent = data.total_active_budgets || 0;
             document.getElementById('completedBudgets').textContent = data.total_completed_budgets || 0;
             document.getElementById('plannedTotal').textContent = (data.total_planned || 0).toFixed(0) + ' BIF';
             document.getElementById('actualTotal').textContent = (data.total_actual || 0).toFixed(0) + ' BIF';
             document.getElementById('overallProgress').textContent = (data.overall_progress || 0).toFixed(0) + '%';
             
-            // Cash info - IMPORTANT: Use the actual_cash from the API
+            // Cash info - DISPLAY THE ACTUAL CASH
             const totalCash = data.actual_cash || 0;
             const reserved = data.reserved_cash || 0;
             const available = data.available_for_budgets || 0;
             
+            // Update cash display
             document.getElementById('currentCashDisplay').textContent = totalCash.toFixed(0) + ' BIF';
             document.getElementById('reservedBudgetDisplay').textContent = reserved.toFixed(0) + ' BIF';
             document.getElementById('totalCashDisplay').textContent = (totalCash + reserved).toFixed(0) + ' BIF';
@@ -284,9 +286,14 @@
             document.getElementById('modalCashDisplay').textContent = totalCash.toFixed(0) + ' BIF';
             document.getElementById('trackCashDisplay').textContent = totalCash.toFixed(0) + ' BIF';
             
+            // If cash is 0 but should have cash, show a warning
+            if (totalCash === 0) {
+                console.warn('Cash is 0. Check your transactions.');
+            }
+            
         } catch (e) {
             console.error('Error loading summary:', e);
-            document.getElementById('currentCashDisplay').textContent = 'Error loading cash';
+            document.getElementById('currentCashDisplay').textContent = 'Error';
         }
     }
 
@@ -507,6 +514,7 @@
         if (e.target === this) closeTrackModal();
     });
 
+    // Load everything on page load
     loadBudgets();
 </script>
 </body>
