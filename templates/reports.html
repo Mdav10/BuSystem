@@ -142,9 +142,18 @@
             if (!res.ok) throw new Error('Network response was not ok');
             const data = await res.json();
             
-            document.getElementById('totalIncome').textContent = (data.total_income || 0).toFixed(0) + ' BIF';
-            document.getElementById('totalExpenses').textContent = (data.total_expenses || 0).toFixed(0) + ' BIF';
-            document.getElementById('netIncome').textContent = (data.net_income || 0).toFixed(0) + ' BIF';
+            // Handle the response format from your existing route
+            let totalIncome = 0, totalExpenses = 0;
+            if (data.income) {
+                data.income.forEach(item => totalIncome += item.total);
+            }
+            if (data.expenses) {
+                data.expenses.forEach(item => totalExpenses += item.total);
+            }
+            
+            document.getElementById('totalIncome').textContent = (data.total_income || totalIncome || 0).toFixed(0) + ' BIF';
+            document.getElementById('totalExpenses').textContent = (data.total_expenses || totalExpenses || 0).toFixed(0) + ' BIF';
+            document.getElementById('netIncome').textContent = (data.net_income || (totalIncome - totalExpenses) || 0).toFixed(0) + ' BIF';
         } catch (e) {
             console.error('Error loading income statement:', e);
             document.getElementById('totalIncome').textContent = '❌ Error';
@@ -168,18 +177,6 @@
             document.getElementById('netWorth').textContent = '❌ Error';
         }
     }
-
-    // ===== EXPORT REPORT - USING YOUR EXISTING ROUTES =====
-    function exportReport(reportType, format) {
-        let url = `/api/reports/export/${reportType}/${format}`;
-        window.location.href = url;
-    }
-
-    // ===== LOAD ON PAGE LOAD =====
-    document.addEventListener('DOMContentLoaded', function() {
-        loadIncomeStatement();
-        loadBalanceSheet();
-    });
 </script>
 </body>
 </html>
