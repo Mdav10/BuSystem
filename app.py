@@ -3640,32 +3640,18 @@ def reports():
     return render_template('reports.html', user=current_user)
 
 
+
+
+# ============================
+# REPORTS DATA ROUTES - FOR REPORTS PAGE
+# ============================
+
 @app.route('/api/reports/income_statement')
 @login_required
 @superadmin_required
 def get_income_statement():
-    """Get income statement for SuperAdmin"""
     user_id = current_user.id
     
-    # Get income by category
-    income = db.session.query(
-        Transaction.category,
-        func.sum(Transaction.amount).label('total')
-    ).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'income'
-    ).group_by(Transaction.category).all()
-    
-    # Get expenses by category
-    expenses = db.session.query(
-        Transaction.category,
-        func.sum(Transaction.amount).label('total')
-    ).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'expense'
-    ).group_by(Transaction.category).all()
-    
-    # Get totals
     total_income = db.session.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == user_id,
         Transaction.type == 'income'
@@ -3677,8 +3663,6 @@ def get_income_statement():
     ).scalar() or 0
     
     return jsonify({
-        'income': [{'category': i[0], 'total': float(i[1])} for i in income],
-        'expenses': [{'category': i[0], 'total': float(i[1])} for i in expenses],
         'total_income': float(total_income),
         'total_expenses': float(total_expenses),
         'net_income': float(total_income - total_expenses)
@@ -3689,7 +3673,6 @@ def get_income_statement():
 @login_required
 @superadmin_required
 def get_balance_sheet():
-    """Get balance sheet for SuperAdmin"""
     user_id = current_user.id
     
     total_assets = db.session.query(func.sum(Asset.current_value)).filter(
@@ -3708,10 +3691,10 @@ def get_balance_sheet():
     
     return jsonify({
         'total_assets': float(total_assets),
-        'total_income': float(total_income),
-        'total_expenses': float(total_expenses),
         'net_worth': float(total_assets + total_income - total_expenses)
     })
+
+
 
 
 
@@ -3724,21 +3707,17 @@ def get_balance_sheet():
 @login_required
 @superadmin_required
 def export_report(report_type, format):
-    # Route to appropriate export function
-    if report_type == 'sales':
-        return admin_export_sales(format)
-    elif report_type == 'full':
-        return export_full_report(format)
-    elif report_type == 'transactions':
+    # This should route to your existing export functions
+    if report_type == 'transactions':
         return export_transactions(format)
     elif report_type == 'income_statement':
         return export_income_statement(format)
     elif report_type == 'balance_sheet':
         return export_balance_sheet(format)
+    elif report_type == 'full':
+        return export_full_report(format)
     else:
         return jsonify({'error': 'Invalid report type'}), 400
-
-
 
 
 
@@ -4273,81 +4252,7 @@ def user_export_transactions(format):
 
 
 
-# ============================
-# USER REPORTS ROUTES
-# ============================
 
-@app.route('/user/reports')
-@login_required_redirect
-def user_reports():
-    return render_template('user_reports.html', user=current_user)
-
-
-@app.route('/api/user/reports/income_statement')
-@login_required_redirect
-def user_get_income_statement():
-    user_id = current_user.id
-    
-    income = db.session.query(
-        Transaction.category,
-        func.sum(Transaction.amount).label('total')
-    ).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'income'
-    ).group_by(Transaction.category).all()
-    
-    expenses = db.session.query(
-        Transaction.category,
-        func.sum(Transaction.amount).label('total')
-    ).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'expense'
-    ).group_by(Transaction.category).all()
-    
-    total_income = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'income'
-    ).scalar() or 0
-    
-    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'expense'
-    ).scalar() or 0
-    
-    return jsonify({
-        'income': [{'category': i[0], 'total': float(i[1])} for i in income],
-        'expenses': [{'category': i[0], 'total': float(i[1])} for i in expenses],
-        'total_income': float(total_income),
-        'total_expenses': float(total_expenses),
-        'net_income': float(total_income - total_expenses)
-    })
-
-
-@app.route('/api/user/reports/balance_sheet')
-@login_required_redirect
-def user_get_balance_sheet():
-    user_id = current_user.id
-    
-    total_assets = db.session.query(func.sum(Asset.current_value)).filter(
-        Asset.user_id == user_id
-    ).scalar() or 0
-    
-    total_income = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'income'
-    ).scalar() or 0
-    
-    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user_id,
-        Transaction.type == 'expense'
-    ).scalar() or 0
-    
-    return jsonify({
-        'total_assets': float(total_assets),
-        'total_income': float(total_income),
-        'total_expenses': float(total_expenses),
-        'net_worth': float(total_assets + total_income - total_expenses)
-    })
 
 
 

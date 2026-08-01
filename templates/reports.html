@@ -40,7 +40,6 @@
         .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
         .export-section { display: flex; gap: 15px; flex-wrap: wrap; margin: 20px 0; }
         .export-box { background: #0f1a2b; padding: 20px; border-radius: 12px; border: 1px solid #1a2a3f; margin-top: 20px; }
-        .loading { color: #7a8ba3; text-align: center; padding: 20px; }
         @media (max-width: 600px) { .report-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
@@ -117,18 +116,18 @@
         <button class="btn-refresh" onclick="loadBalanceSheet()">🔄 Refresh</button>
     </div>
 
-    <!-- Export Section -->
+    <!-- Export Section - USING YOUR EXISTING EXPORT ROUTES -->
     <div class="export-box">
         <h3>📤 Export Reports</h3>
         <div class="export-section">
-            <button class="btn btn-pdf" onclick="exportReport('full', 'pdf')">📄 Full PDF Report</button>
-            <button class="btn btn-excel" onclick="exportReport('full', 'excel')">📊 Full Excel Report</button>
             <button class="btn btn-pdf" onclick="exportReport('transactions', 'pdf')">📄 Transactions PDF</button>
             <button class="btn btn-excel" onclick="exportReport('transactions', 'excel')">📊 Transactions Excel</button>
             <button class="btn btn-pdf" onclick="exportReport('income_statement', 'pdf')">📄 Income Statement PDF</button>
             <button class="btn btn-excel" onclick="exportReport('income_statement', 'excel')">📊 Income Statement Excel</button>
             <button class="btn btn-pdf" onclick="exportReport('balance_sheet', 'pdf')">📄 Balance Sheet PDF</button>
             <button class="btn btn-excel" onclick="exportReport('balance_sheet', 'excel')">📊 Balance Sheet Excel</button>
+            <button class="btn btn-pdf" onclick="exportReport('full', 'pdf')">📄 Full PDF Report</button>
+            <button class="btn btn-excel" onclick="exportReport('full', 'excel')">📊 Full Excel Report</button>
         </div>
     </div>
 
@@ -170,14 +169,9 @@
         }
     }
 
-    // ===== EXPORT REPORT =====
+    // ===== EXPORT REPORT - USING YOUR EXISTING ROUTES =====
     function exportReport(reportType, format) {
         let url = `/api/reports/export/${reportType}/${format}`;
-        
-        if (reportType === 'full') {
-            url = `/api/reports/export/full/${format}`;
-        }
-        
         window.location.href = url;
     }
 
