@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>BuSystem - My Reports</title>
+    <title>BuSystem - Reports</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#00d4ff">
     <link rel="manifest" href="/static/manifest.json">
@@ -19,15 +19,15 @@
         .nav a:hover { background: #1a2a3f; color: #fff; }
         .nav a.active { background: #1a2a3f; color: #00d4ff; }
         .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; }
-        .btn-pdf { background: #ff4757; color: white; padding: 10px 20px; }
-        .btn-excel { background: #2ecc71; color: white; padding: 10px 20px; }
+        .btn-pdf { background: #ff4757; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-excel { background: #2ecc71; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
         .btn-pdf:hover { background: #ff6b6b; }
         .btn-excel:hover { background: #55efc4; }
         .btn-refresh { background: #1a2a3f; color: #fff; padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
         .btn-refresh:hover { background: #2a3a5f; }
         .footer { margin-top: 30px; text-align: center; color: #4a5a6f; font-size: 12px; border-top: 1px solid #1a2332; padding-top: 15px; }
         .user-info { color: #7a8ba3; font-size: 13px; }
-        .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #7a8ba3; }
+        .role-badge { background: #1a2a3f; padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #f39c12; }
         h2 { color: #fff; margin: 20px 0 10px 0; }
         h3 { color: #fff; margin: 15px 0 10px 0; font-size: 16px; }
         .report-card { background: #111a2b; padding: 20px; border-radius: 14px; border: 1px solid #1a2a3f; margin-bottom: 20px; }
@@ -40,6 +40,7 @@
         .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
         .export-section { display: flex; gap: 15px; flex-wrap: wrap; margin: 20px 0; }
         .export-box { background: #0f1a2b; padding: 20px; border-radius: 12px; border: 1px solid #1a2a3f; margin-top: 20px; }
+        .loading { color: #7a8ba3; text-align: center; padding: 20px; }
         @media (max-width: 600px) { .report-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
@@ -49,7 +50,7 @@
         <div class="logo"><img src="/static/icons/icon-192.png" alt="BuSystem" class="logo-icon"> BuSystem</div>
         <div>
             <span class="user-info">👤 {{ user.username }}</span>
-            <span class="role-badge">User</span>
+            <span class="role-badge">⭐ SuperAdmin</span>
             <form action="{{ url_for('logout') }}" method="get" style="display:inline;">
                 <button class="logout">Logout</button>
             </form>
@@ -57,13 +58,28 @@
     </div>
 
     <div class="nav">
-        <a href="/user/dashboard">📊 My Dashboard</a>
-        <a href="/user/cashflow">💰 Cash Flow</a>
-        <a href="/user/reports" class="active">📄 My Reports</a>
+        <a href="/dashboard">📊 Dashboard</a>
+        <a href="/cashflow">💰 Cash Flow</a>
+        <a href="/investments">📈 Investments</a>
+        <a href="/livestock">🐄 Livestock</a>
+        <a href="/assets">🏦 Assets</a>
+        <a href="/goals">🎯 Goals</a>
+        <a href="/budget">📋 Budget</a>
+        <a href="/liability">📋 Liability</a>
+        <a href="/rules">📏 Rules</a>
+        <a href="/reports" class="active">📄 Reports</a>
+        <a href="/ratios">📊 Ratios</a>
+        <a href="/analytics">📈 Analytics</a>
+        <a href="/risk">⚠️ Risk</a>
+        <a href="/timeline">⏰ Timeline</a>
+        <a href="/decisions">🧠 Decisions</a>
+        <a href="/exports">📤 Exports</a>
+        <a href="/notifications">🔔 Notifications</a>
+        <a href="/admin" style="color:#f39c12; border:1px solid #3a3a1a;">🔧 Admin Panel</a>
     </div>
 
-    <h2>📄 My Reports</h2>
-    <p style="color:#7a8ba3; margin-bottom:15px;">View and export your personal financial reports</p>
+    <h2>📄 Reports</h2>
+    <p style="color:#7a8ba3; margin-bottom:15px;">View and export your financial reports</p>
 
     <!-- Income Statement -->
     <div class="report-card">
@@ -103,10 +119,16 @@
 
     <!-- Export Section -->
     <div class="export-box">
-        <h3>📤 Export My Transactions</h3>
+        <h3>📤 Export Reports</h3>
         <div class="export-section">
-            <button class="btn btn-pdf" onclick="exportTransactions('pdf')">📄 Transactions PDF</button>
-            <button class="btn btn-excel" onclick="exportTransactions('excel')">📊 Transactions Excel</button>
+            <button class="btn btn-pdf" onclick="exportReport('full', 'pdf')">📄 Full PDF Report</button>
+            <button class="btn btn-excel" onclick="exportReport('full', 'excel')">📊 Full Excel Report</button>
+            <button class="btn btn-pdf" onclick="exportReport('transactions', 'pdf')">📄 Transactions PDF</button>
+            <button class="btn btn-excel" onclick="exportReport('transactions', 'excel')">📊 Transactions Excel</button>
+            <button class="btn btn-pdf" onclick="exportReport('income_statement', 'pdf')">📄 Income Statement PDF</button>
+            <button class="btn btn-excel" onclick="exportReport('income_statement', 'excel')">📊 Income Statement Excel</button>
+            <button class="btn btn-pdf" onclick="exportReport('balance_sheet', 'pdf')">📄 Balance Sheet PDF</button>
+            <button class="btn btn-excel" onclick="exportReport('balance_sheet', 'excel')">📊 Balance Sheet Excel</button>
         </div>
     </div>
 
@@ -117,7 +139,7 @@
     // ===== LOAD INCOME STATEMENT =====
     async function loadIncomeStatement() {
         try {
-            const res = await fetch('/api/user/reports/income_statement');
+            const res = await fetch('/api/reports/income_statement');
             if (!res.ok) throw new Error('Network response was not ok');
             const data = await res.json();
             
@@ -135,7 +157,7 @@
     // ===== LOAD BALANCE SHEET =====
     async function loadBalanceSheet() {
         try {
-            const res = await fetch('/api/user/reports/balance_sheet');
+            const res = await fetch('/api/reports/balance_sheet');
             if (!res.ok) throw new Error('Network response was not ok');
             const data = await res.json();
             
@@ -148,9 +170,15 @@
         }
     }
 
-    // ===== EXPORT TRANSACTIONS =====
-    function exportTransactions(format) {
-        window.location.href = `/api/user/export/transactions/${format}`;
+    // ===== EXPORT REPORT =====
+    function exportReport(reportType, format) {
+        let url = `/api/reports/export/${reportType}/${format}`;
+        
+        if (reportType === 'full') {
+            url = `/api/reports/export/full/${format}`;
+        }
+        
+        window.location.href = url;
     }
 
     // ===== LOAD ON PAGE LOAD =====

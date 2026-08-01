@@ -3628,18 +3628,15 @@ def export_transactions(format):
 
 
 
-
-
-
-
 # ============================
-# SUPERADMIN REPORTS ROUTES
+# SUPERADMIN REPORTS ROUTES - FIXED
 # ============================
 
 @app.route('/reports')
 @login_required
 @superadmin_required
 def reports():
+    """SuperAdmin Reports page"""
     return render_template('reports.html', user=current_user)
 
 
@@ -3647,8 +3644,10 @@ def reports():
 @login_required
 @superadmin_required
 def get_income_statement():
+    """Get income statement for SuperAdmin"""
     user_id = current_user.id
     
+    # Get income by category
     income = db.session.query(
         Transaction.category,
         func.sum(Transaction.amount).label('total')
@@ -3657,6 +3656,7 @@ def get_income_statement():
         Transaction.type == 'income'
     ).group_by(Transaction.category).all()
     
+    # Get expenses by category
     expenses = db.session.query(
         Transaction.category,
         func.sum(Transaction.amount).label('total')
@@ -3665,6 +3665,7 @@ def get_income_statement():
         Transaction.type == 'expense'
     ).group_by(Transaction.category).all()
     
+    # Get totals
     total_income = db.session.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == user_id,
         Transaction.type == 'income'
@@ -3688,6 +3689,7 @@ def get_income_statement():
 @login_required
 @superadmin_required
 def get_balance_sheet():
+    """Get balance sheet for SuperAdmin"""
     user_id = current_user.id
     
     total_assets = db.session.query(func.sum(Asset.current_value)).filter(
