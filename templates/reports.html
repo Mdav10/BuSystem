@@ -19,8 +19,8 @@
         .nav a:hover { background: #1a2a3f; color: #fff; }
         .nav a.active { background: #1a2a3f; color: #00d4ff; }
         .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; }
-        .btn-pdf { background: #ff4757; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
-        .btn-excel { background: #2ecc71; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-pdf { background: #ff4757; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .btn-excel { background: #2ecc71; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
         .btn-pdf:hover { background: #ff6b6b; }
         .btn-excel:hover { background: #55efc4; }
         .btn-refresh { background: #1a2a3f; color: #fff; padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
@@ -38,8 +38,8 @@
         .report-card .value.cyan { color: #00d4ff; }
         .report-card .value.orange { color: #f39c12; }
         .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
-        .export-section { display: flex; gap: 15px; flex-wrap: wrap; margin: 20px 0; }
-        .export-box { background: #0f1a2b; padding: 20px; border-radius: 12px; border: 1px solid #1a2a3f; margin-top: 20px; }
+        .export-box { background: #0f1a2b; padding: 20px; border-radius: 12px; border: 1px solid #1a2a3f; margin-top: 20px; text-align: center; }
+        .export-buttons { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 15px; }
         @media (max-width: 600px) { .report-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
@@ -116,18 +116,13 @@
         <button class="btn-refresh" onclick="loadBalanceSheet()">🔄 Refresh</button>
     </div>
 
-    <!-- Export Section - USING YOUR EXISTING EXPORT ROUTES -->
+    <!-- Export Section - SIMPLIFIED -->
     <div class="export-box">
-        <h3>📤 Export Reports</h3>
-        <div class="export-section">
-            <button class="btn btn-pdf" onclick="exportReport('transactions', 'pdf')">📄 Transactions PDF</button>
-            <button class="btn btn-excel" onclick="exportReport('transactions', 'excel')">📊 Transactions Excel</button>
-            <button class="btn btn-pdf" onclick="exportReport('income_statement', 'pdf')">📄 Income Statement PDF</button>
-            <button class="btn btn-excel" onclick="exportReport('income_statement', 'excel')">📊 Income Statement Excel</button>
-            <button class="btn btn-pdf" onclick="exportReport('balance_sheet', 'pdf')">📄 Balance Sheet PDF</button>
-            <button class="btn btn-excel" onclick="exportReport('balance_sheet', 'excel')">📊 Balance Sheet Excel</button>
-            <button class="btn btn-pdf" onclick="exportReport('full', 'pdf')">📄 Full PDF Report</button>
-            <button class="btn btn-excel" onclick="exportReport('full', 'excel')">📊 Full Excel Report</button>
+        <h3>📤 Export Full Report</h3>
+        <p style="color:#7a8ba3; font-size:13px; margin-top:5px;">Download your complete financial report with all data</p>
+        <div class="export-buttons">
+            <button class="btn btn-pdf" onclick="exportReport('full', 'pdf')">📄 Download PDF</button>
+            <button class="btn btn-excel" onclick="exportReport('full', 'excel')">📊 Download Excel</button>
         </div>
     </div>
 
@@ -142,18 +137,9 @@
             if (!res.ok) throw new Error('Network response was not ok');
             const data = await res.json();
             
-            // Handle the response format from your existing route
-            let totalIncome = 0, totalExpenses = 0;
-            if (data.income) {
-                data.income.forEach(item => totalIncome += item.total);
-            }
-            if (data.expenses) {
-                data.expenses.forEach(item => totalExpenses += item.total);
-            }
-            
-            document.getElementById('totalIncome').textContent = (data.total_income || totalIncome || 0).toFixed(0) + ' BIF';
-            document.getElementById('totalExpenses').textContent = (data.total_expenses || totalExpenses || 0).toFixed(0) + ' BIF';
-            document.getElementById('netIncome').textContent = (data.net_income || (totalIncome - totalExpenses) || 0).toFixed(0) + ' BIF';
+            document.getElementById('totalIncome').textContent = (data.total_income || 0).toFixed(0) + ' BIF';
+            document.getElementById('totalExpenses').textContent = (data.total_expenses || 0).toFixed(0) + ' BIF';
+            document.getElementById('netIncome').textContent = (data.net_income || 0).toFixed(0) + ' BIF';
         } catch (e) {
             console.error('Error loading income statement:', e);
             document.getElementById('totalIncome').textContent = '❌ Error';
@@ -177,6 +163,17 @@
             document.getElementById('netWorth').textContent = '❌ Error';
         }
     }
+
+    // ===== EXPORT FULL REPORT =====
+    function exportReport(reportType, format) {
+        window.location.href = `/api/reports/export/${reportType}/${format}`;
+    }
+
+    // ===== LOAD ON PAGE LOAD =====
+    document.addEventListener('DOMContentLoaded', function() {
+        loadIncomeStatement();
+        loadBalanceSheet();
+    });
 </script>
 </body>
 </html>
