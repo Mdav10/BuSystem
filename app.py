@@ -217,7 +217,7 @@ class Goal(db.Model):
 
 
 # ============================
-# BUDGET MODEL - COMPLETE FIXED
+# BUDGET MODEL - WITH CASH TRACKING
 # ============================
 
 class Budget(db.Model):
@@ -233,6 +233,10 @@ class Budget(db.Model):
     # Amounts
     planned_amount = db.Column(db.Float, nullable=False, default=0)
     actual_amount = db.Column(db.Float, default=0)
+    remaining_amount = db.Column(db.Float, default=0)  # Track remaining budget
+    
+    # Cash flow tracking
+    is_cash_reserved = db.Column(db.Boolean, default=False)  # Whether cash was reserved
     
     # Time period
     period_type = db.Column(db.String(20), default='monthly')
@@ -240,7 +244,7 @@ class Budget(db.Model):
     end_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     # Status
-    status = db.Column(db.String(20), default='active')
+    status = db.Column(db.String(20), default='active')  # active, completed, cancelled, over_budget
     
     # Tracking
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -250,7 +254,7 @@ class Budget(db.Model):
     # Notes
     notes = db.Column(db.Text)
     
-    # OLD COLUMNS - Make them nullable
+    # OLD COLUMNS - Keep for backward compatibility
     month = db.Column(db.Integer, nullable=True)
     year = db.Column(db.Integer, nullable=True)
     expected_amount = db.Column(db.Float, nullable=True)
@@ -258,9 +262,9 @@ class Budget(db.Model):
     difference = db.Column(db.Float, nullable=True)
     status_updated_at = db.Column(db.DateTime, nullable=True)
     
-    def calculate_difference(self):
-        self.difference = self.actual_amount - self.planned_amount
-        return self.difference
+    def calculate_remaining(self):
+        self.remaining_amount = self.planned_amount - self.actual_amount
+        return self.remaining_amount
     
     def to_dict(self):
         return {
@@ -270,7 +274,8 @@ class Budget(db.Model):
             'description': self.description,
             'planned_amount': self.planned_amount,
             'actual_amount': self.actual_amount,
-            'difference': self.actual_amount - self.planned_amount,
+            'remaining_amount': self.remaining_amount,
+            'is_cash_reserved': self.is_cash_reserved,
             'period_type': self.period_type,
             'start_date': self.start_date.strftime('%Y-%m-%d') if self.start_date else None,
             'end_date': self.end_date.strftime('%Y-%m-%d') if self.end_date else None,
@@ -280,7 +285,6 @@ class Budget(db.Model):
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
             'notes': self.notes
         }
-
 
 
 
@@ -926,16 +930,6 @@ def superadmin_dashboard():
 
 
 
-
-
-
-
-
-
-
-
-
-
 # ============================
 # ALL ORIGINAL API ROUTES
 # ============================
@@ -1419,9 +1413,6 @@ def add_goal_amount(id):
 
 
 
-
-
-
 # ============================
 # PROFESSIONAL BUDGET API - COMPLETE FIXED
 # ============================
@@ -1456,6 +1447,7 @@ def api_budget():
     
     elif request.method == 'POST':
         data = request.json
+        planned_amount = float(data.get('planned_amount', 0))
         
         # Parse dates
         start_date = datetime.strptime(data.get('start_date'), '%Y-%m-%d') if data.get('start_date') else datetime.now()
@@ -1479,28 +1471,72 @@ def api_budget():
             else:
                 end_date = start_date + timedelta(days=30)
         
+        # Check if user has enough cash for this budget
+        total_income = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'income'
+        ).scalar() or 0
+        
+        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'expense'
+        ).scalar() or 0
+        
+        current_cash = total_income - total_expenses
+        
+        if planned_amount > current_cash:
+            return jsonify({
+                'error': f'Insufficient cash! You have {current_cash:,.0f} BIF available. Budget requires {planned_amount:,.0f} BIF.',
+                'current_cash': current_cash,
+                'required': planned_amount,
+                'shortfall': planned_amount - current_cash
+            }), 400
+        
+        # Create budget WITHOUT deducting cash automatically
         budget = Budget(
             user_id=user_id,
             name=data.get('name'),
             category=data.get('category'),
             description=data.get('description'),
-            planned_amount=float(data.get('planned_amount')),
+            planned_amount=planned_amount,
+            actual_amount=0,
+            remaining_amount=planned_amount,
+            is_cash_reserved=False,  # Don't reserve cash until spending is tracked
             period_type=data.get('period_type', 'monthly'),
             start_date=start_date,
             end_date=end_date,
-            status=data.get('status', 'active'),
+            status='active',
             notes=data.get('notes'),
             # Old columns - for backward compatibility
             month=start_date.month,
             year=start_date.year,
-            expected_amount=float(data.get('planned_amount')),
+            expected_amount=planned_amount,
             type='expense',
             difference=0,
             status_updated_at=datetime.utcnow()
         )
         db.session.add(budget)
         db.session.commit()
-        return jsonify({'status': 'success', 'id': budget.id, 'budget': budget.to_dict()})
+        
+        # Get updated cash for response
+        total_income = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'income'
+        ).scalar() or 0
+        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'expense'
+        ).scalar() or 0
+        current_cash = total_income - total_expenses
+        
+        return jsonify({
+            'status': 'success',
+            'id': budget.id,
+            'budget': budget.to_dict(),
+            'current_cash': current_cash,
+            'amount_planned': planned_amount,
+            'message': f'✅ Budget "{data.get("name")}" created! Cash will be deducted when you track spending.'
+        })
     
     elif request.method == 'PUT':
         data = request.json
@@ -1516,14 +1552,36 @@ def api_budget():
         if 'description' in data:
             budget.description = data['description']
         if 'planned_amount' in data:
-            budget.planned_amount = float(data['planned_amount'])
-            budget.expected_amount = float(data['planned_amount'])  # Update old column too
+            new_planned_amount = float(data['planned_amount'])
+            
+            # Check if user has enough cash for the new amount
+            total_income = db.session.query(func.sum(Transaction.amount)).filter(
+                Transaction.user_id == user_id,
+                Transaction.type == 'income'
+            ).scalar() or 0
+            total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+                Transaction.user_id == user_id,
+                Transaction.type == 'expense'
+            ).scalar() or 0
+            current_cash = total_income - total_expenses
+            
+            if new_planned_amount > current_cash:
+                return jsonify({
+                    'error': f'Insufficient cash! You have {current_cash:,.0f} BIF available. Budget requires {new_planned_amount:,.0f} BIF.',
+                    'current_cash': current_cash,
+                    'required': new_planned_amount
+                }), 400
+            
+            budget.planned_amount = new_planned_amount
+            budget.expected_amount = new_planned_amount
+            budget.remaining_amount = new_planned_amount - budget.actual_amount
+        
         if 'period_type' in data:
             budget.period_type = data['period_type']
         if 'start_date' in data:
             budget.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d')
-            budget.month = budget.start_date.month  # Update old column
-            budget.year = budget.start_date.year  # Update old column
+            budget.month = budget.start_date.month
+            budget.year = budget.start_date.year
         if 'end_date' in data:
             budget.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d')
         if 'status' in data:
@@ -1532,8 +1590,8 @@ def api_budget():
             budget.notes = data['notes']
         
         budget.updated_at = datetime.utcnow()
+        budget.calculate_remaining()
         
-        # If status is completed, set completed_at
         if budget.status == 'completed' and not budget.completed_at:
             budget.completed_at = datetime.utcnow()
         
@@ -1545,17 +1603,13 @@ def api_budget():
         budget = Budget.query.get_or_404(data.get('id'))
         if budget.user_id != user_id:
             return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Delete budget (no cash to refund since it wasn't deducted)
         db.session.delete(budget)
         db.session.commit()
-        return jsonify({'status': 'success'})
+        return jsonify({'status': 'success', 'message': 'Budget deleted successfully'})
     
-    # If no method matched, return error
     return jsonify({'error': 'Method not allowed'}), 405
-
-
-
-
-
 
 
 @app.route('/api/budget/<int:id>/track', methods=['POST'])
@@ -1573,22 +1627,62 @@ def track_budget_spending(id):
     if amount <= 0:
         return jsonify({'error': 'Amount must be greater than 0'}), 400
     
+    # Check if user has enough cash for this spending
+    total_income = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == current_user.id,
+        Transaction.type == 'income'
+    ).scalar() or 0
+    total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == current_user.id,
+        Transaction.type == 'expense'
+    ).scalar() or 0
+    current_cash = total_income - total_expenses
+    
+    if amount > current_cash:
+        return jsonify({
+            'error': f'Insufficient cash! You have {current_cash:,.0f} BIF available.',
+            'current_cash': current_cash,
+            'required': amount
+        }), 400
+    
+    # Update budget
     budget.actual_amount += amount
+    budget.remaining_amount = budget.planned_amount - budget.actual_amount
     budget.updated_at = datetime.utcnow()
     
     # If actual amount reaches or exceeds planned, auto-complete
-    if budget.actual_amount >= budget.planned_amount and budget.status == 'active':
+    if budget.actual_amount >= budget.planned_amount:
         budget.status = 'completed'
         budget.completed_at = datetime.utcnow()
     
     db.session.commit()
     
+    # Create expense transaction for the spending (this deducts cash)
+    transaction = Transaction(
+        user_id=current_user.id,
+        type='expense',
+        category=budget.category,
+        amount=amount,
+        description=f"Budget spending: {budget.name} - {budget.category}",
+        date=datetime.utcnow()
+    )
+    db.session.add(transaction)
+    db.session.commit()
+    
+    # Update remaining cash
+    new_cash = current_cash - amount
+    
     return jsonify({
         'status': 'success',
         'budget': budget.to_dict(),
         'progress': min((budget.actual_amount / budget.planned_amount) * 100, 100) if budget.planned_amount > 0 else 0,
-        'remaining': budget.planned_amount - budget.actual_amount
+        'remaining': budget.planned_amount - budget.actual_amount,
+        'current_cash': new_cash,
+        'amount_spent': amount,
+        'message': f'✅ {amount:,.0f} BIF spent from "{budget.name}". Remaining: {new_cash:,.0f} BIF'
     })
+
+
 
 
 @app.route('/api/budget/summary')
@@ -1604,19 +1698,33 @@ def budget_summary():
         active_budgets = Budget.query.filter_by(user_id=user_id, status='active').all()
         total_planned = sum(b.planned_amount for b in active_budgets)
         total_actual = sum(b.actual_amount for b in active_budgets)
+        total_remaining = total_planned - total_actual
         
         # Completed budgets
         completed_budgets = Budget.query.filter_by(user_id=user_id, status='completed').all()
         total_completed_planned = sum(b.planned_amount for b in completed_budgets)
         total_completed_actual = sum(b.actual_amount for b in completed_budgets)
         
+        # Get current cash from transactions
+        total_income = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'income'
+        ).scalar() or 0
+        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
+            Transaction.user_id == user_id,
+            Transaction.type == 'expense'
+        ).scalar() or 0
+        
+        actual_cash = total_income - total_expenses
+        
         # Budgets by category
         categories = {}
         for b in active_budgets:
             if b.category not in categories:
-                categories[b.category] = {'planned': 0, 'actual': 0, 'count': 0}
+                categories[b.category] = {'planned': 0, 'actual': 0, 'count': 0, 'remaining': 0}
             categories[b.category]['planned'] += b.planned_amount
             categories[b.category]['actual'] += b.actual_amount
+            categories[b.category]['remaining'] += b.remaining_amount
             categories[b.category]['count'] += 1
         
         # Over budget alerts
@@ -1627,9 +1735,12 @@ def budget_summary():
             'total_completed_budgets': len(completed_budgets),
             'total_planned': total_planned,
             'total_actual': total_actual,
-            'total_remaining': total_planned - total_actual,
+            'total_remaining': total_remaining,
             'total_completed_planned': total_completed_planned,
             'total_completed_actual': total_completed_actual,
+            'actual_cash': actual_cash,
+            'reserved_cash': total_planned - total_actual,
+            'available_for_budgets': actual_cash,
             'categories': categories,
             'over_budget': [b.to_dict() for b in over_budget],
             'overall_progress': min((total_actual / total_planned) * 100, 100) if total_planned > 0 else 0
@@ -1644,13 +1755,13 @@ def budget_summary():
             'total_remaining': 0,
             'total_completed_planned': 0,
             'total_completed_actual': 0,
+            'actual_cash': 0,
+            'reserved_cash': 0,
+            'available_for_budgets': 0,
             'categories': {},
             'over_budget': [],
             'overall_progress': 0
         })
-
-
-
 
 
 
