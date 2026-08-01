@@ -1414,7 +1414,7 @@ def add_goal_amount(id):
 
 
 # ============================
-# PROFESSIONAL BUDGET API - COMPLETE FIXED
+# COMPLETE BUDGET API - WORKING
 # ============================
 
 @app.route('/api/budget', methods=['GET', 'POST', 'PUT', 'DELETE'])
@@ -1424,7 +1424,6 @@ def api_budget():
     user_id = current_user.id
     
     if request.method == 'GET':
-        # Get all budgets or filter by parameters
         budget_id = request.args.get('id')
         period_type = request.args.get('period_type')
         status = request.args.get('status')
@@ -1449,50 +1448,51 @@ def api_budget():
         data = request.json
         planned_amount = float(data.get('planned_amount', 0))
         
-        # Parse dates
-        start_date = datetime.strptime(data.get('start_date'), '%Y-%m-%d') if data.get('start_date') else datetime.now()
-        end_date = None
-        if data.get('end_date'):
-            end_date = datetime.strptime(data.get('end_date'), '%Y-%m-%d')
+        # ===== CRITICAL: Calculate current cash correctly =====
+        # Use raw SQL to avoid any ORM issues
+        from sqlalchemy import text
         
-        # If no end date, set based on period type
-        if not end_date:
-            if data.get('period_type') == 'daily':
-                end_date = start_date
-            elif data.get('period_type') == 'weekly':
-                end_date = start_date + timedelta(days=6)
-            elif data.get('period_type') == 'monthly':
-                if start_date.month == 12:
-                    end_date = datetime(start_date.year + 1, 1, 1) - timedelta(days=1)
-                else:
-                    end_date = datetime(start_date.year, start_date.month + 1, 1) - timedelta(days=1)
-            elif data.get('period_type') == 'yearly':
-                end_date = datetime(start_date.year, 12, 31)
-            else:
-                end_date = start_date + timedelta(days=30)
+        income_result = db.session.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) FROM transactions 
+            WHERE user_id = :user_id AND type = 'income'
+        """), {'user_id': user_id})
+        total_income = income_result.scalar() or 0
         
-        # Check if user has enough cash for this budget
-        total_income = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'income'
-        ).scalar() or 0
-        
-        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'expense'
-        ).scalar() or 0
+        expense_result = db.session.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) FROM transactions 
+            WHERE user_id = :user_id AND type = 'expense'
+        """), {'user_id': user_id})
+        total_expenses = expense_result.scalar() or 0
         
         current_cash = total_income - total_expenses
         
+        # Check if user has enough cash
         if planned_amount > current_cash:
             return jsonify({
-                'error': f'Insufficient cash! You have {current_cash:,.0f} BIF available. Budget requires {planned_amount:,.0f} BIF.',
+                'error': f'❌ Insufficient cash!\n\nYou have: {current_cash:,.0f} BIF\nBudget requires: {planned_amount:,.0f} BIF\nShortfall: {(planned_amount - current_cash):,.0f} BIF',
                 'current_cash': current_cash,
                 'required': planned_amount,
                 'shortfall': planned_amount - current_cash
             }), 400
         
-        # Create budget WITHOUT deducting cash automatically
+        # Parse dates
+        start_date = datetime.strptime(data.get('start_date'), '%Y-%m-%d') if data.get('start_date') else datetime.now()
+        
+        if data.get('period_type') == 'daily':
+            end_date = start_date
+        elif data.get('period_type') == 'weekly':
+            end_date = start_date + timedelta(days=6)
+        elif data.get('period_type') == 'monthly':
+            if start_date.month == 12:
+                end_date = datetime(start_date.year + 1, 1, 1) - timedelta(days=1)
+            else:
+                end_date = datetime(start_date.year, start_date.month + 1, 1) - timedelta(days=1)
+        elif data.get('period_type') == 'yearly':
+            end_date = datetime(start_date.year, 12, 31)
+        else:
+            end_date = start_date + timedelta(days=30)
+        
+        # Create budget - NO cash deduction
         budget = Budget(
             user_id=user_id,
             name=data.get('name'),
@@ -1501,13 +1501,12 @@ def api_budget():
             planned_amount=planned_amount,
             actual_amount=0,
             remaining_amount=planned_amount,
-            is_cash_reserved=False,  # Don't reserve cash until spending is tracked
+            is_cash_reserved=False,
             period_type=data.get('period_type', 'monthly'),
             start_date=start_date,
             end_date=end_date,
             status='active',
             notes=data.get('notes'),
-            # Old columns - for backward compatibility
             month=start_date.month,
             year=start_date.year,
             expected_amount=planned_amount,
@@ -1515,27 +1514,16 @@ def api_budget():
             difference=0,
             status_updated_at=datetime.utcnow()
         )
+        
         db.session.add(budget)
         db.session.commit()
-        
-        # Get updated cash for response
-        total_income = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'income'
-        ).scalar() or 0
-        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'expense'
-        ).scalar() or 0
-        current_cash = total_income - total_expenses
         
         return jsonify({
             'status': 'success',
             'id': budget.id,
             'budget': budget.to_dict(),
             'current_cash': current_cash,
-            'amount_planned': planned_amount,
-            'message': f'✅ Budget "{data.get("name")}" created! Cash will be deducted when you track spending.'
+            'message': f'✅ Budget "{data.get("name")}" created!\n\nAmount: {planned_amount:,.0f} BIF\nRemaining Cash: {current_cash:,.0f} BIF'
         })
     
     elif request.method == 'PUT':
@@ -1544,30 +1532,28 @@ def api_budget():
         if budget.user_id != user_id:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Update fields
-        if 'name' in data:
-            budget.name = data['name']
-        if 'category' in data:
-            budget.category = data['category']
-        if 'description' in data:
-            budget.description = data['description']
         if 'planned_amount' in data:
             new_planned_amount = float(data['planned_amount'])
             
-            # Check if user has enough cash for the new amount
-            total_income = db.session.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == user_id,
-                Transaction.type == 'income'
-            ).scalar() or 0
-            total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == user_id,
-                Transaction.type == 'expense'
-            ).scalar() or 0
+            # Check cash for new amount
+            from sqlalchemy import text
+            income_result = db.session.execute(text("""
+                SELECT COALESCE(SUM(amount), 0) FROM transactions 
+                WHERE user_id = :user_id AND type = 'income'
+            """), {'user_id': user_id})
+            total_income = income_result.scalar() or 0
+            
+            expense_result = db.session.execute(text("""
+                SELECT COALESCE(SUM(amount), 0) FROM transactions 
+                WHERE user_id = :user_id AND type = 'expense'
+            """), {'user_id': user_id})
+            total_expenses = expense_result.scalar() or 0
+            
             current_cash = total_income - total_expenses
             
             if new_planned_amount > current_cash:
                 return jsonify({
-                    'error': f'Insufficient cash! You have {current_cash:,.0f} BIF available. Budget requires {new_planned_amount:,.0f} BIF.',
+                    'error': f'Insufficient cash! You have {current_cash:,.0f} BIF available.',
                     'current_cash': current_cash,
                     'required': new_planned_amount
                 }), 400
@@ -1576,18 +1562,18 @@ def api_budget():
             budget.expected_amount = new_planned_amount
             budget.remaining_amount = new_planned_amount - budget.actual_amount
         
-        if 'period_type' in data:
-            budget.period_type = data['period_type']
+        if 'name' in data: budget.name = data['name']
+        if 'category' in data: budget.category = data['category']
+        if 'description' in data: budget.description = data['description']
+        if 'period_type' in data: budget.period_type = data['period_type']
         if 'start_date' in data:
             budget.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d')
             budget.month = budget.start_date.month
             budget.year = budget.start_date.year
         if 'end_date' in data:
             budget.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d')
-        if 'status' in data:
-            budget.status = data['status']
-        if 'notes' in data:
-            budget.notes = data['notes']
+        if 'status' in data: budget.status = data['status']
+        if 'notes' in data: budget.notes = data['notes']
         
         budget.updated_at = datetime.utcnow()
         budget.calculate_remaining()
@@ -1604,13 +1590,11 @@ def api_budget():
         if budget.user_id != user_id:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Delete budget (no cash to refund since it wasn't deducted)
         db.session.delete(budget)
         db.session.commit()
-        return jsonify({'status': 'success', 'message': 'Budget deleted successfully'})
+        return jsonify({'status': 'success', 'message': 'Budget deleted'})
     
     return jsonify({'error': 'Method not allowed'}), 405
-
 
 @app.route('/api/budget/<int:id>/track', methods=['POST'])
 @login_required
