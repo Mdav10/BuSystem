@@ -130,6 +130,14 @@
 </div>
 
 <script>
+    // ===== SERVICE WORKER REGISTRATION =====
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/service-worker.js')
+            .then(() => console.log('✅ Service Worker Registered'))
+            .catch(err => console.error('❌ Service Worker Registration Error:', err));
+    }
+
+    // ===== PWA INSTALL =====
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
         document.getElementById('installBtn').style.display = 'none';
@@ -150,7 +158,6 @@
     // Click to show native install banner
     document.getElementById('installBtn').addEventListener('click', async function() {
         if (deferredPrompt) {
-            // THIS SHOWS THE NATIVE ANDROID INSTALL BANNER WITH YOUR ICON!
             deferredPrompt.prompt();
             const result = await deferredPrompt.userChoice;
             if (result.outcome === 'accepted') {
@@ -165,7 +172,6 @@
             }
             deferredPrompt = null;
         } else {
-            // Fallback: guide user to use browser menu
             this.textContent = '📲 Tap menu → Install App';
             this.style.background = '#f39c12';
             setTimeout(() => {
