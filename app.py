@@ -3713,6 +3713,9 @@ def get_balance_sheet():
         'net_worth': float(total_assets + total_income - total_expenses)
     })
 
+
+
+
 # ============================
 # MAIN ROUTE TO HANDLE ALL EXPORTS - FIXED
 # ============================
@@ -3734,7 +3737,6 @@ def export_report(report_type, format):
         return export_balance_sheet(format)
     else:
         return jsonify({'error': 'Invalid report type'}), 400
-
 
 
 
