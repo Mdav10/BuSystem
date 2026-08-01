@@ -43,6 +43,7 @@
         .status-active { color: #2ecc71; }
         .status-completed { color: #3498db; }
         .status-cancelled { color: #ff4757; }
+        .status-over_budget { color: #ff4757; font-weight: bold; }
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
         .summary-card { background: #111a2b; padding: 15px; border-radius: 12px; border: 1px solid #1a2a3f; text-align: center; }
         .summary-card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; letter-spacing: 1px; }
@@ -52,6 +53,7 @@
         .summary-card .value.cyan { color: #00d4ff; }
         .summary-card .value.orange { color: #f39c12; }
         .summary-card .value.purple { color: #9b59b6; }
+        .summary-card .value.gold { color: #f1c40f; }
         .progress-bar { width: 100%; height: 6px; background: #1a2332; border-radius: 3px; margin-top: 4px; overflow: hidden; }
         .progress-bar .fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
         .progress-bar .fill.green { background: #2ecc71; }
@@ -59,6 +61,12 @@
         .progress-bar .fill.red { background: #ff4757; }
         .filters { display: flex; gap: 10px; flex-wrap: wrap; margin: 15px 0; }
         .filters select, .filters input { padding: 8px 12px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #e0e6ed; }
+        .cash-info { background: #0f1a2b; border-radius: 12px; border: 1px solid #1a2a3f; padding: 15px; margin-bottom: 15px; }
+        .cash-info .label { color: #7a8ba3; font-size: 12px; }
+        .cash-info .value { font-size: 22px; font-weight: bold; }
+        .cash-info .value.available { color: #2ecc71; }
+        .cash-info .value.reserved { color: #f39c12; }
+        .cash-info .value.total { color: #00d4ff; }
         @media (max-width: 600px) { .summary-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
@@ -97,7 +105,23 @@
     </div>
 
     <h2 style="color:#fff; margin:20px 0 5px 0;">📋 Budget Planner</h2>
-    <p style="color:#7a8ba3; margin-bottom:15px;">Plan your spending for any period - daily, weekly, monthly, or yearly</p>
+    <p style="color:#7a8ba3; margin-bottom:15px;">Plan your spending for any period - daily, weekly, monthly, or yearly. Budgets are deducted from your current cash.</p>
+
+    <!-- Cash Info -->
+    <div class="cash-info" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+        <div>
+            <div class="label">💰 Current Cash Available</div>
+            <div class="value available" id="currentCashDisplay">0 BIF</div>
+        </div>
+        <div>
+            <div class="label">📊 Reserved for Budgets</div>
+            <div class="value reserved" id="reservedBudgetDisplay">0 BIF</div>
+        </div>
+        <div>
+            <div class="label">💎 Total Cash (Available + Reserved)</div>
+            <div class="value total" id="totalCashDisplay">0 BIF</div>
+        </div>
+    </div>
 
     <!-- Summary -->
     <div class="summary-grid" id="summaryGrid">
@@ -127,16 +151,17 @@
             <option value="active">Active</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
+            <option value="over_budget">Over Budget</option>
         </select>
     </div>
 
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th>Name</th><th>Category</th><th>Period</th><th>Planned</th><th>Actual</th><th>Progress</th><th>Status</th><th>Actions</th></tr>
+                <tr><th>Name</th><th>Category</th><th>Period</th><th>Planned</th><th>Actual</th><th>Remaining</th><th>Progress</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody id="budgetsTable">
-                <tr><td colspan="8" style="text-align:center; padding:20px; color:#4a5a6f;">Loading budgets...</td></tr>
+                <tr><td colspan="9" style="text-align:center; padding:20px; color:#4a5a6f;">Loading budgets...</td></tr>
             </tbody>
         </table>
     </div>
@@ -145,6 +170,10 @@
     <div class="modal" id="budgetModal">
         <div class="modal-content">
             <h2 id="modalTitle">Create Budget</h2>
+            <div style="background:#1a1a2a; padding:10px; border-radius:8px; margin-bottom:15px;">
+                <span style="color:#7a8ba3;">💰 Current Cash Available:</span>
+                <span style="color:#2ecc71; font-weight:bold;" id="modalCashDisplay">0 BIF</span>
+            </div>
             <input type="hidden" id="budgetId">
             <input type="text" id="budgetName" placeholder="Budget Name (e.g., Monthly Food)" required>
             <input type="text" id="budgetCategory" placeholder="Category (e.g., Food, Transport)" required>
@@ -174,6 +203,20 @@
             <h2>Track Spending</h2>
             <input type="hidden" id="trackBudgetId">
             <p style="color:#7a8ba3;">Add spending amount for <span id="trackBudgetName" style="color:#00d4ff;"></span></p>
+            <div style="background:#1a1a2a; padding:10px; border-radius:8px; margin-bottom:10px;">
+                <span style="color:#7a8ba3;">💰 Current Cash Available:</span>
+                <span style="color:#2ecc71; font-weight:bold;" id="trackCashDisplay">0 BIF</span>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                <div style="background:#0f1a2b; padding:8px; border-radius:6px;">
+                    <span style="color:#7a8ba3; font-size:11px;">Planned</span><br>
+                    <span style="color:#00d4ff; font-weight:bold;" id="trackPlanned">0 BIF</span>
+                </div>
+                <div style="background:#0f1a2b; padding:8px; border-radius:6px;">
+                    <span style="color:#7a8ba3; font-size:11px;">Remaining</span><br>
+                    <span style="color:#f39c12; font-weight:bold;" id="trackRemaining">0 BIF</span>
+                </div>
+            </div>
             <input type="number" id="trackAmount" placeholder="Amount Spent (BIF)" step="0.01" required>
             <div class="modal-actions">
                 <button class="btn btn-danger" onclick="closeTrackModal()">Cancel</button>
@@ -187,6 +230,7 @@
 
 <script>
     let budgets = [];
+    let currentCash = 0;
 
     async function loadBudgets() {
         const period = document.getElementById('filterPeriod').value;
@@ -204,7 +248,7 @@
             renderBudgets();
             loadSummary();
         } catch (e) {
-            document.getElementById('budgetsTable').innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#ff4757;">Error loading budgets</td></tr>';
+            document.getElementById('budgetsTable').innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#ff4757;">Error loading budgets</td></tr>';
         }
     }
 
@@ -217,6 +261,17 @@
             document.getElementById('plannedTotal').textContent = (data.total_planned || 0).toFixed(0) + ' BIF';
             document.getElementById('actualTotal').textContent = (data.total_actual || 0).toFixed(0) + ' BIF';
             document.getElementById('overallProgress').textContent = (data.overall_progress || 0).toFixed(0) + '%';
+            
+            // Cash info
+            currentCash = data.current_cash || 0;
+            const reserved = data.reserved_for_budgets || 0;
+            document.getElementById('currentCashDisplay').textContent = currentCash.toFixed(0) + ' BIF';
+            document.getElementById('reservedBudgetDisplay').textContent = reserved.toFixed(0) + ' BIF';
+            document.getElementById('totalCashDisplay').textContent = (currentCash + reserved).toFixed(0) + ' BIF';
+            
+            // Update modals
+            document.getElementById('modalCashDisplay').textContent = currentCash.toFixed(0) + ' BIF';
+            document.getElementById('trackCashDisplay').textContent = currentCash.toFixed(0) + ' BIF';
         } catch (e) {
             console.error('Error loading summary:', e);
         }
@@ -225,22 +280,30 @@
     function renderBudgets() {
         const tbody = document.getElementById('budgetsTable');
         if (!budgets || budgets.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#4a5a6f;">No budgets found. Create your first budget!</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#4a5a6f;">No budgets found. Create your first budget!</td></tr>';
             return;
         }
         
         tbody.innerHTML = budgets.map(b => {
             const progress = b.progress || 0;
             const progressClass = progress >= 100 ? 'green' : progress >= 80 ? 'orange' : 'green';
-            const statusClass = b.status === 'active' ? 'status-active' : b.status === 'completed' ? 'status-completed' : 'status-cancelled';
+            let statusClass = `status-${b.status}`;
+            
+            // Check if over budget
+            if (b.status === 'active' && b.actual_amount > b.planned_amount) {
+                statusClass = 'status-over_budget';
+            }
+            
+            const remaining = b.remaining_amount || (b.planned_amount - b.actual_amount);
             
             return `
             <tr>
-                <td>${b.name}</td>
+                <td><strong>${b.name}</strong></td>
                 <td>${b.category}</td>
                 <td>${b.period_type}</td>
                 <td>${b.planned_amount.toFixed(0)} BIF</td>
                 <td>${b.actual_amount.toFixed(0)} BIF</td>
+                <td style="color:${remaining >= 0 ? '#2ecc71' : '#ff4757'}; font-weight:bold;">${remaining.toFixed(0)} BIF</td>
                 <td>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span>${progress.toFixed(0)}%</span>
@@ -271,6 +334,7 @@
         document.getElementById('budgetPlannedAmount').value = '';
         document.getElementById('budgetNotes').value = '';
         document.getElementById('budgetModal').style.display = 'flex';
+        loadSummary();
     }
 
     function editBudget(id) {
@@ -287,6 +351,7 @@
         document.getElementById('budgetPlannedAmount').value = b.planned_amount;
         document.getElementById('budgetNotes').value = b.notes || '';
         document.getElementById('budgetModal').style.display = 'flex';
+        loadSummary();
     }
 
     function closeModal() {
@@ -298,8 +363,12 @@
         if (!b) return;
         document.getElementById('trackBudgetId').value = b.id;
         document.getElementById('trackBudgetName').textContent = b.name;
+        document.getElementById('trackPlanned').textContent = b.planned_amount.toFixed(0) + ' BIF';
+        const remaining = b.remaining_amount || (b.planned_amount - b.actual_amount);
+        document.getElementById('trackRemaining').textContent = remaining.toFixed(0) + ' BIF';
         document.getElementById('trackAmount').value = '';
         document.getElementById('trackModal').style.display = 'flex';
+        loadSummary();
     }
 
     function closeTrackModal() {
@@ -308,6 +377,14 @@
 
     async function saveBudget() {
         const id = document.getElementById('budgetId').value;
+        const plannedAmount = parseFloat(document.getElementById('budgetPlannedAmount').value);
+        
+        // Check if enough cash for new budget
+        if (!id && plannedAmount > currentCash) {
+            alert(`❌ Insufficient cash!\n\nYou have: ${currentCash.toFixed(0)} BIF\nBudget requires: ${plannedAmount.toFixed(0)} BIF\nShortfall: ${(plannedAmount - currentCash).toFixed(0)} BIF\n\nPlease reduce the budget amount or add more cash.`);
+            return;
+        }
+
         const data = {
             name: document.getElementById('budgetName').value,
             category: document.getElementById('budgetCategory').value,
@@ -315,7 +392,7 @@
             period_type: document.getElementById('budgetPeriod').value,
             start_date: document.getElementById('budgetStartDate').value,
             end_date: document.getElementById('budgetEndDate').value || null,
-            planned_amount: parseFloat(document.getElementById('budgetPlannedAmount').value),
+            planned_amount: plannedAmount,
             notes: document.getElementById('budgetNotes').value
         };
 
@@ -335,12 +412,18 @@
                 body: JSON.stringify(data)
             });
             const result = await res.json();
+            
             if (result.status === 'success') {
                 closeModal();
                 loadBudgets();
-                alert(id ? '✅ Budget updated!' : '✅ Budget created!');
+                loadSummary();
+                if (result.current_cash !== undefined) {
+                    alert(`✅ Budget "${data.name}" created!\n\nAmount: ${result.amount_reserved.toFixed(0)} BIF\nRemaining Cash: ${result.current_cash.toFixed(0)} BIF`);
+                } else {
+                    alert(id ? '✅ Budget updated!' : '✅ Budget created!');
+                }
             } else {
-                alert('Error: ' + (result.error || 'Unknown error'));
+                alert('❌ ' + (result.error || 'Unknown error'));
             }
         } catch (e) {
             alert('Error saving budget');
@@ -356,6 +439,12 @@
             return;
         }
 
+        // Check if enough cash
+        if (amount > currentCash) {
+            alert(`❌ Insufficient cash!\n\nYou have: ${currentCash.toFixed(0)} BIF\nSpending requires: ${amount.toFixed(0)} BIF\nShortfall: ${(amount - currentCash).toFixed(0)} BIF\n\nPlease reduce the spending amount.`);
+            return;
+        }
+
         try {
             const res = await fetch(`/api/budget/${id}/track`, {
                 method: 'POST',
@@ -366,9 +455,10 @@
             if (result.status === 'success') {
                 closeTrackModal();
                 loadBudgets();
-                alert(`✅ Spending tracked!\nAmount: ${amount.toFixed(0)} BIF\nProgress: ${result.progress.toFixed(0)}%\nRemaining: ${result.remaining.toFixed(0)} BIF`);
+                loadSummary();
+                alert(`✅ Spending tracked!\n\nAmount: ${amount.toFixed(0)} BIF\nProgress: ${result.progress.toFixed(0)}%\nRemaining: ${result.remaining.toFixed(0)} BIF\nRemaining Cash: ${result.current_cash.toFixed(0)} BIF`);
             } else {
-                alert('Error: ' + (result.error || 'Unknown error'));
+                alert('❌ ' + (result.error || 'Unknown error'));
             }
         } catch (e) {
             alert('Error tracking spending');
@@ -376,7 +466,7 @@
     }
 
     async function deleteBudget(id) {
-        if (!confirm('Delete this budget?')) return;
+        if (!confirm('Delete this budget? This will refund the cash back to your account.')) return;
         try {
             const res = await fetch('/api/budget', {
                 method: 'DELETE',
@@ -386,6 +476,8 @@
             const result = await res.json();
             if (result.status === 'success') {
                 loadBudgets();
+                loadSummary();
+                alert(result.message || '✅ Budget deleted and cash refunded.');
             } else {
                 alert('Error deleting budget');
             }
