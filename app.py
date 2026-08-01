@@ -1414,7 +1414,7 @@ def add_goal_amount(id):
 
 
 # ============================
-# COMPLETE BUDGET API - FULLY WORKING WITH CASH DEDUCTION
+# COMPLETE BUDGET API - WITH DEBUGGING
 # ============================
 
 @app.route('/api/budget', methods=['GET', 'POST', 'PUT', 'DELETE'])
@@ -1448,22 +1448,27 @@ def api_budget():
         data = request.json
         planned_amount = float(data.get('planned_amount', 0))
         
-        # ===== GET CURRENT CASH =====
+        # ===== GET CURRENT CASH - DIRECT SQL =====
+        from sqlalchemy import text
+        
         # Get total income
-        total_income = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'income'
-        ).scalar() or 0
+        income_result = db.session.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) FROM transactions 
+            WHERE user_id = :user_id AND type = 'income'
+        """), {'user_id': user_id})
+        total_income = income_result.scalar() or 0
         
         # Get total expenses
-        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'expense'
-        ).scalar() or 0
+        expense_result = db.session.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) FROM transactions 
+            WHERE user_id = :user_id AND type = 'expense'
+        """), {'user_id': user_id})
+        total_expenses = expense_result.scalar() or 0
         
         current_cash = total_income - total_expenses
         
-        print(f"💰 Current Cash: {current_cash}, Budget Amount: {planned_amount}")
+        # Debug: Print to logs
+        print(f"💰 Budget Creation - User: {user_id}, Income: {total_income}, Expenses: {total_expenses}, Cash: {current_cash}")
         
         # Check if user has enough cash
         if planned_amount > current_cash:
@@ -1517,7 +1522,7 @@ def api_budget():
         db.session.add(budget)
         db.session.commit()
         
-        # ===== CREATE EXPENSE TRANSACTION TO DEDUCT CASH =====
+        # ===== CREATE EXPENSE TRANSACTION =====
         transaction = Transaction(
             user_id=user_id,
             type='expense',
@@ -1530,15 +1535,17 @@ def api_budget():
         db.session.commit()
         
         # Get updated cash
-        new_total_income = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'income'
-        ).scalar() or 0
-        new_total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'expense'
-        ).scalar() or 0
-        new_cash = new_total_income - new_total_expenses
+        new_income = db.session.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) FROM transactions 
+            WHERE user_id = :user_id AND type = 'income'
+        """), {'user_id': user_id}).scalar() or 0
+        
+        new_expenses = db.session.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) FROM transactions 
+            WHERE user_id = :user_id AND type = 'expense'
+        """), {'user_id': user_id}).scalar() or 0
+        
+        new_cash = new_income - new_expenses
         
         return jsonify({
             'status': 'success',
@@ -1560,15 +1567,19 @@ def api_budget():
         if 'planned_amount' in data:
             new_planned_amount = float(data['planned_amount'])
             
-            # Check cash for the difference
-            total_income = db.session.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == user_id,
-                Transaction.type == 'income'
-            ).scalar() or 0
-            total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == user_id,
-                Transaction.type == 'expense'
-            ).scalar() or 0
+            # Get current cash
+            income_result = db.session.execute(text("""
+                SELECT COALESCE(SUM(amount), 0) FROM transactions 
+                WHERE user_id = :user_id AND type = 'income'
+            """), {'user_id': user_id})
+            total_income = income_result.scalar() or 0
+            
+            expense_result = db.session.execute(text("""
+                SELECT COALESCE(SUM(amount), 0) FROM transactions 
+                WHERE user_id = :user_id AND type = 'expense'
+            """), {'user_id': user_id})
+            total_expenses = expense_result.scalar() or 0
+            
             current_cash = total_income - total_expenses
             
             # If increasing budget, need extra cash
@@ -1581,7 +1592,6 @@ def api_budget():
                         'needed': extra_needed
                     }), 400
                 
-                # Create expense for the increase
                 transaction = Transaction(
                     user_id=user_id,
                     type='expense',
@@ -1593,7 +1603,6 @@ def api_budget():
                 db.session.add(transaction)
                 db.session.commit()
             
-            # If decreasing budget, refund the difference
             elif new_planned_amount < old_planned:
                 refund_amount = old_planned - new_planned_amount
                 transaction = Transaction(
@@ -1633,20 +1642,22 @@ def api_budget():
         db.session.commit()
         
         # Get updated cash
-        total_income = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'income'
-        ).scalar() or 0
-        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'expense'
-        ).scalar() or 0
-        current_cash = total_income - total_expenses
+        new_income = db.session.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) FROM transactions 
+            WHERE user_id = :user_id AND type = 'income'
+        """), {'user_id': user_id}).scalar() or 0
+        
+        new_expenses = db.session.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) FROM transactions 
+            WHERE user_id = :user_id AND type = 'expense'
+        """), {'user_id': user_id}).scalar() or 0
+        
+        new_cash = new_income - new_expenses
         
         return jsonify({
             'status': 'success',
             'budget': budget.to_dict(),
-            'current_cash': current_cash
+            'current_cash': new_cash
         })
     
     elif request.method == 'DELETE':
@@ -1655,9 +1666,8 @@ def api_budget():
         if budget.user_id != user_id:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Refund cash if budget had cash reserved
+        # Refund cash
         if budget.is_cash_reserved and budget.status != 'completed':
-            # Refund the full planned amount
             transaction = Transaction(
                 user_id=user_id,
                 type='income',
@@ -1673,23 +1683,27 @@ def api_budget():
         db.session.commit()
         
         # Get updated cash
-        total_income = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'income'
-        ).scalar() or 0
-        total_expenses = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.user_id == user_id,
-            Transaction.type == 'expense'
-        ).scalar() or 0
-        current_cash = total_income - total_expenses
+        new_income = db.session.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) FROM transactions 
+            WHERE user_id = :user_id AND type = 'income'
+        """), {'user_id': user_id}).scalar() or 0
+        
+        new_expenses = db.session.execute(text("""
+            SELECT COALESCE(SUM(amount), 0) FROM transactions 
+            WHERE user_id = :user_id AND type = 'expense'
+        """), {'user_id': user_id}).scalar() or 0
+        
+        new_cash = new_income - new_expenses
         
         return jsonify({
             'status': 'success',
             'message': 'Budget deleted and cash refunded',
-            'current_cash': current_cash
+            'current_cash': new_cash
         })
     
     return jsonify({'error': 'Method not allowed'}), 405
+
+
 
 
 @app.route('/api/budget/<int:id>/track', methods=['POST'])
