@@ -61,12 +61,14 @@
         .progress-bar .fill.red { background: #ff4757; }
         .filters { display: flex; gap: 10px; flex-wrap: wrap; margin: 15px 0; }
         .filters select, .filters input { padding: 8px 12px; background: #0f1a2b; border: 1px solid #1a2a3f; border-radius: 8px; color: #e0e6ed; }
-        .cash-info { background: #0f1a2b; border-radius: 12px; border: 1px solid #1a2a3f; padding: 15px; margin-bottom: 15px; }
-        .cash-info .label { color: #7a8ba3; font-size: 12px; }
-        .cash-info .value { font-size: 22px; font-weight: bold; }
-        .cash-info .value.available { color: #2ecc71; }
-        .cash-info .value.reserved { color: #f39c12; }
-        .cash-info .value.total { color: #00d4ff; }
+        .cash-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }
+        .cash-card { background: #111a2b; padding: 15px; border-radius: 12px; border: 1px solid #1a2a3f; text-align: center; }
+        .cash-card .label { font-size: 11px; color: #7a8ba3; text-transform: uppercase; letter-spacing: 1px; }
+        .cash-card .value { font-size: 22px; font-weight: bold; margin-top: 4px; }
+        .cash-card .value.available { color: #2ecc71; }
+        .cash-card .value.reserved { color: #f39c12; }
+        .cash-card .value.total { color: #00d4ff; }
+        .error-message { background: #1a1a2a; padding: 15px; border-radius: 8px; border-left: 3px solid #ff4757; margin: 10px 0; color: #ff6b6b; }
         @media (max-width: 600px) { .summary-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
@@ -108,18 +110,18 @@
     <p style="color:#7a8ba3; margin-bottom:15px;">Plan your spending for any period - daily, weekly, monthly, or yearly. Budgets are deducted from your current cash.</p>
 
     <!-- Cash Info -->
-    <div class="cash-info" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
-        <div>
+    <div class="cash-info" id="cashInfo">
+        <div class="cash-card">
             <div class="label">💰 Current Cash Available</div>
-            <div class="value available" id="currentCashDisplay">0 BIF</div>
+            <div class="value available" id="currentCashDisplay">Loading...</div>
         </div>
-        <div>
+        <div class="cash-card">
             <div class="label">📊 Reserved for Budgets</div>
-            <div class="value reserved" id="reservedBudgetDisplay">0 BIF</div>
+            <div class="value reserved" id="reservedBudgetDisplay">Loading...</div>
         </div>
-        <div>
-            <div class="label">💎 Total Cash (Available + Reserved)</div>
-            <div class="value total" id="totalCashDisplay">0 BIF</div>
+        <div class="cash-card">
+            <div class="label">💎 Total Cash</div>
+            <div class="value total" id="totalCashDisplay">Loading...</div>
         </div>
     </div>
 
@@ -249,6 +251,7 @@
             loadSummary();
         } catch (e) {
             document.getElementById('budgetsTable').innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#ff4757;">Error loading budgets</td></tr>';
+            console.error('Error loading budgets:', e);
         }
     }
 
@@ -256,24 +259,34 @@
         try {
             const res = await fetch('/api/budget/summary');
             const data = await res.json();
+            
+            console.log('Budget Summary Data:', data);
+            
             document.getElementById('activeBudgets').textContent = data.total_active_budgets || 0;
             document.getElementById('completedBudgets').textContent = data.total_completed_budgets || 0;
             document.getElementById('plannedTotal').textContent = (data.total_planned || 0).toFixed(0) + ' BIF';
             document.getElementById('actualTotal').textContent = (data.total_actual || 0).toFixed(0) + ' BIF';
             document.getElementById('overallProgress').textContent = (data.overall_progress || 0).toFixed(0) + '%';
             
-            // Cash info
-            currentCash = data.current_cash || 0;
-            const reserved = data.reserved_for_budgets || 0;
-            document.getElementById('currentCashDisplay').textContent = currentCash.toFixed(0) + ' BIF';
+            // Cash info - IMPORTANT: Use the actual_cash from the API
+            const totalCash = data.actual_cash || 0;
+            const reserved = data.reserved_cash || 0;
+            const available = data.available_for_budgets || 0;
+            
+            document.getElementById('currentCashDisplay').textContent = totalCash.toFixed(0) + ' BIF';
             document.getElementById('reservedBudgetDisplay').textContent = reserved.toFixed(0) + ' BIF';
-            document.getElementById('totalCashDisplay').textContent = (currentCash + reserved).toFixed(0) + ' BIF';
+            document.getElementById('totalCashDisplay').textContent = (totalCash + reserved).toFixed(0) + ' BIF';
+            
+            // Store current cash for validation
+            currentCash = totalCash;
             
             // Update modals
-            document.getElementById('modalCashDisplay').textContent = currentCash.toFixed(0) + ' BIF';
-            document.getElementById('trackCashDisplay').textContent = currentCash.toFixed(0) + ' BIF';
+            document.getElementById('modalCashDisplay').textContent = totalCash.toFixed(0) + ' BIF';
+            document.getElementById('trackCashDisplay').textContent = totalCash.toFixed(0) + ' BIF';
+            
         } catch (e) {
             console.error('Error loading summary:', e);
+            document.getElementById('currentCashDisplay').textContent = 'Error loading cash';
         }
     }
 
@@ -289,7 +302,6 @@
             const progressClass = progress >= 100 ? 'green' : progress >= 80 ? 'orange' : 'green';
             let statusClass = `status-${b.status}`;
             
-            // Check if over budget
             if (b.status === 'active' && b.actual_amount > b.planned_amount) {
                 statusClass = 'status-over_budget';
             }
@@ -418,7 +430,7 @@
                 loadBudgets();
                 loadSummary();
                 if (result.current_cash !== undefined) {
-                    alert(`✅ Budget "${data.name}" created!\n\nAmount: ${result.amount_reserved.toFixed(0)} BIF\nRemaining Cash: ${result.current_cash.toFixed(0)} BIF`);
+                    alert(`✅ Budget "${data.name}" created!\n\nAmount: ${result.amount_deducted.toFixed(0)} BIF deducted\nRemaining Cash: ${result.current_cash.toFixed(0)} BIF`);
                 } else {
                     alert(id ? '✅ Budget updated!' : '✅ Budget created!');
                 }
@@ -427,6 +439,7 @@
             }
         } catch (e) {
             alert('Error saving budget');
+            console.error('Error:', e);
         }
     }
 
@@ -439,7 +452,6 @@
             return;
         }
 
-        // Check if enough cash
         if (amount > currentCash) {
             alert(`❌ Insufficient cash!\n\nYou have: ${currentCash.toFixed(0)} BIF\nSpending requires: ${amount.toFixed(0)} BIF\nShortfall: ${(amount - currentCash).toFixed(0)} BIF\n\nPlease reduce the spending amount.`);
             return;
@@ -462,6 +474,7 @@
             }
         } catch (e) {
             alert('Error tracking spending');
+            console.error('Error:', e);
         }
     }
 
@@ -483,6 +496,7 @@
             }
         } catch (e) {
             alert('Error deleting budget');
+            console.error('Error:', e);
         }
     }
 
